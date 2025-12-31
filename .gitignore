@@ -1,0 +1,30 @@
+﻿# Java
+*.class
+*.log
+*.jar
+*.war
+*.ear
+hs_err_pid*
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+dist/
+nbbuild/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
