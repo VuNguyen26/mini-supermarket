@@ -154,6 +154,7 @@ public class MainFrame extends JFrame {
         addNavItem(nav, "Nhà cung cấp", "🏭");
         addNavItem(nav, "Danh mục", "🧩");
         addNavItem(nav, "Nhân viên", "🛡️");
+        addNavItem(nav, "Bán hàng", "🛒");
 
         // Đẩy nhóm menu lên trên, để phần dưới thoáng (logout nằm riêng dưới)
         nav.add(Box.createVerticalGlue());
@@ -316,6 +317,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(makePlaceholder("NHÀ CUNG CẤP (SupplierPanel)")), "Nhà cung cấp");
         contentPanel.add(wrapCard(makePlaceholder("DANH MỤC (CategoryPanel)")), "Danh mục");
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
+        contentPanel.add(wrapCard(makePlaceholder("BÁN HÀNG (SalesPanel)")), "Bán hàng");
     }
 
     private JComponent wrapCard(JComponent inner) {
@@ -368,16 +370,21 @@ public class MainFrame extends JFrame {
     private void applyRoleVisibility() {
         String role = currentUser.roleName == null ? "" : currentUser.roleName.toUpperCase();
 
+        if ("ADMIN".equals(role)){
+            hideNav("Bán hàng");
+        }
+
         if ("CASHIER".equals(role)) {
             hideNav("Nhập kho");
             hideNav("Nhà cung cấp");
             hideNav("Danh mục");
             hideNav("Nhân viên");
+            hideNav("Sản phẩm");
         } else if ("WAREHOUSE".equals(role)) {
             hideNav("Hóa đơn");
             hideNav("Khách hàng");
-            hideNav("Danh mục");
             hideNav("Nhân viên");
+            hideNav("Bán hàng");
         }
 
         // Quan trọng: refresh layout sau khi hide
