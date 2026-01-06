@@ -54,8 +54,6 @@ public class MainFrame extends JFrame {
         initCards();
         wireNav();
         applyRoleVisibility();
-
-        showCard("Tổng quan");
     }
 
     private void setupLookAndFeel() {
@@ -147,16 +145,23 @@ public class MainFrame extends JFrame {
         nav.setBorder(new EmptyBorder(6, 10, 10, 10));
 
         addNavItem(nav, "Tổng quan", "🏠");
-        addNavItem(nav, "Sản phẩm", "📦");
+        addNavItem(nav, "Bán hàng", "🛒");
         addNavItem(nav, "Hóa đơn", "🧾");
+
+        addNavItem(nav, "Sản phẩm", "📦");
         addNavItem(nav, "Nhập kho", "🚚");
+        addNavItem(nav, "Kiểm kho", "🧮");
+
         addNavItem(nav, "Khách hàng", "👥");
         addNavItem(nav, "Nhà cung cấp", "🏭");
         addNavItem(nav, "Danh mục", "🧩");
-        addNavItem(nav, "Nhân viên", "🛡️");
-        addNavItem(nav, "Bán hàng", "🛒");
 
-        // Đẩy nhóm menu lên trên, để phần dưới thoáng (logout nằm riêng dưới)
+        addNavItem(nav, "Khuyến mãi", "🏷️");
+        addNavItem(nav, "Thanh toán", "💳");
+        addNavItem(nav, "Báo cáo", "📊");
+
+        addNavItem(nav, "Nhân viên", "🛡️");
+
         nav.add(Box.createVerticalGlue());
         return nav;
     }
@@ -285,14 +290,13 @@ public class MainFrame extends JFrame {
         info.add(Box.createVerticalStrut(2));
         info.add(userRole);
 
-        JLabel avatar = new JLabel("🙂", SwingConstants.CENTER);
-        avatar.setPreferredSize(new Dimension(36, 36));
-        avatar.setMinimumSize(new Dimension(36, 36));
-        avatar.setMaximumSize(new Dimension(36, 36));
-        avatar.setOpaque(true);
-        avatar.setBackground(new Color(239, 246, 255));
-        avatar.setForeground(new Color(37, 99, 235));
-        avatar.setBorder(BorderFactory.createLineBorder(new Color(219, 234, 254)));
+        String initials = getInitials(name);
+        CircleAvatar avatar = new CircleAvatar(initials, 36);
+        avatar.setColors(
+                new Color(239, 246, 255),
+                new Color(37, 99, 235),
+                new Color(219, 234, 254)
+        );
         avatar.setAlignmentY(Component.CENTER_ALIGNMENT);
 
         right.add(info);
@@ -308,16 +312,100 @@ public class MainFrame extends JFrame {
         return header;
     }
 
+    private String getInitials(String fullName) {
+        if (fullName == null) return "U";
+        String s = fullName.trim();
+        if (s.isEmpty()) return "U";
+
+        // Lấy 2 chữ cái đầu của 2 từ (nếu có), còn không thì lấy 2 ký tự đầu
+        String[] parts = s.split("\\s+");
+        if (parts.length >= 2) {
+            String a = parts[0].substring(0, 1);
+            String b = parts[parts.length - 1].substring(0, 1);
+            return (a + b).toUpperCase();
+        }
+        return (s.length() >= 2 ? s.substring(0, 2) : s.substring(0, 1)).toUpperCase();
+    }
+
+
+    private static class CircleAvatar extends JComponent {
+        private String text;
+        private Color bg = new Color(239, 246, 255);
+        private Color fg = new Color(37, 99, 235);
+        private Color border = new Color(219, 234, 254);
+
+        public CircleAvatar(String text, int size) {
+            this.text = text;
+            setPreferredSize(new Dimension(size, size));
+            setMinimumSize(new Dimension(size, size));
+            setMaximumSize(new Dimension(size, size));
+            setOpaque(false);
+            setFont(new Font("Segoe UI", Font.BOLD, 14));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setToolTipText("Tài khoản");
+        }
+
+        public void setColors(Color bg, Color fg, Color border) {
+            this.bg = bg;
+            this.fg = fg;
+            this.border = border;
+            repaint();
+        }
+
+        public void setText(String text) {
+            this.text = text;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int s = Math.min(getWidth(), getHeight());
+            int x = (getWidth() - s) / 2;
+            int y = (getHeight() - s) / 2;
+
+            // circle bg
+            g2.setColor(bg);
+            g2.fillOval(x, y, s - 1, s - 1);
+
+            // circle border
+            g2.setColor(border);
+            g2.drawOval(x, y, s - 1, s - 1);
+
+            // centered text
+            g2.setColor(fg);
+            g2.setFont(getFont());
+            FontMetrics fm = g2.getFontMetrics();
+            int tw = fm.stringWidth(text);
+            int th = fm.getAscent();
+            int tx = x + (s - tw) / 2;
+            int ty = y + (s + th) / 2 - 2;
+            g2.drawString(text, tx, ty);
+
+            g2.dispose();
+        }
+    }
+
     private void initCards() {
-        contentPanel.add(wrapCard(makePlaceholder("TỔNG QUAN (Dashboard)")), "Tổng quan");
-        contentPanel.add(wrapCard(makePlaceholder("SẢN PHẨM (ProductPanel)")), "Sản phẩm");
+        contentPanel.add(wrapCard(makePlaceholder("TỔNG QUAN (DashboardPanel)")), "Tổng quan");
+        contentPanel.add(wrapCard(makePlaceholder("BÁN HÀNG (PosSalesPanel)")), "Bán hàng");
         contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
+
+        contentPanel.add(wrapCard(makePlaceholder("SẢN PHẨM (ProductPanel + tab tồn theo lô/HSD)")), "Sản phẩm");
         contentPanel.add(wrapCard(makePlaceholder("NHẬP KHO (GoodsReceiptPanel)")), "Nhập kho");
-        contentPanel.add(wrapCard(makePlaceholder("KHÁCH HÀNG (CustomerPanel)")), "Khách hàng");
+        contentPanel.add(wrapCard(makePlaceholder("KIỂM KHO / ĐIỀU CHỈNH (StockAdjustmentPanel)")), "Kiểm kho");
+
+        contentPanel.add(wrapCard(makePlaceholder("KHÁCH HÀNG (CustomerPanel + tab điểm/loyalty)")), "Khách hàng");
         contentPanel.add(wrapCard(makePlaceholder("NHÀ CUNG CẤP (SupplierPanel)")), "Nhà cung cấp");
         contentPanel.add(wrapCard(makePlaceholder("DANH MỤC (CategoryPanel)")), "Danh mục");
+
+        contentPanel.add(wrapCard(makePlaceholder("KHUYẾN MÃI (PromotionPanel)")), "Khuyến mãi");
+        contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
+        contentPanel.add(wrapCard(makePlaceholder("BÁO CÁO (ReportPanel)")), "Báo cáo");
+
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
-        contentPanel.add(wrapCard(makePlaceholder("BÁN HÀNG (SalesPanel)")), "Bán hàng");
     }
 
     private JComponent wrapCard(JComponent inner) {
@@ -350,6 +438,10 @@ public class MainFrame extends JFrame {
             NavItem item = e.getValue();
             item.addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent ev) {
+                    // Nếu menu đang bị ẩn theo role thì bỏ qua
+                    JPanel row = navRows.get(key);
+                    if (row != null && !row.isVisible()) return;
+
                     showCard(key);
                 }
             });
@@ -370,27 +462,67 @@ public class MainFrame extends JFrame {
     private void applyRoleVisibility() {
         String role = currentUser.roleName == null ? "" : currentUser.roleName.toUpperCase();
 
-        if ("ADMIN".equals(role)){
-            hideNav("Bán hàng");
+        // ALLOW LIST: role nào được xem menu nào
+        java.util.Set<String> allowed;
+
+        switch (role) {
+            case "ADMIN" -> allowed = java.util.Set.of(
+                    "Tổng quan","Bán hàng","Hóa đơn","Sản phẩm","Nhập kho","Kiểm kho",
+                    "Khách hàng","Nhà cung cấp","Danh mục","Khuyến mãi","Thanh toán","Báo cáo","Nhân viên"
+            );
+
+            case "MANAGER" -> allowed = java.util.Set.of(
+                    "Tổng quan","Bán hàng","Hóa đơn","Sản phẩm","Nhập kho","Kiểm kho",
+                    "Khách hàng","Nhà cung cấp","Danh mục","Khuyến mãi","Thanh toán","Báo cáo"
+                    // Manager thường không quản user
+            );
+
+            case "CASHIER" -> allowed = java.util.Set.of(
+                    "Tổng quan","Bán hàng","Hóa đơn","Khách hàng"
+            );
+
+            case "WAREHOUSE" -> allowed = java.util.Set.of(
+                    "Tổng quan","Sản phẩm","Nhập kho","Kiểm kho","Nhà cung cấp","Danh mục","Báo cáo"
+            );
+
+            case "ACCOUNTANT" -> allowed = java.util.Set.of(
+                    "Tổng quan","Hóa đơn","Thanh toán","Báo cáo"
+            );
+
+            default -> allowed = java.util.Set.of("Tổng quan"); // fallback an toàn
         }
 
-        if ("CASHIER".equals(role)) {
-            hideNav("Nhập kho");
-            hideNav("Nhà cung cấp");
-            hideNav("Danh mục");
-            hideNav("Nhân viên");
-            hideNav("Sản phẩm");
-        } else if ("WAREHOUSE".equals(role)) {
-            hideNav("Hóa đơn");
-            hideNav("Khách hàng");
-            hideNav("Nhân viên");
-            hideNav("Bán hàng");
+        // Apply visibility theo allow list
+        for (String key : navRows.keySet()) {
+            JPanel row = navRows.get(key);
+            if (row != null) row.setVisible(allowed.contains(key));
         }
 
-        // Quan trọng: refresh layout sau khi hide
+        // Refresh layout sau khi ẩn/hiện
         if (navPanel != null) {
             navPanel.revalidate();
             navPanel.repaint();
+        }
+
+        // Chuyển sang màn hình đầu tiên được phép (tránh showCard vào card bị ẩn)
+        showFirstAllowedCard();
+    }
+
+    private void showFirstAllowedCard() {
+        // Ưu tiên mở Dashboard nếu được phép
+        JPanel dashRow = navRows.get("Tổng quan");
+        if (dashRow != null && dashRow.isVisible()) {
+            showCard("Tổng quan");
+            return;
+        }
+
+        // Nếu không thì mở menu đầu tiên đang visible
+        for (String key : navRows.keySet()) {
+            JPanel row = navRows.get(key);
+            if (row != null && row.isVisible()) {
+                showCard(key);
+                return;
+            }
         }
     }
 
