@@ -3,6 +3,9 @@ package presentation;
 import bus.AuthService.AuthUser;
 import com.formdev.flatlaf.FlatLightLaf;
 
+import util.PermissionCodes;
+import util.RolePermission;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -161,6 +164,8 @@ public class MainFrame extends JFrame {
         addNavItem(nav, "Báo cáo", "📊");
 
         addNavItem(nav, "Nhân viên", "🛡️");
+        addNavItem(nav, "Phân quyền", "🔑");
+
 
         nav.add(Box.createVerticalGlue());
         return nav;
@@ -208,6 +213,9 @@ public class MainFrame extends JFrame {
         btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
         btnLogout.addActionListener(e -> {
+            // clear permission session (optional but clean)
+            util.RolePermission.clear();
+
             new LoginFrame().setVisible(true);
             dispose();
         });
@@ -406,7 +414,9 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(makePlaceholder("BÁO CÁO (ReportPanel)")), "Báo cáo");
 
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
+        contentPanel.add(wrapCard(new presentation.panels.RolePermissionPanel()), "Phân quyền");
     }
+
 
     private JComponent wrapCard(JComponent inner) {
         RoundedPanel card = new RoundedPanel(16);
@@ -460,43 +470,28 @@ public class MainFrame extends JFrame {
     }
 
     private void applyRoleVisibility() {
-        String role = currentUser.roleName == null ? "" : currentUser.roleName.toUpperCase();
+        // Map từng menu -> permission tương ứng
+        // Có permission thì show, không có thì hide
+        setNavVisible("Tổng quan", RolePermission.has(PermissionCodes.DASHBOARD_VIEW));
 
-        // ALLOW LIST: role nào được xem menu nào
-        java.util.Set<String> allowed;
+        setNavVisible("Bán hàng", RolePermission.has(PermissionCodes.POS_SELL));
+        // Nếu bạn có permission INVOICE_VIEW thì dùng nó, còn không thì cho theo REPORT_VIEW
+        setNavVisible("Hóa đơn", RolePermission.has(PermissionCodes.INVOICE_VIEW) || RolePermission.has(PermissionCodes.REPORT_VIEW));
 
-        switch (role) {
-            case "ADMIN" -> allowed = java.util.Set.of(
-                    "Tổng quan","Bán hàng","Hóa đơn","Sản phẩm","Nhập kho","Kiểm kho",
-                    "Khách hàng","Nhà cung cấp","Danh mục","Khuyến mãi","Thanh toán","Báo cáo","Nhân viên"
-            );
+        setNavVisible("Sản phẩm", RolePermission.has(PermissionCodes.PRODUCT_VIEW));
+        setNavVisible("Nhập kho", RolePermission.has(PermissionCodes.RECEIPT_CREATE));
+        setNavVisible("Kiểm kho", RolePermission.has(PermissionCodes.ADJUSTMENT_CREATE) || RolePermission.has(PermissionCodes.ADJUSTMENT_APPROVE));
 
-            case "MANAGER" -> allowed = java.util.Set.of(
-                    "Tổng quan","Bán hàng","Hóa đơn","Sản phẩm","Nhập kho","Kiểm kho",
-                    "Khách hàng","Nhà cung cấp","Danh mục","Khuyến mãi","Thanh toán","Báo cáo"
-                    // Manager thường không quản user
-            );
+        setNavVisible("Khách hàng", RolePermission.has(PermissionCodes.CUSTOMER_VIEW) || RolePermission.has(PermissionCodes.CUSTOMER_MANAGE));
+        setNavVisible("Nhà cung cấp", RolePermission.has(PermissionCodes.SUPPLIER_VIEW) || RolePermission.has(PermissionCodes.SUPPLIER_MANAGE));
+        setNavVisible("Danh mục", RolePermission.has(PermissionCodes.CATEGORY_VIEW));
 
-            case "CASHIER" -> allowed = java.util.Set.of(
-                    "Tổng quan","Bán hàng","Hóa đơn","Khách hàng"
-            );
+        setNavVisible("Khuyến mãi", RolePermission.has(PermissionCodes.PROMOTION_MANAGE));
+        setNavVisible("Thanh toán", RolePermission.has(PermissionCodes.PAYMENT_VIEW));
+        setNavVisible("Báo cáo", RolePermission.has(PermissionCodes.REPORT_VIEW));
 
-            case "WAREHOUSE" -> allowed = java.util.Set.of(
-                    "Tổng quan","Sản phẩm","Nhập kho","Kiểm kho","Nhà cung cấp","Danh mục","Báo cáo"
-            );
-
-            case "ACCOUNTANT" -> allowed = java.util.Set.of(
-                    "Tổng quan","Hóa đơn","Thanh toán","Báo cáo"
-            );
-
-            default -> allowed = java.util.Set.of("Tổng quan"); // fallback an toàn
-        }
-
-        // Apply visibility theo allow list
-        for (String key : navRows.keySet()) {
-            JPanel row = navRows.get(key);
-            if (row != null) row.setVisible(allowed.contains(key));
-        }
+        setNavVisible("Nhân viên", RolePermission.has(PermissionCodes.USER_MANAGE));
+        setNavVisible("Phân quyền", RolePermission.has(PermissionCodes.ROLE_PERMISSION_MANAGE));
 
         // Refresh layout sau khi ẩn/hiện
         if (navPanel != null) {
@@ -504,8 +499,13 @@ public class MainFrame extends JFrame {
             navPanel.repaint();
         }
 
-        // Chuyển sang màn hình đầu tiên được phép (tránh showCard vào card bị ẩn)
+        // Chuyển sang màn hình đầu tiên được phép
         showFirstAllowedCard();
+    }
+
+    private void setNavVisible(String name, boolean visible) {
+        JPanel row = navRows.get(name);
+        if (row != null) row.setVisible(visible);
     }
 
     private void showFirstAllowedCard() {

@@ -1,11 +1,16 @@
 package bus;
 
+import dal.dao.PermissionDAO;
 import dal.dao.UserDAO;
 import org.mindrot.jbcrypt.BCrypt;
+import util.RolePermission;
+
+import java.util.Set;
 
 public class AuthService {
 
     private final UserDAO userDAO = new UserDAO();
+    private final PermissionDAO permissionDAO = new PermissionDAO();
 
     // POJO dùng cho login
     public static class AuthUser {
@@ -32,7 +37,16 @@ public class AuthService {
 
         if (!verifyPassword(password, user.passwordHash)) return null;
 
+        // ====== NEW: load permissions -> set session ======
+        Set<String> perms = permissionDAO.findPermCodesByUserId(user.userId);
+        RolePermission.set(perms);
+        // ================================================
+
         return user;
+    }
+
+    public void logout() {
+        RolePermission.clear();
     }
 
     private boolean verifyPassword(String rawPassword, String storedHashOrPlaintext) {
