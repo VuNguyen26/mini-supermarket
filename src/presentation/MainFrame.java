@@ -204,8 +204,8 @@ public class MainFrame extends JFrame {
     }
 
     private JButton buildLogoutButton() {
-        JButton btnLogout = new JButton("Đăng xuất");
-        btnLogout.setFocusPainted(false);
+        JButton btnLogout = new RoundedButton("Đăng xuất", 18);
+
         btnLogout.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnLogout.setForeground(new Color(255, 220, 220));
         btnLogout.setBackground(new Color(127, 29, 29));
@@ -213,9 +213,7 @@ public class MainFrame extends JFrame {
         btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
         btnLogout.addActionListener(e -> {
-            // clear permission session (optional but clean)
             util.RolePermission.clear();
-
             new LoginFrame().setVisible(true);
             dispose();
         });
@@ -223,13 +221,41 @@ public class MainFrame extends JFrame {
         btnLogout.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
                 btnLogout.setBackground(new Color(153, 27, 27));
+                btnLogout.repaint();
             }
             @Override public void mouseExited(MouseEvent e) {
                 btnLogout.setBackground(new Color(127, 29, 29));
+                btnLogout.repaint();
             }
         });
 
         return btnLogout;
+    }
+
+    private static class RoundedButton extends JButton {
+        private int arc = 16;
+
+        public RoundedButton(String text, int arc) {
+            super(text);
+            this.arc = arc;
+            setFocusPainted(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // vẽ nền bo góc
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+
+            g2.dispose();
+            super.paintComponent(g);
+        }
     }
 
     private JPanel buildHeader() {
