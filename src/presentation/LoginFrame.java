@@ -11,6 +11,7 @@ import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
+import java.net.URL;
 
 public class LoginFrame extends JFrame {
 
@@ -19,6 +20,10 @@ public class LoginFrame extends JFrame {
     private static final int FIELD_WIDTH = 420;
     private static final int FIELD_HEIGHT = 40;
     private static final int BTN_HEIGHT = 46;
+
+    // Logo max size (giữ tỉ lệ)
+    private static final int LOGO_MAX_W = 300;
+    private static final int LOGO_MAX_H = 170;
 
     // ===== Components =====
     private final JTextField txtUsername = new JTextField();
@@ -37,8 +42,6 @@ public class LoginFrame extends JFrame {
 
     // ===== Runtime =====
     private char defaultEcho;
-
-    // Track "has typed" to control focus highlight
     private boolean userHasTypedUsername = false;
     private boolean userHasTypedPassword = false;
 
@@ -58,7 +61,6 @@ public class LoginFrame extends JFrame {
         setContentPane(buildUI());
         wireEvents();
 
-        // Enter = login
         getRootPane().setDefaultButton(btnLogin);
 
         pack();
@@ -77,15 +79,22 @@ public class LoginFrame extends JFrame {
                 BorderFactory.createLineBorder(cardBorder, 1, true),
                 new EmptyBorder(22, 32, 22, 32)
         ));
-        card.setPreferredSize(new Dimension(CARD_WIDTH, 400));
+        card.setMaximumSize(new Dimension(CARD_WIDTH, Integer.MAX_VALUE));
 
-        // Title
+        // ===== Logo =====
+        JLabel logo = buildLogoLabel(LOGO_MAX_W, LOGO_MAX_H);
+        card.add(logo);
+        card.add(Box.createVerticalStrut(10));
+
+        // ===== Title =====
         JLabel title = new JLabel("MINI SUPERMARKET");
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        title.setHorizontalAlignment(SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 26));
 
         JLabel subtitle = new JLabel("Đăng nhập vào hệ thống");
-        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        subtitle.setHorizontalAlignment(SwingConstants.CENTER);
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setForeground(textMuted);
 
@@ -94,11 +103,18 @@ public class LoginFrame extends JFrame {
         card.add(subtitle);
         card.add(Box.createVerticalStrut(18));
 
+        // ===== Form panel (CENTER, fixed width = FIELD_WIDTH) =====
+        JPanel form = new JPanel();
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        form.setOpaque(false);
+        form.setAlignmentX(Component.CENTER_ALIGNMENT);
+        form.setMaximumSize(new Dimension(FIELD_WIDTH, Integer.MAX_VALUE));
+
         // Prepare fields
         prepareTextField(txtUsername);
         preparePasswordField(txtPassword);
 
-        // Placeholder
+        // Placeholder (FlatLaf)
         txtUsername.putClientProperty("JTextField.placeholderText", "Nhập tên đăng nhập");
         txtPassword.putClientProperty("JTextField.placeholderText", "Nhập mật khẩu");
 
@@ -106,34 +122,37 @@ public class LoginFrame extends JFrame {
         txtPassword.putClientProperty("JComponent.hideFocusRing", true);
 
         // Fields
-        card.add(buildLabeledField("Tên đăng nhập", txtUsername, lblUserError));
-        card.add(Box.createVerticalStrut(12));
-        card.add(buildLabeledField("Mật khẩu", txtPassword, lblPassError));
-        card.add(Box.createVerticalStrut(10));
+        form.add(buildLabeledFieldInForm("Tên đăng nhập", txtUsername, lblUserError));
+        form.add(Box.createVerticalStrut(12));
+        form.add(buildLabeledFieldInForm("Mật khẩu", txtPassword, lblPassError));
+        form.add(Box.createVerticalStrut(10));
 
         // Caps warning
         styleCapsLabel(lblCaps);
-        card.add(lblCaps);
-        card.add(Box.createVerticalStrut(8));
+        form.add(lblCaps);
+        form.add(Box.createVerticalStrut(8));
 
         // Show password
         chkShowPassword.setOpaque(false);
         chkShowPassword.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         chkShowPassword.setForeground(new Color(90, 90, 90));
         chkShowPassword.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(chkShowPassword);
+        form.add(chkShowPassword);
 
-        card.add(Box.createVerticalStrut(16));
+        form.add(Box.createVerticalStrut(16));
 
         // Button
         stylePrimaryButton(btnLogin);
-        card.add(btnLogin);
+        btnLogin.setAlignmentX(Component.LEFT_ALIGNMENT);
+        form.add(btnLogin);
 
-        card.add(Box.createVerticalStrut(10));
+        form.add(Box.createVerticalStrut(10));
 
         // Status
         styleStatusLabel(lblStatus);
-        card.add(lblStatus);
+        form.add(lblStatus);
+
+        card.add(form);
 
         JPanel wrap = new JPanel(new GridBagLayout());
         wrap.setOpaque(false);
@@ -143,11 +162,13 @@ public class LoginFrame extends JFrame {
         return root;
     }
 
-    private JComponent buildLabeledField(String label, JComponent field, JLabel errorLabel) {
+    // Field wrapper nằm trong form fixed-width => không bị lệch
+    private JComponent buildLabeledFieldInForm(String label, JComponent field, JLabel errorLabel) {
         JPanel wrap = new JPanel();
         wrap.setLayout(new BoxLayout(wrap, BoxLayout.Y_AXIS));
         wrap.setOpaque(false);
         wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        wrap.setMaximumSize(new Dimension(FIELD_WIDTH, Integer.MAX_VALUE));
 
         JLabel l = new JLabel(label);
         l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -160,6 +181,7 @@ public class LoginFrame extends JFrame {
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         styleErrorLabel(errorLabel);
+        errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         wrap.add(l);
         wrap.add(Box.createVerticalStrut(4));
@@ -183,7 +205,6 @@ public class LoginFrame extends JFrame {
     }
 
     private void stylePrimaryButton(JButton b) {
-        b.setAlignmentX(Component.LEFT_ALIGNMENT);
         b.setFont(new Font("Segoe UI", Font.BOLD, 15));
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -204,7 +225,6 @@ public class LoginFrame extends JFrame {
     }
 
     private void styleErrorLabel(JLabel lb) {
-        lb.setAlignmentX(Component.LEFT_ALIGNMENT);
         lb.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lb.setForeground(errorColor);
         lb.setText(" ");
@@ -212,7 +232,6 @@ public class LoginFrame extends JFrame {
     }
 
     private void styleStatusLabel(JLabel lb) {
-        lb.setAlignmentX(Component.LEFT_ALIGNMENT);
         lb.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lb.setForeground(errorColor);
         lb.setText(" ");
@@ -220,7 +239,6 @@ public class LoginFrame extends JFrame {
     }
 
     private void styleCapsLabel(JLabel lb) {
-        lb.setAlignmentX(Component.LEFT_ALIGNMENT);
         lb.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lb.setForeground(new Color(180, 90, 0));
         lb.setText(" ");
@@ -228,32 +246,21 @@ public class LoginFrame extends JFrame {
     }
 
     private void wireEvents() {
-        // Enter flow
         txtUsername.addActionListener(e -> txtPassword.requestFocusInWindow());
         txtPassword.addActionListener(e -> doLogin());
         btnLogin.addActionListener(e -> doLogin());
 
-        // show/hide password
         defaultEcho = txtPassword.getEchoChar();
         chkShowPassword.addActionListener(e -> {
             txtPassword.setEchoChar(chkShowPassword.isSelected() ? (char) 0 : defaultEcho);
             txtPassword.requestFocusInWindow();
         });
 
-        // Caps lock warning on focus
         txtPassword.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                updateCapsLockWarning(true);
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                updateCapsLockWarning(false);
-            }
+            @Override public void focusGained(FocusEvent e) { updateCapsLockWarning(true); }
+            @Override public void focusLost(FocusEvent e) { updateCapsLockWarning(false); }
         });
 
-        // Live validation + focus ring control
         installLiveValidationUsername();
         installLiveValidationPassword();
     }
@@ -271,7 +278,6 @@ public class LoginFrame extends JFrame {
         txtUsername.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                // nếu chưa nhập thì vẫn hide
                 txtUsername.putClientProperty("JComponent.hideFocusRing", !userHasTypedUsername
                         && !"error".equals(txtUsername.getClientProperty("JComponent.outline")));
             }
@@ -363,13 +369,11 @@ public class LoginFrame extends JFrame {
         btnLogin.setText(loading ? "Đang đăng nhập..." : "Đăng nhập");
     }
 
-    // ===== FlatLaf outline error =====
     private void showFieldError(JComponent field, JLabel errorLabel, String message) {
         errorLabel.setText(message);
         errorLabel.setVisible(true);
 
         field.putClientProperty("JComponent.outline", "error");
-
         field.putClientProperty("JComponent.hideFocusRing", false);
 
         field.requestFocusInWindow();
@@ -391,9 +395,8 @@ public class LoginFrame extends JFrame {
         clearStatus();
         updateCapsLockWarning(false);
 
-        // reset focus ring rule
-        txtUsername.putClientProperty("JComponent.hideFocusRing", userHasTypedUsername ? false : true);
-        txtPassword.putClientProperty("JComponent.hideFocusRing", userHasTypedPassword ? false : true);
+        txtUsername.putClientProperty("JComponent.hideFocusRing", !userHasTypedUsername);
+        txtPassword.putClientProperty("JComponent.hideFocusRing", !userHasTypedPassword);
     }
 
     private void setStatus(String message) {
@@ -441,5 +444,34 @@ public class LoginFrame extends JFrame {
         @Override public void insertUpdate(DocumentEvent e) { onChange.run(); }
         @Override public void removeUpdate(DocumentEvent e) { onChange.run(); }
         @Override public void changedUpdate(DocumentEvent e) { onChange.run(); }
+    }
+
+    // ===== Logo helpers =====
+    private JLabel buildLogoLabel(int maxW, int maxH) {
+        JLabel lb = new JLabel();
+        lb.setAlignmentX(Component.CENTER_ALIGNMENT);
+        lb.setHorizontalAlignment(SwingConstants.CENTER);
+
+        ImageIcon icon = loadScaledIconKeepRatio("/images/Cute shopping cart logo _ Free Vector.jpg", maxW, maxH);
+        if (icon != null) lb.setIcon(icon);
+
+        return lb;
+    }
+
+    private ImageIcon loadScaledIconKeepRatio(String resourcePath, int maxW, int maxH) {
+        URL url = getClass().getResource(resourcePath);
+        if (url == null) return null;
+
+        ImageIcon src = new ImageIcon(url);
+        int w = src.getIconWidth();
+        int h = src.getIconHeight();
+        if (w <= 0 || h <= 0) return src;
+
+        double scale = Math.min((double) maxW / w, (double) maxH / h);
+        int newW = Math.max(1, (int) Math.round(w * scale));
+        int newH = Math.max(1, (int) Math.round(h * scale));
+
+        Image img = src.getImage().getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+        return new ImageIcon(img);
     }
 }
