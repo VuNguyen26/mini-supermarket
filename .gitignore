@@ -28,3 +28,12 @@ nbbuild/
 # OS
 .DS_Store
 Thumbs.db
+
+# Gradle
+.gradle/
+gradle/
+bin/
+build.gradle.kts
+gradle.properties
+gradlew
+settings.gradle.kts
