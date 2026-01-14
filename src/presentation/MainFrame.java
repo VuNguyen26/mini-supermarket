@@ -2,15 +2,16 @@ package presentation;
 
 import bus.AuthService.AuthUser;
 import com.formdev.flatlaf.FlatLightLaf;
-
 import util.PermissionCodes;
 import util.RolePermission;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -28,15 +29,23 @@ public class MainFrame extends JFrame {
     // Header dynamic title
     private JLabel pageTitleLabel;
 
-    // ===== Theme tokens =====
-    private static final Color BG_APP = new Color(245, 247, 250);
-    private static final Color SIDEBAR_BG = new Color(16, 24, 40);
-    private static final Color SIDEBAR_BG_2 = new Color(22, 34, 56);
-    private static final Color SIDEBAR_ACTIVE = new Color(37, 99, 235);
-    private static final Color TEXT_MUTED = new Color(148, 163, 184);
-    private static final Color TEXT_WHITE = new Color(236, 245, 255);
-    private static final Color CARD_BG = Color.WHITE;
-    private static final Color BORDER = new Color(228, 231, 236);
+    // ===== Theme tokens (LIGHT SIDEBAR like screenshot) =====
+    private static final Color BG_APP = hex("#F8FAFF");          // nền app rất nhạt
+    private static final Color CARD_BG = hex("#FFFFFF");         // nền card
+    private static final Color SIDEBAR_BG = hex("#FFFFFF");      // sidebar trắng
+    private static final Color SIDEBAR_BG_2 = hex("#EFF6FF");    // hover xanh nhạt
+    private static final Color SIDEBAR_ACTIVE = hex("#2563EB");  // active xanh
+
+    private static final Color TEXT_MAIN = hex("#0F172A");       // chữ chính
+    private static final Color TEXT_MUTED = hex("#64748B");      // chữ phụ
+    private static final Color TEXT_WHITE = hex("#FFFFFF");      // chữ trắng
+
+    private static final Color BORDER = hex("#E5E7EB");          // viền
+    private static final Color BORDER_STRONG = hex("#D9E2F2");   // viền nhẹ xanh
+
+    // Logo (đặt file trong resources: src/main/resources/assets/logo.png)
+    private static final String LOGO_PATH = "/images/Cute shopping cart logo _ Free Vector.jpg";
+    private static final int BRAND_LOGO_SIZE = 62;
 
     // Kích thước menu item
     private static final int NAV_ITEM_HEIGHT = 48;
@@ -59,6 +68,20 @@ public class MainFrame extends JFrame {
         applyRoleVisibility();
     }
 
+    private static Color hex(String s) {
+        return Color.decode(s);
+    }
+
+    private Image loadLogoImage() {
+        try {
+            URL url = getClass().getResource(LOGO_PATH);
+            if (url == null) return null;
+            return new ImageIcon(url).getImage();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void setupLookAndFeel() {
         try {
             FlatLightLaf.setup();
@@ -76,14 +99,13 @@ public class MainFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(BG_APP);
 
-        // ===== Sidebar =====
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(260, 0));
-        sidebar.setBackground(SIDEBAR_BG);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(10, 15, 25)));
+        // ===== Sidebar content =====
+        JPanel sidebarContent = new JPanel(new BorderLayout());
+        sidebarContent.setPreferredSize(new Dimension(250, 0)); // <- độ rộng sidebar (240~280)
+        sidebarContent.setBackground(SIDEBAR_BG);
 
         JPanel brand = buildBrand();
-        navPanel = buildNav();              // <-- lưu field để xử lý role
+        navPanel = buildNav();
         JButton btnLogout = buildLogoutButton();
 
         JPanel bottom = new JPanel(new BorderLayout());
@@ -91,13 +113,29 @@ public class MainFrame extends JFrame {
         bottom.setBorder(new EmptyBorder(12, 14, 16, 14));
         bottom.add(btnLogout, BorderLayout.CENTER);
 
-        sidebar.add(brand, BorderLayout.NORTH);
-        sidebar.add(wrapNavScroll(navPanel), BorderLayout.CENTER);
-        sidebar.add(bottom, BorderLayout.SOUTH);
+        sidebarContent.add(brand, BorderLayout.NORTH);
+        sidebarContent.add(wrapNavScroll(navPanel), BorderLayout.CENTER);
+        sidebarContent.add(bottom, BorderLayout.SOUTH);
 
-        // ===== Main area =====
-        JPanel main = new JPanel(new BorderLayout());
-        main.setBackground(BG_APP);
+        // ===== Sidebar wrapper (BO GÓC) =====
+        RoundedPanel sidebarWrap = new RoundedPanel(18);
+        sidebarWrap.setBackground(SIDEBAR_BG);
+        sidebarWrap.setBorderStyle(BORDER, 1);
+        sidebarWrap.setLayout(new BorderLayout());
+
+        // padding wrapper: vừa đủ, không dày
+        sidebarWrap.setBorder(new EmptyBorder(8, 8, 8, 8));
+
+        JPanel sidebarInnerPad = new JPanel(new BorderLayout());
+        sidebarInnerPad.setOpaque(false);
+        sidebarInnerPad.setBorder(new EmptyBorder(6, 6, 6, 6));
+        sidebarInnerPad.add(sidebarContent, BorderLayout.CENTER);
+
+        sidebarWrap.add(sidebarInnerPad, BorderLayout.CENTER);
+
+        // ===== Main content =====
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setOpaque(false);
 
         JPanel header = buildHeader();
         header.setBorder(BorderFactory.createCompoundBorder(
@@ -108,36 +146,75 @@ public class MainFrame extends JFrame {
         contentPanel.setBackground(BG_APP);
         contentPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
 
-        main.add(header, BorderLayout.NORTH);
-        main.add(contentPanel, BorderLayout.CENTER);
+        mainContent.add(header, BorderLayout.NORTH);
+        mainContent.add(contentPanel, BorderLayout.CENTER);
 
-        root.add(sidebar, BorderLayout.WEST);
-        root.add(main, BorderLayout.CENTER);
+        // ===== Main wrapper (BO GÓC) =====
+        RoundedPanel mainWrap = new RoundedPanel(22);
+        mainWrap.setBackground(CARD_BG);
+        mainWrap.setBorderStyle(BORDER, 1);
+        mainWrap.setLayout(new BorderLayout());
 
+        // padding wrapper
+        mainWrap.setBorder(new EmptyBorder(8, 8, 8, 8));
+        mainWrap.add(mainContent, BorderLayout.CENTER);
+
+        // ===== Outer padding =====
+        // (1) khoảng cách giữa sidebar và main: giảm còn 8 cho khớp
+        JPanel outer = new JPanel(new BorderLayout(8, 8));
+        outer.setOpaque(false);
+
+        // (2) padding ngoài cùng: giảm còn 10 cho gọn
+        outer.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        outer.add(sidebarWrap, BorderLayout.WEST);
+        outer.add(mainWrap, BorderLayout.CENTER);
+
+        root.add(outer, BorderLayout.CENTER);
         return root;
     }
 
     private JPanel buildBrand() {
         JPanel brand = new JPanel(new BorderLayout());
         brand.setBackground(SIDEBAR_BG);
-        brand.setBorder(new EmptyBorder(16, 16, 12, 16));
+        brand.setBorder(new EmptyBorder(14, 14, 10, 14));
 
-        JLabel title = new JLabel("MINI SUPERMARKET");
-        title.setForeground(TEXT_WHITE);
+        // Logo tròn (nếu không có ảnh sẽ fallback "MS")
+        Image logoImg = loadLogoImage();
+        JComponent logoComp;
+        if (logoImg != null) {
+            CircleImageAvatar logo = new CircleImageAvatar(logoImg, BRAND_LOGO_SIZE);
+            logo.setBorderColor(BORDER);
+            logoComp = logo;
+        } else {
+            CircleAvatar fallback = new CircleAvatar("MS", BRAND_LOGO_SIZE);
+            fallback.setColors(hex("#EFF6FF"), SIDEBAR_ACTIVE, BORDER);
+            logoComp = fallback;
+        }
+
+        JLabel title = new JLabel("Mini-supermarket");
+        title.setForeground(SIDEBAR_ACTIVE);
         title.setFont(new Font("Segoe UI", Font.BOLD, 15));
 
-        JLabel subtitle = new JLabel("Point of Sale • Inventory");
+        JLabel subtitle = new JLabel("Point of Sale Inventory");
         subtitle.setForeground(TEXT_MUTED);
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        JPanel text = new JPanel();
-        text.setOpaque(false);
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.add(title);
-        text.add(Box.createVerticalStrut(4));
-        text.add(subtitle);
+        JPanel textCol = new JPanel();
+        textCol.setOpaque(false);
+        textCol.setLayout(new BoxLayout(textCol, BoxLayout.Y_AXIS));
+        textCol.add(title);
+        textCol.add(Box.createVerticalStrut(3));
+        textCol.add(subtitle);
 
-        brand.add(text, BorderLayout.CENTER);
+        JPanel row = new JPanel();
+        row.setOpaque(false);
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+        row.add(logoComp);
+        row.add(Box.createHorizontalStrut(12));
+        row.add(textCol);
+
+        brand.add(row, BorderLayout.WEST);
         return brand;
     }
 
@@ -166,7 +243,6 @@ public class MainFrame extends JFrame {
         addNavItem(nav, "Nhân viên", "🛡️");
         addNavItem(nav, "Phân quyền", "🔑");
 
-
         nav.add(Box.createVerticalGlue());
         return nav;
     }
@@ -181,7 +257,6 @@ public class MainFrame extends JFrame {
         row.add(item);
         row.add(Box.createVerticalStrut(NAV_GAP));
 
-        // Khóa kích thước row để không bị giãn chiều cao
         int rowH = NAV_ITEM_HEIGHT + NAV_GAP;
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, rowH));
         row.setPreferredSize(new Dimension(0, rowH));
@@ -207,24 +282,24 @@ public class MainFrame extends JFrame {
         JButton btnLogout = new RoundedButton("Đăng xuất", 18);
 
         btnLogout.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnLogout.setForeground(new Color(255, 220, 220));
-        btnLogout.setBackground(new Color(127, 29, 29));
+        btnLogout.setForeground(TEXT_WHITE);
+        btnLogout.setBackground(SIDEBAR_ACTIVE);
         btnLogout.setBorder(new EmptyBorder(10, 12, 10, 12));
         btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
         btnLogout.addActionListener(e -> {
-            util.RolePermission.clear();
+            RolePermission.clear();
             new LoginFrame().setVisible(true);
             dispose();
         });
 
         btnLogout.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
-                btnLogout.setBackground(new Color(153, 27, 27));
+                btnLogout.setBackground(hex("#f44336"));
                 btnLogout.repaint();
             }
             @Override public void mouseExited(MouseEvent e) {
-                btnLogout.setBackground(new Color(127, 29, 29));
+                btnLogout.setBackground(SIDEBAR_ACTIVE);
                 btnLogout.repaint();
             }
         });
@@ -233,7 +308,7 @@ public class MainFrame extends JFrame {
     }
 
     private static class RoundedButton extends JButton {
-        private int arc = 16;
+        private final int arc;
 
         public RoundedButton(String text, int arc) {
             super(text);
@@ -249,7 +324,6 @@ public class MainFrame extends JFrame {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            // vẽ nền bo góc
             g2.setColor(getBackground());
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
 
@@ -260,83 +334,114 @@ public class MainFrame extends JFrame {
 
     private JPanel buildHeader() {
         JPanel header = new JPanel();
-        header.setBackground(Color.WHITE);
+        header.setBackground(CARD_BG);
         header.setPreferredSize(new Dimension(0, 60));
         header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
         header.setOpaque(true);
 
+        // Cho phép header nhận focus để "giành focus" từ search
+        header.setFocusable(true);
+
         pageTitleLabel = new JLabel("Dashboard");
         pageTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        pageTitleLabel.setForeground(new Color(17, 24, 39));
+        pageTitleLabel.setForeground(TEXT_MAIN);
         pageTitleLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
 
-        JTextField search = new JTextField();
+        // ===== Search (rectangle bo góc, KHÔNG oval) =====
+        int searchArc = 16; // 14/16/18 tùy bạn
+        RoundedTextField search = new RoundedTextField(searchArc);
         search.setAlignmentY(Component.CENTER_ALIGNMENT);
-        search.setMinimumSize(new Dimension(260, 36));
-        search.setPreferredSize(new Dimension(520, 36));
-        search.setMaximumSize(new Dimension(9999, 36));
-        search.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(229, 231, 235)),
-                new EmptyBorder(8, 12, 8, 12)
-        ));
 
-        final String placeholder = "Tìm kiếm…";
+        search.setMinimumSize(new Dimension(260, 44));
+        search.setPreferredSize(new Dimension(520, 44));
+        search.setMaximumSize(new Dimension(9999, 44));
+
+        search.setFill(hex("#F8FAFF"));
+        search.setStroke(BORDER);
+        search.setStrokeWidth(1);
+
+        search.setForeground(TEXT_MAIN);
+        search.setCaretColor(TEXT_MAIN);
+
+        search.putClientProperty("JComponent.outline", "none");
+
+        final String placeholder = "Tìm theo mã sản phẩm";
         search.setText(placeholder);
-        search.setForeground(new Color(156, 163, 175));
+        search.setForeground(hex("#94A3B8"));
+
         search.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override public void focusGained(java.awt.event.FocusEvent e) {
+                search.setStroke(hex("#2563EB")); // focus xanh
                 if (placeholder.equals(search.getText())) {
                     search.setText("");
-                    search.setForeground(new Color(17, 24, 39));
+                    search.setForeground(TEXT_MAIN);
                 }
+                search.repaint();
             }
+
             @Override public void focusLost(java.awt.event.FocusEvent e) {
+                search.setStroke(BORDER); // về xám
                 if (search.getText().trim().isEmpty()) {
                     search.setText(placeholder);
-                    search.setForeground(new Color(156, 163, 175));
+                    search.setForeground(hex("#94A3B8"));
                 }
+                search.repaint();
             }
         });
 
+        // ===== Right user info =====
         JPanel right = new JPanel();
         right.setOpaque(false);
         right.setLayout(new BoxLayout(right, BoxLayout.X_AXIS));
         right.setAlignmentY(Component.CENTER_ALIGNMENT);
 
-        String name = currentUser.fullName == null ? "User" : currentUser.fullName;
-        String role = currentUser.roleName == null ? "" : currentUser.roleName;
+        String name = (currentUser != null && currentUser.fullName != null) ? currentUser.fullName : "User";
+        String role = (currentUser != null && currentUser.roleName != null) ? currentUser.roleName : "";
 
         JLabel userName = new JLabel(name);
         userName.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        userName.setForeground(new Color(17, 24, 39));
+        userName.setForeground(TEXT_MAIN);
 
         JLabel userRole = new JLabel(role);
         userRole.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        userRole.setForeground(new Color(100, 116, 139));
+        userRole.setForeground(TEXT_MUTED);
 
         JPanel info = new JPanel();
         info.setOpaque(false);
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setAlignmentY(Component.CENTER_ALIGNMENT);
+
         userName.setAlignmentX(Component.RIGHT_ALIGNMENT);
         userRole.setAlignmentX(Component.RIGHT_ALIGNMENT);
+
         info.add(userName);
         info.add(Box.createVerticalStrut(2));
         info.add(userRole);
 
         String initials = getInitials(name);
         CircleAvatar avatar = new CircleAvatar(initials, 36);
-        avatar.setColors(
-                new Color(239, 246, 255),
-                new Color(37, 99, 235),
-                new Color(219, 234, 254)
-        );
+        avatar.setColors(hex("#EFF6FF"), hex("#2563EB"), BORDER_STRONG);
         avatar.setAlignmentY(Component.CENTER_ALIGNMENT);
 
         right.add(info);
         right.add(Box.createHorizontalStrut(10));
         right.add(avatar);
 
+        // ===== CLICK RA NGOÀI -> MẤT FOCUS SEARCH (caret biến mất) =====
+        MouseAdapter blur = new MouseAdapter() {
+            @Override public void mousePressed(MouseEvent e) {
+                header.requestFocusInWindow();
+            }
+        };
+        header.addMouseListener(blur);
+        pageTitleLabel.addMouseListener(blur);
+        right.addMouseListener(blur);
+        info.addMouseListener(blur);
+        userName.addMouseListener(blur);
+        userRole.addMouseListener(blur);
+        avatar.addMouseListener(blur);
+
+        // ===== Layout =====
         header.add(pageTitleLabel);
         header.add(Box.createHorizontalStrut(16));
         header.add(search);
@@ -346,12 +451,13 @@ public class MainFrame extends JFrame {
         return header;
     }
 
+
+
     private String getInitials(String fullName) {
         if (fullName == null) return "U";
         String s = fullName.trim();
         if (s.isEmpty()) return "U";
 
-        // Lấy 2 chữ cái đầu của 2 từ (nếu có), còn không thì lấy 2 ký tự đầu
         String[] parts = s.split("\\s+");
         if (parts.length >= 2) {
             String a = parts[0].substring(0, 1);
@@ -361,12 +467,11 @@ public class MainFrame extends JFrame {
         return (s.length() >= 2 ? s.substring(0, 2) : s.substring(0, 1)).toUpperCase();
     }
 
-
     private static class CircleAvatar extends JComponent {
         private String text;
-        private Color bg = new Color(239, 246, 255);
-        private Color fg = new Color(37, 99, 235);
-        private Color border = new Color(219, 234, 254);
+        private Color bg = hex("#EFF6FF");
+        private Color fg = hex("#2563EB");
+        private Color border = hex("#D9E2F2");
 
         public CircleAvatar(String text, int size) {
             this.text = text;
@@ -374,7 +479,7 @@ public class MainFrame extends JFrame {
             setMinimumSize(new Dimension(size, size));
             setMaximumSize(new Dimension(size, size));
             setOpaque(false);
-            setFont(new Font("Segoe UI", Font.BOLD, 14));
+            setFont(new Font("Segoe UI", Font.BOLD, 16));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setToolTipText("Tài khoản");
         }
@@ -400,15 +505,12 @@ public class MainFrame extends JFrame {
             int x = (getWidth() - s) / 2;
             int y = (getHeight() - s) / 2;
 
-            // circle bg
             g2.setColor(bg);
             g2.fillOval(x, y, s - 1, s - 1);
 
-            // circle border
             g2.setColor(border);
             g2.drawOval(x, y, s - 1, s - 1);
 
-            // centered text
             g2.setColor(fg);
             g2.setFont(getFont());
             FontMetrics fm = g2.getFontMetrics();
@@ -417,6 +519,61 @@ public class MainFrame extends JFrame {
             int tx = x + (s - tw) / 2;
             int ty = y + (s + th) / 2 - 2;
             g2.drawString(text, tx, ty);
+
+            g2.dispose();
+        }
+    }
+
+    private static class CircleImageAvatar extends JComponent {
+        private Image image;
+        private final int size;
+        private Color borderColor = BORDER;
+
+        public CircleImageAvatar(Image image, int size) {
+            this.image = image;
+            this.size = size;
+            setPreferredSize(new Dimension(size, size));
+            setMinimumSize(new Dimension(size, size));
+            setMaximumSize(new Dimension(size, size));
+            setOpaque(false);
+        }
+
+        public void setBorderColor(Color c) {
+            this.borderColor = c;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int s = Math.min(getWidth(), getHeight());
+            int x = (getWidth() - s) / 2;
+            int y = (getHeight() - s) / 2;
+
+            Shape clip = new java.awt.geom.Ellipse2D.Double(x, y, s, s);
+            g2.setClip(clip);
+
+            if (image != null) {
+                int iw = image.getWidth(null);
+                int ih = image.getHeight(null);
+                if (iw > 0 && ih > 0) {
+                    double scale = Math.max((double) s / iw, (double) s / ih);
+                    int dw = (int) Math.round(iw * scale);
+                    int dh = (int) Math.round(ih * scale);
+                    int dx = x + (s - dw) / 2;
+                    int dy = y + (s - dh) / 2;
+                    g2.drawImage(image, dx, dy, dw, dh, null);
+                }
+            } else {
+                g2.setColor(hex("#EFF6FF"));
+                g2.fillOval(x, y, s, s);
+            }
+
+            g2.setClip(null);
+            g2.setColor(borderColor);
+            g2.drawOval(x, y, s - 1, s - 1);
 
             g2.dispose();
         }
@@ -443,15 +600,12 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(new presentation.panels.RolePermissionPanel()), "Phân quyền");
     }
 
-
     private JComponent wrapCard(JComponent inner) {
-        RoundedPanel card = new RoundedPanel(16);
+        RoundedPanel card = new RoundedPanel(18);
         card.setBackground(CARD_BG);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER),
-                new EmptyBorder(18, 18, 18, 18)
-        ));
+        card.setBorderStyle(BORDER, 1);
         card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(18, 18, 18, 18));
         card.add(inner, BorderLayout.CENTER);
         return card;
     }
@@ -462,7 +616,7 @@ public class MainFrame extends JFrame {
 
         JLabel l = new JLabel(title);
         l.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        l.setForeground(new Color(51, 65, 85));
+        l.setForeground(hex("#334155"));
         p.add(l);
 
         return p;
@@ -474,10 +628,8 @@ public class MainFrame extends JFrame {
             NavItem item = e.getValue();
             item.addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent ev) {
-                    // Nếu menu đang bị ẩn theo role thì bỏ qua
                     JPanel row = navRows.get(key);
                     if (row != null && !row.isVisible()) return;
-
                     showCard(key);
                 }
             });
@@ -485,7 +637,6 @@ public class MainFrame extends JFrame {
     }
 
     private void showCard(String name) {
-        // update nav styles
         for (Map.Entry<String, NavItem> e : navItems.entrySet()) {
             e.getValue().setActive(e.getKey().equals(name));
         }
@@ -496,12 +647,8 @@ public class MainFrame extends JFrame {
     }
 
     private void applyRoleVisibility() {
-        // Map từng menu -> permission tương ứng
-        // Có permission thì show, không có thì hide
         setNavVisible("Tổng quan", RolePermission.has(PermissionCodes.DASHBOARD_VIEW));
-
         setNavVisible("Bán hàng", RolePermission.has(PermissionCodes.POS_SELL));
-        // Nếu bạn có permission INVOICE_VIEW thì dùng nó, còn không thì cho theo REPORT_VIEW
         setNavVisible("Hóa đơn", RolePermission.has(PermissionCodes.INVOICE_VIEW) || RolePermission.has(PermissionCodes.REPORT_VIEW));
 
         setNavVisible("Sản phẩm", RolePermission.has(PermissionCodes.PRODUCT_VIEW));
@@ -519,13 +666,11 @@ public class MainFrame extends JFrame {
         setNavVisible("Nhân viên", RolePermission.has(PermissionCodes.USER_MANAGE));
         setNavVisible("Phân quyền", RolePermission.has(PermissionCodes.ROLE_PERMISSION_MANAGE));
 
-        // Refresh layout sau khi ẩn/hiện
         if (navPanel != null) {
             navPanel.revalidate();
             navPanel.repaint();
         }
 
-        // Chuyển sang màn hình đầu tiên được phép
         showFirstAllowedCard();
     }
 
@@ -535,14 +680,12 @@ public class MainFrame extends JFrame {
     }
 
     private void showFirstAllowedCard() {
-        // Ưu tiên mở Dashboard nếu được phép
         JPanel dashRow = navRows.get("Tổng quan");
         if (dashRow != null && dashRow.isVisible()) {
             showCard("Tổng quan");
             return;
         }
 
-        // Nếu không thì mở menu đầu tiên đang visible
         for (String key : navRows.keySet()) {
             JPanel row = navRows.get(key);
             if (row != null && row.isVisible()) {
@@ -550,42 +693,34 @@ public class MainFrame extends JFrame {
                 return;
             }
         }
-    }
 
-    private void hideNav(String name) {
-        JPanel row = navRows.get(name);
-        if (row != null) row.setVisible(false);
+        showCard("Tổng quan");
     }
 
     // ===== Custom Components =====
     private class NavItem extends JPanel {
         private final JLabel text;
+        private final JLabel icon;
         private boolean active = false;
+        private boolean hover = false;
 
         NavItem(String key, String iconText) {
-            setOpaque(true);
-            setBackground(SIDEBAR_BG);
+            setOpaque(false);
             setLayout(new BorderLayout());
-            setBorder(new EmptyBorder(10, 12, 10, 12));
+            setBorder(new EmptyBorder(10, 14, 10, 14));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-            // Khóa chiều cao item để tránh BoxLayout kéo giãn
             setPreferredSize(new Dimension(0, NAV_ITEM_HEIGHT));
             setMinimumSize(new Dimension(0, NAV_ITEM_HEIGHT));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, NAV_ITEM_HEIGHT));
 
-            JPanel indicator = new JPanel();
-            indicator.setPreferredSize(new Dimension(4, 0));
-            indicator.setOpaque(true);
-            indicator.setBackground(SIDEBAR_BG);
-
-            JLabel icon = new JLabel(iconText);
-            icon.setForeground(TEXT_WHITE);
+            icon = new JLabel(iconText);
+            icon.setForeground(TEXT_MAIN);
             icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-            icon.setBorder(new EmptyBorder(0, 6, 0, 10));
+            icon.setBorder(new EmptyBorder(0, 4, 0, 10));
 
             text = new JLabel(key);
-            text.setForeground(TEXT_MUTED);
+            text.setForeground(TEXT_MAIN);
             text.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
             JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -593,50 +728,234 @@ public class MainFrame extends JFrame {
             left.add(icon);
             left.add(text);
 
-            add(indicator, BorderLayout.WEST);
             add(left, BorderLayout.CENTER);
 
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseEntered(MouseEvent e) {
-                    if (!active) setBackground(SIDEBAR_BG_2);
+                    hover = true;
+                    repaint();
                 }
                 @Override public void mouseExited(MouseEvent e) {
-                    if (!active) setBackground(SIDEBAR_BG);
+                    hover = false;
+                    repaint();
                 }
             });
         }
 
         void setActive(boolean active) {
             this.active = active;
+            icon.setForeground(active ? TEXT_WHITE : TEXT_MAIN);
+            text.setForeground(active ? TEXT_WHITE : TEXT_MAIN);
+            repaint();
+        }
 
-            Component indicator = getComponent(0);
-            if (indicator instanceof JPanel p) {
-                p.setBackground(active ? SIDEBAR_ACTIVE : SIDEBAR_BG);
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int arc = 14;
+            int w = getWidth();
+            int h = getHeight();
+
+            if (active) {
+                g2.setColor(SIDEBAR_ACTIVE);
+                g2.fillRoundRect(0, 0, w, h, arc, arc);
+            } else if (hover) {
+                g2.setColor(SIDEBAR_BG_2);
+                g2.fillRoundRect(0, 0, w, h, arc, arc);
             }
 
-            setBackground(active ? new Color(24, 35, 58) : SIDEBAR_BG);
-            text.setForeground(active ? TEXT_WHITE : TEXT_MUTED);
-            repaint();
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    private static class RoundedBorder implements Border {
+        private final int radius;
+        private final Color color;
+
+        RoundedBorder(int radius, Color color) {
+            this.radius = radius;
+            this.color = color;
+        }
+
+        @Override public Insets getBorderInsets(Component c) {
+            return new Insets(6, 10, 6, 10);
+        }
+
+        @Override public boolean isBorderOpaque() {
+            return false;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            g2.dispose();
         }
     }
 
     private static class RoundedPanel extends JPanel {
         private final int arc;
 
+        private Color borderColor = null;
+        private int borderThickness = 1;
+
+        // ===== Shadow =====
+        private boolean shadowEnabled = false;
+        private int shadowSize = 10;                 // độ lan bóng
+        private int shadowOffsetY = 6;               // bóng rơi xuống
+        private Color shadowColor = new Color(0, 0, 0, 25); // alpha: càng lớn càng đậm
+
         RoundedPanel(int arc) {
             this.arc = arc;
             setOpaque(false);
         }
 
-        @Override protected void paintComponent(Graphics g) {
+        public void setBorderStyle(Color borderColor, int thickness) {
+            this.borderColor = borderColor;
+            this.borderThickness = Math.max(1, thickness);
+            repaint();
+        }
+
+        public void setShadow(boolean enabled) {
+            this.shadowEnabled = enabled;
+            repaint();
+        }
+
+        public void setShadowStyle(int size, int offsetY, Color color) {
+            this.shadowSize = Math.max(0, size);
+            this.shadowOffsetY = offsetY;
+            this.shadowColor = (color != null) ? color : new Color(0, 0, 0, 25);
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+            int w = getWidth();
+            int h = getHeight();
+
+            // chừa chỗ cho shadow để không bị cắt
+            int pad = shadowEnabled ? shadowSize : 0;
+
+            int x = pad;
+            int y = pad;
+            int rw = w - pad * 2;
+            int rh = h - pad * 2;
+
+            // ===== Shadow (fake blur bằng nhiều lớp alpha) =====
+            if (shadowEnabled) {
+                for (int i = shadowSize; i >= 1; i--) {
+                    float alpha = (float) i / (shadowSize * 22f); // chỉnh mượt/đậm ở đây
+                    g2.setComposite(AlphaComposite.SrcOver.derive(alpha));
+                    g2.setColor(shadowColor);
+
+                    g2.fillRoundRect(
+                            x - i,
+                            y - i + shadowOffsetY,
+                            rw + i * 2,
+                            rh + i * 2,
+                            arc + i * 2,
+                            arc + i * 2
+                    );
+                }
+                g2.setComposite(AlphaComposite.SrcOver);
+            }
+
+            // ===== Background =====
             g2.setColor(getBackground());
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+            g2.fillRoundRect(x, y, rw, rh, arc, arc);
+
+            // ===== Border =====
+            if (borderColor != null) {
+                g2.setColor(borderColor);
+                g2.setStroke(new BasicStroke(borderThickness));
+                int inset = borderThickness / 2;
+                g2.drawRoundRect(
+                        x + inset,
+                        y + inset,
+                        rw - borderThickness,
+                        rh - borderThickness,
+                        arc,
+                        arc
+                );
+            }
 
             g2.dispose();
             super.paintComponent(g);
+        }
+
+        @Override
+        public Insets getInsets() {
+            // để layout bên trong không đè lên vùng shadow
+            if (!shadowEnabled) return super.getInsets();
+            int pad = shadowSize;
+            return new Insets(pad, pad, pad + shadowOffsetY, pad);
+        }
+    }
+
+    // ===== RoundedTextField (pill thật - tự vẽ nền + viền) =====
+    private static class RoundedTextField extends JTextField {
+        private final int arc;
+        private Color fill = hex("#B4B5B7");
+        private Color stroke = hex("#E5E7EB");
+        private int strokeWidth = 1;
+
+        public RoundedTextField(int arc) {
+            this.arc = arc;
+
+            // Không cho JTextField tự vẽ nền/border mặc định
+            setOpaque(false);
+            super.setBorder(null);
+
+            // Padding text bên trong
+            setBorder(new EmptyBorder(10, 18, 10, 18));
+
+            // Tắt focus ring/outline của FlatLaf
+            putClientProperty("JComponent.outline", "none");
+        }
+
+        public void setFill(Color c) { this.fill = c; repaint(); }
+        public void setStroke(Color c) { this.stroke = c; repaint(); }
+        public void setStrokeWidth(int w) { this.strokeWidth = Math.max(1, w); repaint(); }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w = getWidth();
+            int h = getHeight();
+
+            // Vẽ nền bo góc
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, w - 1, h - 1, arc, arc);
+
+            g2.dispose();
+            super.paintComponent(g); // vẽ text/caret
+        }
+
+        @Override
+        protected void paintBorder(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w = getWidth();
+            int h = getHeight();
+
+            g2.setColor(stroke);
+            g2.setStroke(new BasicStroke(strokeWidth));
+
+            int inset = strokeWidth;
+            g2.drawRoundRect(inset, inset, w - inset * 2 - 1, h - inset * 2 - 1, arc, arc);
+
+            g2.dispose();
         }
     }
 }
