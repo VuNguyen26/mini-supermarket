@@ -7,11 +7,11 @@ import java.sql.SQLException;
 public class DBConnection {
 
     // ====== SỬA Ở ĐÂY nếu máy khác =========
-    private static final String HOST = "127.0.0.1";
+    private static final String HOST = "localhost";
     private static final String PORT = "3306";
     private static final String DB_NAME = "mini_supermarket";
     private static final String USER = "root";
-    private static final String PASS = "";
+    private static final String PASS = "19092005";
     // =======================================
 
     private static final String URL =
