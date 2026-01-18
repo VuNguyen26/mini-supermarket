@@ -3,50 +3,52 @@ package dto;
 import java.time.LocalDateTime;
 
 /**
- * Category DTO - Khớp với bảng category trong database
+ * Brand DTO - Khớp với bảng brand trong database
  */
-public class Category {
-    private Integer categoryId;
-    private String categoryName;
-    private String categoryCode;
+public class Brand {
+    private Integer brandId;
+    private String brandName;
+    private String brandCode;
     private String description;
-    private String status;
+    private String status; // ACTIVE, INACTIVE
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public Category() {
+    public Brand() {
         this.status = "ACTIVE";
     }
 
-    public Category(Integer categoryId, String categoryName) {
-        this.categoryId = categoryId;
-        this.categoryName = categoryName;
-        this.status = "ACTIVE";
+    public Brand(Integer brandId, String brandName, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.brandId = brandId;
+        this.brandName = brandName;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     // Getters and Setters
-    public Integer getCategoryId() {
-        return categoryId;
+    public Integer getBrandId() {
+        return brandId;
     }
 
-    public void setCategoryId(Integer categoryId) {
-        this.categoryId = categoryId;
+    public void setBrandId(Integer brandId) {
+        this.brandId = brandId;
     }
 
-    public String getCategoryName() {
-        return categoryName;
+    public String getBrandName() {
+        return brandName;
     }
 
-    public void setCategoryName(String categoryName) {
-        this.categoryName = categoryName;
+    public void setBrandName(String brandName) {
+        this.brandName = brandName;
     }
 
-    public String getCategoryCode() {
-        return categoryCode;
+    public String getBrandCode() {
+        return brandCode;
     }
 
-    public void setCategoryCode(String categoryCode) {
-        this.categoryCode = categoryCode;
+    public void setBrandCode(String brandCode) {
+        this.brandCode = brandCode;
     }
 
     public String getDescription() {
@@ -83,6 +85,6 @@ public class Category {
 
     @Override
     public String toString() {
-        return categoryName;
+        return brandName;
     }
 }

@@ -491,10 +491,7 @@ public class MainFrame extends JFrame {
             repaint();
         }
 
-        public void setText(String text) {
-            this.text = text;
-            repaint();
-        }
+        // setText removed - never used
 
         @Override
         protected void paintComponent(Graphics g) {
@@ -526,12 +523,12 @@ public class MainFrame extends JFrame {
 
     private static class CircleImageAvatar extends JComponent {
         private Image image;
-        private final int size;
+        // private final int size; // removed - never used
         private Color borderColor = BORDER;
 
         public CircleImageAvatar(Image image, int size) {
             this.image = image;
-            this.size = size;
+            // this.size = size; // removed - never used
             setPreferredSize(new Dimension(size, size));
             setMinimumSize(new Dimension(size, size));
             setMaximumSize(new Dimension(size, size));
@@ -584,13 +581,13 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(makePlaceholder("BÁN HÀNG (PosSalesPanel)")), "Bán hàng");
         contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
 
-        contentPanel.add(wrapCard(makePlaceholder("SẢN PHẨM (ProductPanel + tab tồn theo lô/HSD)")), "Sản phẩm");
+        contentPanel.add(wrapCard(new presentation.panels.ProductPanel()), "Sản phẩm");
         contentPanel.add(wrapCard(makePlaceholder("NHẬP KHO (GoodsReceiptPanel)")), "Nhập kho");
         contentPanel.add(wrapCard(makePlaceholder("KIỂM KHO / ĐIỀU CHỈNH (StockAdjustmentPanel)")), "Kiểm kho");
 
-        contentPanel.add(wrapCard(makePlaceholder("KHÁCH HÀNG (CustomerPanel + tab điểm/loyalty)")), "Khách hàng");
-        contentPanel.add(wrapCard(makePlaceholder("NHÀ CUNG CẤP (SupplierPanel)")), "Nhà cung cấp");
-        contentPanel.add(wrapCard(makePlaceholder("DANH MỤC (CategoryPanel)")), "Danh mục");
+        contentPanel.add(wrapCard(new presentation.panels.CustomerPanel()), "Khách hàng");
+        contentPanel.add(wrapCard(new presentation.panels.SupplierPanel()), "Nhà cung cấp");
+        contentPanel.add(wrapCard(new presentation.panels.CategoryPanel()), "Danh mục");
 
         contentPanel.add(wrapCard(makePlaceholder("KHUYẾN MÃI (PromotionPanel)")), "Khuyến mãi");
         contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
@@ -770,33 +767,8 @@ public class MainFrame extends JFrame {
             super.paintComponent(g);
         }
     }
-
-    private static class RoundedBorder implements Border {
-        private final int radius;
-        private final Color color;
-
-        RoundedBorder(int radius, Color color) {
-            this.radius = radius;
-            this.color = color;
-        }
-
-        @Override public Insets getBorderInsets(Component c) {
-            return new Insets(6, 10, 6, 10);
-        }
-
-        @Override public boolean isBorderOpaque() {
-            return false;
-        }
-
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color);
-            g2.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
-            g2.dispose();
-        }
-    }
+    // RoundedBorder removed - never used
+    // (Class was causing issues and not being used anywhere)
 
     private static class RoundedPanel extends JPanel {
         private final int arc;
@@ -821,17 +793,19 @@ public class MainFrame extends JFrame {
             repaint();
         }
 
-        public void setShadow(boolean enabled) {
-            this.shadowEnabled = enabled;
-            repaint();
-        }
+        // setShadow removed - never used
+        // public void setShadow(boolean enabled) {
+        //     this.shadowEnabled = enabled;
+        //     repaint();
+        // }
 
-        public void setShadowStyle(int size, int offsetY, Color color) {
-            this.shadowSize = Math.max(0, size);
-            this.shadowOffsetY = offsetY;
-            this.shadowColor = (color != null) ? color : new Color(0, 0, 0, 25);
-            repaint();
-        }
+        // setShadowStyle removed - never used
+        // public void setShadowStyle(int size, int offsetY, Color color) {
+        //     this.shadowSize = Math.max(0, size);
+        //     this.shadowOffsetY = offsetY;
+        //     this.shadowColor = (color != null) ? color : new Color(0, 0, 0, 25);
+        //     repaint();
+        // }
 
         @Override
         protected void paintComponent(Graphics g) {
