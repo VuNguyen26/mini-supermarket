@@ -23,9 +23,9 @@ public class StockAdjustmentService {
      * Load 1 phiếu theo id
      * Dùng khi click View / Double click
      */
-    // public StockAdjustment getStockAdjustmentById(int saId) {
-    //     return stockAdjustmentDAO.findById(saId);
-    // }
+    public StockAdjustment getById(int saId) {
+        return stockAdjustmentDAO.findById(saId);
+    }
 
     public int createDraft(int createdBy,
                             StockAdjustmentReason reason,
@@ -57,4 +57,71 @@ public class StockAdjustmentService {
 
         return saId;
     }
+
+     public void updateStatus(int saId, StockAdjustmentStatus newStatus) {
+
+        if (saId <= 0) {
+            throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
+        }
+        if (newStatus == null) {
+            throw new IllegalArgumentException("Trạng thái mới không hợp lệ");
+        }
+
+        // ===== Lấy trạng thái hiện tại =====
+        StockAdjustment sa = stockAdjustmentDAO.findById(saId);
+        if (sa == null) {
+            throw new RuntimeException("Không tìm thấy phiếu kiểm kho");
+        }
+
+        StockAdjustmentStatus current = sa.getStatus();
+
+        // ===== Rule chuyển trạng thái =====
+        if (current == StockAdjustmentStatus.CONFIRMED) {
+            throw new IllegalStateException("Phiếu đã xác nhận, không thể thay đổi trạng thái");
+        }
+
+        if (current == StockAdjustmentStatus.CANCELLED) {
+            throw new IllegalStateException("Phiếu đã hủy, không thể thay đổi trạng thái");
+        }
+
+        if (current == newStatus) {
+            return; // không cần update
+        }
+
+        // ===== Update =====
+        stockAdjustmentDAO.updateStatus(saId, newStatus.name());
+    }
+
+    public void updateDraftInfo(int saId,
+                            String saCode,
+                            StockAdjustmentReason reason,
+                            String note) {
+
+        if (saId <= 0) {
+            throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
+        }
+
+        StockAdjustment sa = stockAdjustmentDAO.findById(saId);
+        if (sa == null) {
+            throw new RuntimeException("Không tìm thấy phiếu kiểm kho");
+        }
+
+        if (sa.getStatus() != StockAdjustmentStatus.DRAFT) {
+            throw new IllegalStateException(
+                "Chỉ được sửa phiếu ở trạng thái DRAFT"
+            );
+        }
+
+        if (reason == null) {
+            throw new IllegalArgumentException("Lý do kiểm kho không được để trống");
+        }
+
+        sa.setSaCode(saCode);
+        sa.setReason(reason);
+        sa.setNote(note);
+
+        stockAdjustmentDAO.updateDraftInfo(sa);
+    }
+
+
 }

@@ -2,7 +2,9 @@ package presentation.dialogs;
 
 import bus.StockAdjustmentService;
 import bus.AuthService.AuthUser;
+import dto.StockAdjustment;
 import dto.StockAdjustmentReason;
+import dto.StockAdjustmentStatus;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -12,19 +14,41 @@ public class StockAdjustmentDialog extends JDialog {
 
     private final StockAdjustmentService service = new StockAdjustmentService();
     private final AuthUser currentUser;
+    private final StockAdjustment editingSA; // null = thêm mới
 
     private boolean saved = false;
 
-    // UI components
+    // ===== UI components =====
     private JTextField txtCode;
     private JComboBox<StockAdjustmentReason> cboReason;
+    private JComboBox<StockAdjustmentStatus> cboStatus;
     private JTextArea txtNote;
 
+    /* ================= CONSTRUCTORS ================= */
+
+    /** Thêm mới */
     public StockAdjustmentDialog(Window owner, AuthUser currentUser) {
-        super(owner, "Thêm phiếu kiểm kho", ModalityType.APPLICATION_MODAL);
+        this(owner, currentUser, null);
+    }
+
+    /** Sửa */
+    public StockAdjustmentDialog(Window owner,
+                                 AuthUser currentUser,
+                                 StockAdjustment editingSA) {
+        super(
+                owner,
+                editingSA == null ? "Thêm phiếu kiểm kho" : "Sửa phiếu kiểm kho",
+                ModalityType.APPLICATION_MODAL
+        );
+
         this.currentUser = currentUser;
+        this.editingSA = editingSA;
 
         initUI();
+        if (editingSA != null) {
+            fillData(editingSA);
+        }
+
         pack();
         setLocationRelativeTo(owner);
     }
@@ -33,7 +57,8 @@ public class StockAdjustmentDialog extends JDialog {
         return saved;
     }
 
-    // ================= UI =================
+    /* ================= UI ================= */
+
     private void initUI() {
         setLayout(new BorderLayout());
         setResizable(false);
@@ -63,6 +88,14 @@ public class StockAdjustmentDialog extends JDialog {
         cboReason = new JComboBox<>(StockAdjustmentReason.values());
         form.add(cboReason, gbc);
 
+        // ===== Trạng thái (chỉ hiện khi sửa) =====
+        gbc.gridx = 0; gbc.gridy++;
+        form.add(new JLabel("Trạng thái"), gbc);
+
+        gbc.gridx = 1;
+        cboStatus = new JComboBox<>(StockAdjustmentStatus.values());
+        form.add(cboStatus, gbc);
+
         // ===== Ghi chú =====
         gbc.gridx = 0; gbc.gridy++;
         gbc.anchor = GridBagConstraints.NORTHWEST;
@@ -91,22 +124,58 @@ public class StockAdjustmentDialog extends JDialog {
         buttons.add(btnSave);
 
         add(buttons, BorderLayout.SOUTH);
+
+        // ===== UI rules =====
+        if (editingSA == null) {
+            cboStatus.setSelectedItem(StockAdjustmentStatus.DRAFT);
+            cboStatus.setEnabled(false); // thêm mới không cho chọn
+        }
     }
 
-    // ================= ACTION =================
+    /* ================= DATA ================= */
+
+    private void fillData(StockAdjustment sa) {
+        txtCode.setText(sa.getSaCode());
+        cboReason.setSelectedItem(sa.getReason());
+        cboStatus.setSelectedItem(sa.getStatus());
+        txtNote.setText(sa.getNote());
+
+        // Nếu không phải DRAFT → chỉ xem
+        if (sa.getStatus() != StockAdjustmentStatus.DRAFT) {
+            txtCode.setEnabled(false);
+            cboReason.setEnabled(false);
+            cboStatus.setEnabled(false);
+            txtNote.setEnabled(false);
+        }
+    }
+
+    /* ================= ACTION ================= */
+
     private void onSave() {
         try {
             String saCode = txtCode.getText().trim();
             StockAdjustmentReason reason =
                     (StockAdjustmentReason) cboReason.getSelectedItem();
+            StockAdjustmentStatus status =
+                    (StockAdjustmentStatus) cboStatus.getSelectedItem();
             String note = txtNote.getText().trim();
 
-            service.createDraft(
-                    currentUser.userId,
-                    reason,
-                    saCode,
-                    note
-            );
+            // ===== THÊM =====
+            if (editingSA == null) {
+                service.createDraft(
+                        currentUser.userId,
+                        reason,
+                        saCode,
+                        note
+                );
+            }
+            // ===== SỬA =====
+            else {
+                if (editingSA.getStatus() == StockAdjustmentStatus.DRAFT) {
+                    service.updateDraftInfo(editingSA.getSaId(), saCode, reason, note);
+                    service.updateStatus(editingSA.getSaId(), status);
+                }
+            }
 
             saved = true;
             dispose();

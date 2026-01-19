@@ -5,10 +5,13 @@ import bus.StockAdjustmentService;
 import dto.StockAdjustment;
 import presentation.dialogs.StockAdjustmentDialog;
 
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 
 import java.awt.*;
 import java.util.List;
@@ -84,7 +87,12 @@ public class StockAdjustmentPanel extends JPanel {
         model = new DefaultTableModel(
                 new Object[]{"ID", "Mã phiếu", "Lý do", "Trạng thái", "Ngày tạo", "Ghi chú", "Tương tác"},
                 0
-        );
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 6; // chỉ cho edit cột Tương tác
+            }
+        };
 
         table = new JTable(model);
 
@@ -110,6 +118,9 @@ public class StockAdjustmentPanel extends JPanel {
         table.getColumnModel().getColumn(4).setCellRenderer(center);
         table.getColumnModel().getColumn(5).setCellRenderer(left);
         table.getColumnModel().getColumn(6).setCellRenderer(center);
+        table.getColumnModel().getColumn(6).setCellRenderer(new ActionCellRenderer());
+        table.getColumnModel().getColumn(6).setCellEditor(new ActionCellEditor());
+
         add(new JScrollPane(table), BorderLayout.CENTER);
     }
 
@@ -125,8 +136,122 @@ public class StockAdjustmentPanel extends JPanel {
                     sa.getReason(),   // enum OK
                     sa.getStatus(),   // enum OK
                     sa.getCreatedAt(),
-                    sa.getNote()
+                    sa.getNote(),
+                    sa
             });
         }
     }
+
+    class ActionCellRenderer extends JPanel implements TableCellRenderer {
+
+        private final JButton editBtn = new JButton("Sửa");
+
+        public ActionCellRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 10, 8));
+            setOpaque(true); // 🔥 QUAN TRỌNG
+            editBtn.setFocusable(false);
+            add(editBtn);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+
+            removeAll();
+
+            StockAdjustment sa = (StockAdjustment) value;
+
+            // ===== Đồng bộ màu với JTable =====
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+            } else {
+                setBackground(table.getBackground());
+            }
+
+            setBorder(BorderFactory.createMatteBorder(
+                0, 0, 1, 1, table.getGridColor()
+            ));
+
+            if (sa.getStatus() == dto.StockAdjustmentStatus.DRAFT) {
+                add(editBtn);
+            }
+
+            return this;
+        }
+    }
+
+
+    class ActionCellEditor extends AbstractCellEditor implements TableCellEditor {
+
+        private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        private final JButton editBtn = new JButton("Sửa");
+        private StockAdjustment currentSA;
+
+        public ActionCellEditor() {
+            panel.setOpaque(true);
+            editBtn.setFocusable(false);
+
+            editBtn.addActionListener(e -> {
+                fireEditingStopped();
+                openEditDialog();
+            });
+
+            panel.add(editBtn);
+        }
+
+        private void openEditDialog() {
+
+            // 🔥 LOAD LẠI DATA MỚI NHẤT TỪ DB
+            StockAdjustment freshSA =
+                    service.getById(currentSA.getSaId());
+
+            StockAdjustmentDialog dialog =
+                    new StockAdjustmentDialog(
+                            SwingUtilities.getWindowAncestor(panel),
+                            currentUser,
+                            freshSA
+                    );
+
+            dialog.setVisible(true);
+
+            if (dialog.isSaved()) {
+                loadData();
+                table.revalidate();
+                table.repaint();
+            }
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(
+            JTable table, Object value, boolean isSelected,
+            int row, int column) {
+
+            currentSA = (StockAdjustment) value;
+            panel.removeAll();
+
+            // ===== Đồng bộ màu =====
+            if (isSelected) {
+                panel.setBackground(table.getSelectionBackground());
+            } else {
+                panel.setBackground(table.getBackground());
+            }
+
+            panel.setBorder(BorderFactory.createMatteBorder(
+                0, 0, 1, 1, table.getGridColor()
+            ));
+
+            if (currentSA.getStatus() == dto.StockAdjustmentStatus.DRAFT) {
+                panel.add(editBtn);
+            }
+
+            return panel;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return currentSA;
+        }
+    }
+
 }

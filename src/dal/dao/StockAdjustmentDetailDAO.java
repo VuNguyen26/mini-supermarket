@@ -60,6 +60,41 @@ public class StockAdjustmentDetailDAO {
         }
     }
 
+    // ====== cập nhật 1 dòng kiểm kho ======
+    public void update(StockAdjustmentDetail d) {
+        String sql =
+                "UPDATE stock_adjustment_detail " +
+                "SET counted_qty = ?, diff_qty = ?, note = ? " +
+                "WHERE sad_id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, d.getCountedQty());
+            ps.setInt(2, d.getDiffQty());
+            ps.setString(3, d.getNote());
+            ps.setInt(4, d.getSadId());
+
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Update stock adjustment detail failed: " + e.getMessage(), e);
+        }
+    }
+
+    // ====== xóa 1 dòng kiểm kho ======
+    public void delete(int sadId) {
+        String sql = "DELETE FROM stock_adjustment_detail WHERE sad_id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, sadId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Delete stock adjustment detail failed: " + e.getMessage(), e);
+        }
+    }
+
     // ====== map ResultSet -> DTO ======
     private StockAdjustmentDetail map(ResultSet rs) throws Exception {
         StockAdjustmentDetail d = new StockAdjustmentDetail();

@@ -100,6 +100,30 @@ public class StockAdjustmentDAO {
         }
     }
 
+    public void updateDraftInfo(StockAdjustment sa) {
+        String sql =
+            "UPDATE stock_adjustment " +
+            "SET sa_code = ?, reason = ?, note = ? " +
+            "WHERE sa_id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, sa.getSaCode());
+            ps.setString(2, sa.getReason().name());
+            ps.setString(3, sa.getNote());
+            ps.setInt(4, sa.getSaId());
+
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                "Update stock adjustment info failed: " + e.getMessage(), e
+            );
+        }
+    }
+
+
     // ====== map ResultSet -> DTO ======
     private StockAdjustment map(ResultSet rs) throws Exception {
         StockAdjustment sa = new StockAdjustment();
