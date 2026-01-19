@@ -1,7 +1,9 @@
 package presentation.panels;
 
+import bus.AuthService.AuthUser;
 import bus.StockAdjustmentService;
 import dto.StockAdjustment;
+import presentation.dialogs.StockAdjustmentDialog;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -13,11 +15,13 @@ import java.util.List;
 
 public class StockAdjustmentPanel extends JPanel {
 
+    private final AuthUser currentUser;
     private final StockAdjustmentService service = new StockAdjustmentService();
     private JTable table;
     private DefaultTableModel model;
 
-    public StockAdjustmentPanel() {
+    public StockAdjustmentPanel(AuthUser currentUser) {
+        this.currentUser = currentUser;
         initUI();
         loadData();
     }
@@ -55,6 +59,20 @@ public class StockAdjustmentPanel extends JPanel {
             @Override
             public void mouseExited(java.awt.event.MouseEvent e) {
                 addButton.setBackground(new Color(37, 99, 235));
+            }
+        });
+
+        // Gọi dialog thêm người dùng
+        addButton.addActionListener(e -> {
+            StockAdjustmentDialog dialog =
+                    new StockAdjustmentDialog(
+                            SwingUtilities.getWindowAncestor(this),
+                            currentUser
+                    );
+            dialog.setVisible(true);
+
+            if (dialog.isSaved()) {
+                loadData();
             }
         });
 
