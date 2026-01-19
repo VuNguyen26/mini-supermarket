@@ -70,7 +70,7 @@ public class StockAdjustmentDAO {
             ps.setString(1, sa.getSaCode());
             ps.setInt(2, sa.getCreatedBy());
             ps.setString(3, sa.getReason().name());
-            ps.setString(4, sa.getStatus().name());
+            ps.setString(4, "DRAFT");
             ps.setString(5, sa.getNote());
 
             ps.executeUpdate();
