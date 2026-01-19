@@ -24,6 +24,7 @@ public class Product {
     private String status; // ACTIVE, INACTIVE
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String imagePath; // For temporary image selection (not persisted in product table)
 
     public Product() {
         this.unit = "pcs";
@@ -162,6 +163,14 @@ public class Product {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 
     public boolean isLowStock() {

@@ -5,16 +5,16 @@ import java.time.LocalDateTime;
 public class ProductImage {
     private Integer imageId;
     private Integer productId;
-    private String imagePath;
+    private String imageUrl;
     private Boolean isPrimary;
     private LocalDateTime createdAt;
 
     public ProductImage() {}
 
-    public ProductImage(Integer imageId, Integer productId, String imagePath, Boolean isPrimary) {
+    public ProductImage(Integer imageId, Integer productId, String imageUrl, Boolean isPrimary) {
         this.imageId = imageId;
         this.productId = productId;
-        this.imagePath = imagePath;
+        this.imageUrl = imageUrl;
         this.isPrimary = isPrimary;
     }
 
@@ -35,12 +35,12 @@ public class ProductImage {
         this.productId = productId;
     }
 
-    public String getImagePath() {
-        return imagePath;
+    public String getImageUrl() {
+        return imageUrl;
     }
 
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Boolean getIsPrimary() {

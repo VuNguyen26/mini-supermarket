@@ -49,13 +49,13 @@ public class ProductImageDAO {
     }
 
     public int insert(ProductImage image) {
-        String sql = "INSERT INTO product_image(product_id, image_path, is_primary) VALUES(?, ?, ?)";
+        String sql = "INSERT INTO product_image(product_id, image_url, is_primary) VALUES(?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setInt(1, image.getProductId());
-            ps.setString(2, image.getImagePath());
+            ps.setString(2, image.getImageUrl());
             ps.setBoolean(3, image.getIsPrimary() != null ? image.getIsPrimary() : false);
 
             int rows = ps.executeUpdate();
@@ -126,7 +126,7 @@ public class ProductImageDAO {
         ProductImage img = new ProductImage();
         img.setImageId(rs.getInt("image_id"));
         img.setProductId(rs.getInt("product_id"));
-        img.setImagePath(rs.getString("image_path"));
+        img.setImageUrl(rs.getString("image_url"));
         img.setIsPrimary(rs.getBoolean("is_primary"));
         
         Timestamp created = rs.getTimestamp("created_at");
