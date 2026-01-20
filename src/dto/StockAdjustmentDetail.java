@@ -7,6 +7,7 @@ public class StockAdjustmentDetail {
     private int productId;
     private String productName;
     private Long lotId;        // bigint + nullable → dùng Long
+    private String lotCode;
     private int systemQty;
     private int countedQty;
     private int diffQty;
@@ -14,13 +15,14 @@ public class StockAdjustmentDetail {
 
     public StockAdjustmentDetail() {}
 
-    public StockAdjustmentDetail(int sadId, int saId, int productId, String productName, Long lotId,
+    public StockAdjustmentDetail(int sadId, int saId, int productId, String productName, Long lotId, String lotCode,
                                  int systemQty, int countedQty, int diffQty, String note) {
         this.productName = productName;
         this.sadId = sadId;
         this.saId = saId;
         this.productId = productId;
         this.lotId = lotId;
+        this.lotCode = lotCode;
         this.systemQty = systemQty;
         this.countedQty = countedQty;
         this.diffQty = diffQty;
@@ -65,6 +67,14 @@ public class StockAdjustmentDetail {
 
     public void setLotId(Long lotId) {
         this.lotId = lotId;
+    }
+
+    public String getLotCode(){
+        return this.lotCode;
+    }
+
+    public void setLotCode(String lotCode){
+        this.lotCode = lotCode;
     }
 
     public int getSystemQty() {

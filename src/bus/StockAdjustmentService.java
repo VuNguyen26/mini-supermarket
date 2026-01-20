@@ -2,6 +2,8 @@ package bus;
 
 import dal.dao.StockAdjustmentDAO;
 import dal.dao.StockAdjustmentDetailDAO;
+import dto.LotOption;
+import dto.ProductOption;
 import dto.StockAdjustment;
 import dto.StockAdjustmentDetail;
 import dto.StockAdjustmentReason;
@@ -180,5 +182,36 @@ public class StockAdjustmentService {
 
         stockAdjustmentDetailDAO.delete(sadId);
     }
+
+    public List<ProductOption> getProductsForCombobox() {
+        return stockAdjustmentDetailDAO.findAllForCombobox();
+    }
+
+    public List<LotOption> getLotsByProduct(int productId) {
+        if (productId <= 0) {
+            throw new IllegalArgumentException("Sản phẩm không hợp lệ");
+        }
+        return stockAdjustmentDetailDAO.findLotsByProduct(productId);
+    }
+
+    public int getSystemQtyByLot(int productId, Long lotId) {
+
+        if (productId <= 0) {
+            throw new IllegalArgumentException("Sản phẩm không hợp lệ");
+        }
+        if (lotId == null) {
+            throw new IllegalArgumentException("Lô không hợp lệ");
+        }
+
+        return stockAdjustmentDetailDAO.getSystemQtyByLot(productId, lotId);
+    }
+    
+    public StockAdjustmentDetail getDetailById(int sadId) {
+        if (sadId <= 0) {
+            throw new IllegalArgumentException("Detail ID không hợp lệ");
+        }
+        return stockAdjustmentDetailDAO.findDetailById(sadId);
+    }
+
 
 }
