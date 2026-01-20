@@ -14,36 +14,38 @@ import java.util.List;
 
 public class GoodsReceiptDAO {
 
-	private String querySingleString(String sql, Integer id) {
-		if (id == null) return null;
+/**
+ * Retrieves the full name of a user by their ID.
+ *
+ * @param id the user's ID
+ * @return the user's full name, or null if no user is found
+ */
+	public String getUserFullName(int id) {
+		String sql = "SELECT full_name FROM user WHERE user_id = ?";
 		try (
-		Connection con = DBConnection.getConnection();
-		PreparedStatement ps = con.prepareStatement(sql)
-	) {
+			Connection con = DBConnection.getConnection();
+			PreparedStatement ps = con.prepareStatement(sql)
+		) {
 			ps.setInt(1, id);
 			try (ResultSet rs = ps.executeQuery()) {
 				return rs.next() ? rs.getString(1) : null;
 			}
 		} catch (SQLException e) {
-			throw new RuntimeException(e);
+			throw new RuntimeException("Failed to retrieve user's fullname" + e.getMessage(), e);
 		}
 	}
 
-	public String getUserFullName(Integer id) {
-		return querySingleString("SELECT full_name FROM user WHERE user_id = ?", id);
-	}
-
-	/**
- * Retrieves goods receipts with optional filters and sorting.
+/**
+ * Retrieves all goods receipts with optional filters and sorting.
  *
  * @param supplierId   the supplier ID to filter by, or {@code null} for all suppliers
  * @param after        include receipts created at or after this time, or {@code null}
  * @param before       include receipts created before this time, or {@code null}
  * @param sortBy       the database column used for sorting
  * @param isAscending  {@code true} for ascending order, {@code false} for descending
- * @return a list of goods receipts matching the given criteria
+ * @return a filtered list of goods receipts
  */
-	public List<GoodsReceipt> findAll(
+	public List<GoodsReceipt> findFiltered(
 		Integer supplierId,
 		LocalDateTime after,
 		LocalDateTime before,
@@ -98,23 +100,21 @@ public class GoodsReceiptDAO {
 					list.add(gr);
 				}
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException("Failed to retrieve goods receipts list", e);
+		} catch (SQLException e) {
+			throw new RuntimeException("Failed to retrieve goods receipts list: " + e.getMessage(), e);
 		}
 
 		return list;
 	}
 
-	/**
+/**
  * Inserts a new goods_receipt into the database and retrieves the generated ID.
  *
  * @param con the Connection to use
  * @param gr the GoodsReceipt to be saved
  * @return the generated gr_id if successful, or -1 if the insertion failed
- * @throws SQLException if a database access error occurs
  */
-	public int insert(Connection con, GoodsReceipt gr) throws SQLException {
+	public int insert(Connection con, GoodsReceipt gr){
 		String sql = "INSERT INTO goods_receipt (supplier_id, created_by, created_at, note, total_amount) VALUES (?, ?, ?, ?, ?)";
 
 		try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -127,6 +127,8 @@ public class GoodsReceiptDAO {
 
 			ResultSet rs = ps.getGeneratedKeys();
 			return rs.next() ? rs.getInt(1) : -1;
+		} catch (SQLException e) {
+			throw new RuntimeException("Failed to insert goods receipt: " + e.getMessage(), e);
 		}
 	}
 }

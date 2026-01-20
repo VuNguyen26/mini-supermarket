@@ -15,30 +15,35 @@ import dto.InventoryLot;
 
 public class GoodsReceiptService {
 
+	private final InventoryLotDAO lotDAO = new InventoryLotDAO();
 	private final GoodsReceiptDAO grDAO = new GoodsReceiptDAO();
 	private final GoodsReceiptDetailDAO grdDAO = new GoodsReceiptDetailDAO();
-	private final InventoryLotDAO lotDAO = new InventoryLotDAO();
 
-	public String getUserNameById(int id) { return grDAO.getUserFullName(id) + " ("+ id + ")"; }
-
-	public List<GoodsReceipt> getReceiptsList(
+	public List<GoodsReceipt> getFilteredReceiptsList(
 		Integer supplierId,
 		LocalDateTime from,
 		LocalDateTime to,
 		String sortBy,
 		boolean isAscending
 	) {
-		return grDAO.findAll(supplierId, from, to, sortBy, isAscending);
+		return grDAO.findFiltered(supplierId, from, to, sortBy, isAscending);
 	}
 
-	public GoodsReceiptDetail getDetailById(int grdId) {
-		return grdDAO.findById(grdId);
-	}
-	public List<GoodsReceiptDetail> getDetailsByReceiptId(int grId) {
-		return grdDAO.findByGrId(grId);
-	}
+	public String getUserNameById(int id) { return grDAO.getUserFullName(id) + " ("+ id + ")"; }
+	public GoodsReceiptDetail getDetailById(int grdId) { return grdDAO.findById(grdId); }
+	public List<GoodsReceiptDetail> getDetailsByReceiptId(int grId) { return grdDAO.findByGrId(grId); }
 
-	// DATABASE TRANSACTION
+/**
+ * Creates a complete goods receipt transaction, including:
+ * - Inserting the goods receipt header
+ * - Inserting all associated goods receipt details
+ * - Creating inventory lots for each receipt detail
+ * If any step fails, the entire transaction is rolled back to ensure data consistency
+ *
+ * @param gr the goods receipt header to be created
+ * @param details the list of goods receipt details associated with the receipt
+ * @return true if the transaction completes successfully, false if otherwise
+ */
 	public boolean createFullReceipt(GoodsReceipt gr, List<GoodsReceiptDetail> details) {
 		Connection con = null;
 		try {
@@ -67,14 +72,16 @@ public class GoodsReceiptService {
 				lot.setStatus(InventoryLot.Status.AVAILABLE);
 				lot.setCreatedAt(LocalDateTime.now());
 
-				lotDAO.insert(con, lot);
+				boolean success = lotDAO.insert(con, lot);
+				if (!success) {
+					throw new SQLException("Failed to save inventory lot for grdId: " + grdId);
+				}
 			}
-
 			con.commit();
 			return true;
 		} catch (Exception e) {
 			if (con != null) {
-				try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+				try { con.rollback(); } catch (SQLException ex) { throw new RuntimeException("Failed to rollback"); }
 			}
 			e.printStackTrace();
 			return false;

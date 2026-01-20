@@ -15,11 +15,11 @@ import java.util.List;
 
 public class GoodsReceiptDetailDAO {
 
-	/**
+ /**
 	* Retrieves the goods receipt detail by its ID
 	*
 	* @param grdId the ID of the goods receipt detail
-	* @return the corresponding GoodsReceiptDetail, or null if not found;
+	* @return the GoodsReceiptDetail, or null if not found;
 	*/
 	public GoodsReceiptDetail findById(Integer grdId) {
 		String sql = "SELECT * " + "FROM goods_receipt_detail grd WHERE grd.grd_id = ?";
@@ -30,33 +30,21 @@ public class GoodsReceiptDetailDAO {
 			ps.setInt(1, grdId);
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
-					GoodsReceiptDetail grd = new GoodsReceiptDetail();
-					grd.setGrdId(rs.getInt("grd_id"));
-					grd.setGrId(rs.getInt("gr_id"));
-					grd.setProductId(rs.getInt("product_id"));
-					grd.setQty(rs.getInt("qty"));
-					grd.setUnitPrice(rs.getBigDecimal("unit_price"));
-					grd.setLineTotal(rs.getBigDecimal("line_total"));
-					grd.setLotCode(rs.getString("lot_code"));
-					grd.setMfgDate(rs.getObject("mfg_date", LocalDate.class));
-					grd.setExpiry(rs.getObject("expiry_date", LocalDate.class));
-					grd.setReceivedAt(rs.getObject("received_at", LocalDateTime.class));
-					return grd;
+					return map(rs);
 				}
 			}
 		} catch (Exception e) {
-				e.printStackTrace();
-        throw new RuntimeException("Failed to retrieve goods receipt detail", e);
+        throw new RuntimeException("Failed to retrieve goods receipt detail: " + e.getMessage(), e);
 		}
 		return null;
 	}
 
-	/**
-	* Retrieves the a list of goods receipt details of the same grId
-	*
-	* @param grId the ID of the goods receipt
-	* @return a list of GoodsReceiptDetail that matches the requirement
-	*/
+/**
+ * Retrieves all goods receipt details associated with the given goods receipt ID.
+ *
+ * @param grId the ID of the goods receipt
+ * @return a list of GoodsReceiptDetail matching the specified goods receipt
+ */
 	public List<GoodsReceiptDetail> findByGrId(int grId) {
 		String sql = "SELECT * " + "FROM goods_receipt_detail grd WHERE grd.gr_id = ?";
 		List<GoodsReceiptDetail> grds = new ArrayList<>();
@@ -67,36 +55,23 @@ public class GoodsReceiptDetailDAO {
 			ps.setInt(1, grId);
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
-					GoodsReceiptDetail grd = new GoodsReceiptDetail();
-					grd.setGrdId(rs.getInt("grd_id"));
-					grd.setGrId(rs.getInt("gr_id"));
-					grd.setProductId(rs.getInt("product_id"));
-					grd.setQty(rs.getInt("qty"));
-					grd.setUnitPrice(rs.getBigDecimal("unit_price"));
-					grd.setLineTotal(rs.getBigDecimal("line_total"));
-					grd.setLotCode(rs.getString("lot_code"));
-					grd.setMfgDate(rs.getObject("mfg_date", LocalDate.class));
-					grd.setExpiry(rs.getObject("expiry_date", LocalDate.class));
-					grd.setReceivedAt(rs.getObject("received_at", LocalDateTime.class));
-					grds.add(grd);
+					grds.add(map(rs));
 				}
 			}
 		} catch (Exception e) {
-				e.printStackTrace();
-        throw new RuntimeException("Failed to retrieve goods receipt detail", e);
+        throw new RuntimeException("Failed to retrieve goods receipt details: " + e.getMessage(), e);
 		}
 		return grds;
 	}
 
-	/**
- * Inserts a new goods_receipt_detail into the database and retrieves the generated ID.
+/**
+ * Inserts a new goods receipt detail into the database and retrieves the generated ID.
  *
  * @param con the Connection to use
  * @param grd the GoodsReceiptDetail to be saved
  * @return the generated grd_id if successful, or -1 if the insertion failed
- * @throws SQLException if a database access error occurs
  */
-	public int insert(Connection con, GoodsReceiptDetail grd) throws SQLException {
+	public int insert(Connection con, GoodsReceiptDetail grd) {
 		String sql =
 		"INSERT INTO goods_receipt_detail (" +
 		"gr_id, product_id, qty, unit_price, line_total, " +
@@ -117,7 +92,30 @@ public class GoodsReceiptDetailDAO {
 
 			ResultSet rs = ps.getGeneratedKeys();
 			return rs.next() ? rs.getInt(1) : -1;
+		} catch (SQLException e) {
+			throw new RuntimeException("Failed to insert new goods receipt detail: " + e.getMessage(), e);
 		}
+	}
+
+ /**
+	* Map the result set to goods receipt detail
+	*
+	* @param rs the ResultSet need to map
+	* @return the GoodsReceiptDetail
+	*/
+	private GoodsReceiptDetail map(ResultSet rs) throws Exception {
+		GoodsReceiptDetail grd = new GoodsReceiptDetail();
+		grd.setGrdId(rs.getInt("grd_id"));
+		grd.setGrId(rs.getInt("gr_id"));
+		grd.setProductId(rs.getInt("product_id"));
+		grd.setQty(rs.getInt("qty"));
+		grd.setUnitPrice(rs.getBigDecimal("unit_price"));
+		grd.setLineTotal(rs.getBigDecimal("line_total"));
+		grd.setLotCode(rs.getString("lot_code"));
+		grd.setMfgDate(rs.getObject("mfg_date", LocalDate.class));
+		grd.setExpiry(rs.getObject("expiry_date", LocalDate.class));
+		grd.setReceivedAt(rs.getObject("received_at", LocalDateTime.class));
+		return grd;
 	}
 }
 

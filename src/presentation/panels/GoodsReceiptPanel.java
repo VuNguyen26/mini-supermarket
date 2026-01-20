@@ -1,47 +1,37 @@
 package presentation.panels;
 
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.awt.event.*;
+import java.time.*;
 import java.util.List;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 
-import bus.GoodsReceiptService;
-import bus.SupplierService;
+import dto.*;
+import util.*;
+import bus.*;
 import bus.AuthService.AuthUser;
-import dto.GoodsReceipt;
-import dto.Supplier;
-import presentation.components.datechooser.DateBetween;
-import presentation.components.datechooser.DateChooser;
-import presentation.components.datechooser.listener.DateChooserAction;
-import presentation.components.datechooser.listener.DateChooserAdapter;
+import presentation.components.datechooser.*;
+import presentation.components.datechooser.listener.*;
 import presentation.dialogs.ReceiptDialog;
-import util.DateUtils;
-import util.MoneyUtils;
 
 public class GoodsReceiptPanel extends JPanel {
 
-	private static final GoodsReceiptService service = new GoodsReceiptService();
+	private final GoodsReceiptService grService = new GoodsReceiptService();
 	private final SupplierService supplierService = new SupplierService();
 
 	private AuthUser currentUser;
 
-	private JTable table;
-	private GoodsReceiptTableModel model;
+	private JTable grTable;
+	private GoodsReceiptTableModel grTableModel;
 
-	private JComboBox<DateFilterItem> cboDateFilter;
-	private DateFilterItem selectedDateFilter;
-	private DateChooser dateChooser;
-	private JTextField customTimeTF;
+	private JComboBox<SupplierFilterItem> supplierFilterCbo;
+	private JComboBox<DateFilterItem> dateFilterCbo;
+	private DateChooser dateFitlerDc;
+	private JTextField dateFilterTxt;
 
-	private JComboBox<SupplierFilterItem> cboSupplierFilter;
-	private SupplierFilterItem selectedSupplierFilter;
 
 	public GoodsReceiptPanel(AuthUser currentUser) {
 		this.currentUser = currentUser;
@@ -52,31 +42,38 @@ public class GoodsReceiptPanel extends JPanel {
 		add(buildTable(), BorderLayout.CENTER);
 	}
 
+// Open the dialog for GR detail or create new GR
+	private void openViewDetailDialog(GoodsReceipt receipt) {
+		Window owner = SwingUtilities.getWindowAncestor(this);
+		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, receipt);
+		dialog.setVisible(true);
+	}
+// ==============================================
+
 	private JComponent buildTop() {
-		// West side of top panel: Filter label, Date and supplier filter combo box, sorting button
-		DefaultComboBoxModel<DateFilterItem> cboDateFilterModel = new DefaultComboBoxModel<>();
-		for (DateFilterItem i : DateFilterItem.values()) { cboDateFilterModel.addElement(i); }
-		cboDateFilter = new JComboBox<>(cboDateFilterModel);
-		cboDateFilter.setPreferredSize(new Dimension(120, 34));
-		cboDateFilter.setSize(50, 10);
-		cboDateFilter.addActionListener(e -> onDateFilterChange());
+	// West side of top panel: Filter label, Date and supplier filter combo box
+		dateFilterCbo = getDateFilterCbo();
+		supplierFilterCbo = getSupplierFilterCbo();
 
-		loadSuppliersFilter();
-
-		JPanel west = new JPanel();
+		JPanel west = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
 		west.setOpaque(false);
 		west.add(new JLabel("Lọc theo:"));
-		west.add(cboDateFilter);
-		west.add(cboSupplierFilter);
+		west.add(dateFilterCbo);
+		west.add(supplierFilterCbo);
+	// ========================================================================
 
-		// East side of top panel: Refresh and Create new receipt button
+	// East side of top panel: Refresh and Create new receipt button
 		JButton refreshBtn = new JButton("Làm mới");
     refreshBtn.setBackground(new Color(33, 150, 243));
 		refreshBtn.setForeground(Color.WHITE);
 		refreshBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
 		refreshBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		refreshBtn.setPreferredSize(new Dimension(140, 40));
-		refreshBtn.addActionListener(e -> {model.loadData();});
+		refreshBtn.addActionListener(e -> {
+			dateFilterCbo.setSelectedIndex(0);
+			supplierFilterCbo.setSelectedIndex(0);
+			grTableModel.loadData();
+		});
 
 		JButton addBtn = new JButton("Tạo phiếu mới");
     addBtn.setBackground(new Color(76, 175, 80));
@@ -84,157 +81,127 @@ public class GoodsReceiptPanel extends JPanel {
 		addBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
 		addBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		addBtn.setPreferredSize(new Dimension(140, 40));
-		addBtn.addActionListener(e -> openReceiptDialog());
+		addBtn.addActionListener(e -> openViewDetailDialog(null));
 
 		JPanel east = new JPanel();
 		east.setOpaque(false);
 		east.add(refreshBtn);
 		east.add(addBtn);
+	// ==============================================================
 
-		// South side of top panel: Custom date filter (hide on default)
-		customTimeTF = new JTextField(16);
-		customTimeTF.setVisible(false);
-		customTimeTF.setOpaque(false);
+	// South side of top panel: Custom date filter (hide on default)
+		dateFilterTxt = new JTextField(16);
+		dateFilterTxt.setVisible(false);
+		dateFilterTxt.setOpaque(false);
 
 		JPanel south = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		south.setOpaque(false);
-		south.add(customTimeTF);
+		south.add(dateFilterTxt);
+	// =============================================================
 
-		// Top panel
+	// Top panel
+		dateFitlerDc = new DateChooser();
+		dateFitlerDc.setTextField(dateFilterTxt);
+		dateFitlerDc.setDateSelectionMode(DateChooser.DateSelectionMode.BETWEEN_DATE_SELECTED);
+		dateFitlerDc.last28Days();
+		dateFitlerDc.addActionDateChooserListener(new DateChooserAdapter() {
+			@Override
+			public void dateBetweenChanged(DateBetween date, DateChooserAction action) {
+				grTableModel.from = date.getFromLocalDateTime();
+				grTableModel.to = date.getToLocalDateTime();
+				grTableModel.loadData();
+			}
+		});
+
 		JPanel top = new JPanel(new BorderLayout(10, 10));
-		initDateChooser();
-
 		top.setOpaque(false);
 		top.add(south, BorderLayout.SOUTH);
 		top.add(west, BorderLayout.WEST);
 		top.add(east, BorderLayout.EAST);
+	// =========
 		return top;
 	}
 
 	private JComponent buildTable() {
-		model = new GoodsReceiptTableModel();
-		table = new JTable(model);
+	// Initialize the GR table
+		grTableModel = new GoodsReceiptTableModel();
+		grTable = new JTable(grTableModel);
+	// =======================
 
-		table.getColumnModel().getColumn(0).setMaxWidth(50);
+	// Set max width for the index column
+		grTable.getColumnModel().getColumn(0).setMaxWidth(50);
+	// ==================================
 
-		table.setRowHeight(40);
-		table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		table.addMouseListener(new MouseAdapter() {
+	// Styling whole table
+		grTable.setRowHeight(40);
+		grTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		grTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+	// ===================
+
+	// Open GR detail dialog on double click
+		grTable.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				handleViewDetail(e);
+				if (e.getClickCount() == 2) {
+					int row = grTable.getSelectedRow();
+					if (row != -1) {
+						GoodsReceipt selected = grTableModel.getReceiptAt(row);
+						openViewDetailDialog(selected);
+					}
+				}
 			}
 		});
+	// =====================================
 
-		table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-		table.getTableHeader().setBackground(new Color(33, 150, 243));
-		table.getTableHeader().setForeground(Color.WHITE);
-		table.getTableHeader().setPreferredSize(new Dimension(0, 45));
-		table.getTableHeader().addMouseListener(new MouseAdapter() {
+	// Styling table's header
+		grTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+		grTable.getTableHeader().setBackground(new Color(33, 150, 243));
+		grTable.getTableHeader().setForeground(Color.WHITE);
+		grTable.getTableHeader().setCursor(new Cursor(Cursor.HAND_CURSOR));
+		grTable.getTableHeader().setPreferredSize(new Dimension(0, 45));
+	// ======================
+
+	// Toggle sorting order of the corresponding column on click
+		grTable.getTableHeader().addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				handleSortColumn(e);
+				int col = grTable.columnAtPoint(e.getPoint());
+				GoodsReceiptSort newSort = switch (col) {
+					case 1 -> GoodsReceiptSort.SUPPLIER;
+					case 2 -> GoodsReceiptSort.USER;
+					case 3 -> GoodsReceiptSort.CREATED_AT;
+					case 4 -> GoodsReceiptSort.TOTAL_AMOUNT;
+					default -> null;
+				};
+
+				if (newSort == null) return;
+				if (newSort == grTableModel.sortBy) {
+					grTableModel.toggleAscending();
+				} else {
+					grTableModel.sortBy = newSort;
+					grTableModel.isAscending = true;
+				}
+				grTableModel.loadData();
 			}
 		});
-		JScrollPane scrollPane = new JScrollPane(table);
+	// =========================================================
+
+	// The scrollable pane containing the GR table
+		JScrollPane scrollPane = new JScrollPane(grTable);
 		scrollPane.setBorder(BorderFactory.createLineBorder(new Color(228, 231, 236)));
 		return scrollPane;
+	// ===========================================
 	}
 
-	private void openViewDetailDialog(GoodsReceipt receipt) {
-		Window owner = SwingUtilities.getWindowAncestor(this);
-		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, receipt);
-		dialog.setVisible(true);
-	}
-	private void handleViewDetail(MouseEvent e) {
-		// On double click
-		if (e.getClickCount() == 2) {
-			int row = table.getSelectedRow();
-			if (row != -1) {
-				GoodsReceipt selected = model.getReceiptAt(row);
-				openViewDetailDialog(selected);
-			}
-		}
-	}
-
-
-	private void handleSortColumn(MouseEvent e) {
-		int col = table.columnAtPoint(e.getPoint());
-		GoodsReceiptSort newSort = switch (col) {
-			case 1 -> GoodsReceiptSort.SUPPLIER;
-			case 2 -> GoodsReceiptSort.USER;
-			case 3 -> GoodsReceiptSort.CREATED_AT;
-			case 4 -> GoodsReceiptSort.TOTAL_AMOUNT;
-			default -> null;
-		};
-
-		if (newSort == null) return;
-		if (newSort == model.getSortBy()) {
-			model.toggleAscending();
-		} else {
-			model.setSortBy(newSort);
-			model.setAscending(true);
-		}
-		model.loadData();
-	}
-
-	// Setting up date chooser
-	private void initDateChooser() {
-		dateChooser = new DateChooser();
-		dateChooser.setTextField(customTimeTF);
-		dateChooser.setDateSelectionMode(DateChooser.DateSelectionMode.BETWEEN_DATE_SELECTED);
-		dateChooser.last28Days();
-		dateChooser.addActionDateChooserListener(new DateChooserAdapter() {
-			@Override
-			public void dateBetweenChanged(DateBetween date, DateChooserAction action) {
-				model.setFrom(date.getFromLocalDateTime());
-				model.setTo(date.getToLocalDateTime());
-				model.loadData();
-			}
-		});
-	}
-
-	// Button callback functions
-	private void openReceiptDialog() {
-		Window owner = SwingUtilities.getWindowAncestor(this);
-		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, null);
-		dialog.setVisible(true);
-	}
-
-	// ComboBox callback functions
-	private void onDateFilterChange() {
-		selectedDateFilter = (DateFilterItem) cboDateFilter.getSelectedItem();
-		customTimeTF.setVisible(selectedDateFilter == DateFilterItem.CUSTOM);
-		switch (selectedDateFilter) {
-			case NONE -> model.setNone();
-			case TODAY -> model.setToday();
-			case THIS_WEEK -> model.setThisWeek();
-			case THIS_MONTH -> model.setThisMonth();
-			case THIS_YEAR -> model.setThisYear();
-			case CUSTOM -> {
-				model.setTo(dateChooser.getSelectedDateBetween().getToLocalDateTime());
-				model.setFrom(dateChooser.getSelectedDateBetween().getFromLocalDateTime());
-			}
-		}
-		model.loadData();
-		revalidate();
-	}
-
-	private void onSupplierFilterChange() {
-		selectedSupplierFilter = (SupplierFilterItem) cboSupplierFilter.getSelectedItem();
-		model.setSupplierId(selectedSupplierFilter.id);
-		model.loadData();
-	}
-
+// The table model for the GR table
 	private class GoodsReceiptTableModel extends AbstractTableModel {
 		private final String[] cols = { "STT", "Nhà cung cấp", "Tên nhân viên", "Thời gian nhập", "Tổng tiền", "Ghi chú" };
-		private List<GoodsReceipt> receipts;
-		private Integer supplierId;
-		private LocalDateTime from;
-		private LocalDateTime to;
-		private GoodsReceiptSort sortBy;
-		private boolean isAscending;
+		public List<GoodsReceipt> receipts;
+		public Integer supplierId;
+		public LocalDateTime from;
+		public LocalDateTime to;
+		public GoodsReceiptSort sortBy;
+		public boolean isAscending;
 
 		public GoodsReceiptTableModel() {
 			supplierId = null;
@@ -242,28 +209,19 @@ public class GoodsReceiptPanel extends JPanel {
 			to = null;
 			sortBy = GoodsReceiptSort.CREATED_AT;
 			isAscending = true;
-			receipts = service.getReceiptsList(supplierId, from, to, sortBy.column(), isAscending);
+			receipts = grService.getFilteredReceiptsList(supplierId, from, to, sortBy.column(), isAscending);
 		}
 
-		public void loadData() {
-			this.receipts = service.getReceiptsList(supplierId, from, to, sortBy.column(), isAscending);
-			fireTableDataChanged();
-		}
-
-		public GoodsReceipt getReceiptAt(int row) {
-			return receipts.get(row);
-		}
-
+		@Override public int getRowCount() { return receipts.size(); }
 		@Override public int getColumnCount() { return cols.length; }
 		@Override public String getColumnName(int col) { return cols[col]; }
-		@Override public int getRowCount() { return receipts.size(); }
 		@Override
 		public Object getValueAt(int row, int col) {
 			GoodsReceipt r = receipts.get(row);
 			return switch (col) {
         case 0 -> row + 1;
 				case 1 -> supplierService.getById(r.getSupplierId());
-				case 2 -> service.getUserNameById(r.getCreatedBy());
+				case 2 -> grService.getUserNameById(r.getCreatedBy());
 				case 3 -> DateUtils.formatDateTime(r.getCreatedAt());
 				case 4 -> MoneyUtils.format(r.getTotalAmount());
 				case 5 -> r.getNote();
@@ -271,21 +229,23 @@ public class GoodsReceiptPanel extends JPanel {
 			};
 		}
 
-		public void setNone() { this.from = null; this.to = null; }
-		public void setToday() { this.from = LocalDate.now().atStartOfDay(); this.to = from.plusDays(1); }
-		public void setThisWeek() { this.from = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay(); this.to = from.plusWeeks(1); }
-		public void setThisMonth() { this.from = LocalDate.now().withDayOfMonth(1).atStartOfDay(); this.to = from.plusMonths(1); }
-		public void setThisYear() { this.from = LocalDate.now().withDayOfYear(1).atStartOfDay(); this.to = from.plusYears(1); }
-		public void setSupplierId(Integer supplierId) { this.supplierId = supplierId; }
-		public void setFrom(LocalDateTime from) { this.from = from; }
-		public void setTo(LocalDateTime to) { this.to = to; }
-		public void setSortBy(GoodsReceiptSort sortBy) { this.sortBy = sortBy; }
-		public void setAscending(boolean isAscending) { this.isAscending = isAscending; }
-		public GoodsReceiptSort getSortBy() { return this.sortBy; }
-		public void toggleAscending() { this.isAscending = !this.isAscending; }
-	}
+		public void loadData() {
+			receipts = grService.getFilteredReceiptsList(supplierId, from, to, sortBy.column(), isAscending);
+			fireTableDataChanged();
+		}
 
-	// Use to sort column
+		public GoodsReceipt getReceiptAt(int row) { return receipts.get(row); }
+
+		public void setNone() { from = null; to = null; }
+		public void setToday() { from = LocalDate.now().atStartOfDay(); to = from.plusDays(1); }
+		public void setThisWeek() { from = LocalDate.now().with(DayOfWeek.MONDAY).atStartOfDay(); to = from.plusWeeks(1); }
+		public void setThisMonth() { from = LocalDate.now().withDayOfMonth(1).atStartOfDay(); to = from.plusMonths(1); }
+		public void setThisYear() { from = LocalDate.now().withDayOfYear(1).atStartOfDay(); to = from.plusYears(1); }
+		public void toggleAscending() { isAscending = !isAscending; }
+	}
+// ================================
+
+// Use for column sorting
 	public enum GoodsReceiptSort {
 		SUPPLIER("gr.supplier_id"),
 		USER("gr.created_by"),
@@ -293,9 +253,11 @@ public class GoodsReceiptPanel extends JPanel {
 		TOTAL_AMOUNT("gr.total_amount");
 		private final String column;
 		GoodsReceiptSort(String column) { this.column = column; }
-		public String column() { return column; } }
+		public String column() { return column; }
+	}
+// ======================
 
-	// Helper for ComboBox
+// Date filter helper
 	private enum DateFilterItem {
 		NONE("Mọi thời gian"),
 		TODAY("Hôm nay"),
@@ -308,22 +270,59 @@ public class GoodsReceiptPanel extends JPanel {
 		@Override public String toString() { return value; }
 	}
 
+	private JComboBox<DateFilterItem> getDateFilterCbo() {
+		JComboBox<DateFilterItem> cbo;
+		DefaultComboBoxModel<DateFilterItem> dateFilterCboModel = new DefaultComboBoxModel<>();
+		for (DateFilterItem i : DateFilterItem.values()) { dateFilterCboModel.addElement(i); }
+		cbo = new JComboBox<>(dateFilterCboModel);
+		cbo.setSize(50, 10);
+		cbo.setPreferredSize(new Dimension(120, 34));
+		cbo.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		cbo.addActionListener(e -> {
+			DateFilterItem selectedDateFilter = (DateFilterItem) dateFilterCbo.getSelectedItem();
+			dateFilterTxt.setVisible(selectedDateFilter == DateFilterItem.CUSTOM);
+			switch (selectedDateFilter) {
+				case NONE -> grTableModel.setNone();
+				case TODAY -> grTableModel.setToday();
+				case THIS_WEEK -> grTableModel.setThisWeek();
+				case THIS_MONTH -> grTableModel.setThisMonth();
+				case THIS_YEAR -> grTableModel.setThisYear();
+				case CUSTOM -> {
+					grTableModel.to = dateFitlerDc.getSelectedDateBetween().getToLocalDateTime();
+					grTableModel.from = dateFitlerDc.getSelectedDateBetween().getFromLocalDateTime();
+				}
+			}
+			grTableModel.loadData();
+			revalidate();
+		});
+		return cbo;
+	}
+// =========================
+
+// Supplier filter helper
 	private class SupplierFilterItem {
 		public Integer id;
 		public String name;
 		public SupplierFilterItem(Integer id, String name) { this.id = id; this.name = name; }
 		@Override public String toString() { return id != null ? name + " (" + id + ")" : name; }
 	}
-
-	private void loadSuppliersFilter() {
+	private JComboBox<SupplierFilterItem> getSupplierFilterCbo() {
+		JComboBox<SupplierFilterItem> cbo;
 		List<Supplier> suppliers = supplierService.getAll();
 		DefaultComboBoxModel<SupplierFilterItem> cboSupplierModel = new DefaultComboBoxModel<>();
 		cboSupplierModel.addElement(new SupplierFilterItem(null, "Tất cả nhà cung cấp"));
 		for (Supplier s : suppliers) {
 			cboSupplierModel.addElement(new SupplierFilterItem(s.getSupplierId(), s.getSupplierName()));
 		}
-		cboSupplierFilter = new JComboBox<>(cboSupplierModel);
-		cboSupplierFilter.setPreferredSize(new Dimension(240, 34));
-		cboSupplierFilter.addActionListener(e -> onSupplierFilterChange());
+		cbo = new JComboBox<>(cboSupplierModel);
+		cbo.setPreferredSize(new Dimension(240, 34));
+		cbo.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		cbo.addActionListener(e -> {
+			SupplierFilterItem selectedSupplierFilter = (SupplierFilterItem) supplierFilterCbo.getSelectedItem();
+			grTableModel.supplierId = selectedSupplierFilter.id;
+			grTableModel.loadData();
+		});
+		return cbo;
 	}
+// =======================
 }
