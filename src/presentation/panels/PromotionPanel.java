@@ -68,7 +68,7 @@ public class PromotionPanel extends JPanel {
 
         btnView.addActionListener(e -> {
             if (selectedPromotion == null){
-                JOptionPane.showConfirmDialog(this, "Chưa chọn chương trình khuyến mãi");
+                JOptionPane.showMessageDialog(this, "Chưa chọn chương trình khuyến mãi");
                 return;
             }
             PromotionDialog dialog = new PromotionDialog(SwingUtilities.getWindowAncestor(this), selectedPromotion);
