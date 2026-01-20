@@ -15,7 +15,7 @@ public class InventoryLot {
 	private int grdId;
 	private String lotCode;
 	private LocalDate receivedDate;
-	private LocalDate expiryDate;
+	private LocalDate expiry;
 	private int qtyIn;
 	private int qtyOut;
 	private int qtyRemaining;
@@ -25,14 +25,14 @@ public class InventoryLot {
 
 	public InventoryLot() {}
 
-	public InventoryLot(int lotId, int productId, int grdId, String lotCode, LocalDate receivedDate, LocalDate expiryDate,
+	public InventoryLot(int lotId, int productId, int grdId, String lotCode, LocalDate receivedDate, LocalDate expiry,
 			int qtyIn, int qtyOut, int qtyRemaining, LocalDateTime outOfStockAt, Status status, LocalDateTime createdAt) {
 		this.lotId = lotId;
 		this.productId = productId;
 		this.grdId = grdId;
 		this.lotCode = lotCode;
 		this.receivedDate = receivedDate;
-		this.expiryDate = expiryDate;
+		this.expiry = expiry;
 		this.qtyIn = qtyIn;
 		this.qtyOut = qtyOut;
 		this.qtyRemaining = qtyRemaining;
@@ -55,8 +55,8 @@ public class InventoryLot {
 	public LocalDate getReceivedDate() { return receivedDate; }
 	public void setReceivedDate(LocalDate receivedDate) { this.receivedDate = receivedDate; }
 
-	public LocalDate getExpiryDate() { return expiryDate; }
-	public void setExpiryDate(LocalDate expiryDate) { this.expiryDate = expiryDate; }
+	public LocalDate getExpiry() { return expiry; }
+	public void setExpiry(LocalDate expiry) { this.expiry = expiry; }
 
 	public int getQtyIn() { return qtyIn; }
 	public void setQtyIn(int qtyIn) { this.qtyIn = qtyIn; }

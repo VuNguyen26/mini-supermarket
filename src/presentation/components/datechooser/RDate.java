@@ -2,94 +2,99 @@ package presentation.components.datechooser;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
 
-class RDate {
+public class RDate {
 
-    public int getDay() {
-        return day;
-    }
+	public LocalDate toLocalDate() {
+		return LocalDate.of(year, month, day);
+	}
 
-    public void setDay(int day) {
-        this.day = day;
-    }
+	public int getDay() {
+		return day;
+	}
 
-    public int getMonth() {
-        return month;
-    }
+	public void setDay(int day) {
+		this.day = day;
+	}
 
-    public void setMonth(int month) {
-        this.month = month;
-    }
+	public int getMonth() {
+		return month;
+	}
 
-    public int getYear() {
-        return year;
-    }
+	public void setMonth(int month) {
+		this.month = month;
+	}
 
-    public void setYear(int year) {
-        this.year = year;
-    }
+	public int getYear() {
+		return year;
+	}
 
-    public RDate(int day, int month, int year) {
-        this.day = day;
-        this.month = month;
-        this.year = year;
-    }
+	public void setYear(int year) {
+		this.year = year;
+	}
 
-    public RDate(Date date) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        init(calendar);
-    }
+	public RDate(int day, int month, int year) {
+		this.day = day;
+		this.month = month;
+		this.year = year;
+	}
 
-    public RDate(Calendar calendar) {
-        init(calendar);
-    }
+	public RDate(Date date) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(date);
+		init(calendar);
+	}
 
-    public RDate() {
-        init(Calendar.getInstance());
-    }
+	public RDate(Calendar calendar) {
+		init(calendar);
+	}
 
-    public void init(Calendar calendar) {
-        day = calendar.get(Calendar.DATE);
-        month = calendar.get(Calendar.MONTH) + 1;
-        year = calendar.get(Calendar.YEAR);
-    }
+	public RDate() {
+		init(Calendar.getInstance());
+	}
 
-    private int day;
-    private int month;
-    private int year;
+	public void init(Calendar calendar) {
+		day = calendar.get(Calendar.DATE);
+		month = calendar.get(Calendar.MONTH) + 1;
+		year = calendar.get(Calendar.YEAR);
+	}
 
-    public int compareTo(RDate date) {
-        return toDate().compareTo(date.toDate());
-    }
+	private int day;
+	private int month;
+	private int year;
 
-    @Override
-    public String toString() {
-        return year + "" + month + "" + day;
-    }
+	public int compareTo(RDate date) {
+		return toDate().compareTo(date.toDate());
+	}
 
-    public boolean equals(RDate date) {
-        return year == date.getYear() && month == date.getMonth() && day == date.getDay();
-    }
+	@Override
+	public String toString() {
+		return year + "" + month + "" + day;
+	}
 
-    public boolean isBetweenOf(RDate from, RDate to) {
-        Date date = toDate();
-        return date.after(from.toDate()) && date.before(to.toDate());
-    }
+	public boolean equals(RDate date) {
+		return year == date.getYear() && month == date.getMonth() && day == date.getDay();
+	}
 
-    public Date toDate() {
-        SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
-        String st = day + "-" + month + "-" + year;
-        try {
-            return df.parse(st);
-        } catch (ParseException e) {
-            throw new RuntimeException("Date format error");
-        }
-    }
+	public boolean isBetweenOf(RDate from, RDate to) {
+		Date date = toDate();
+		return date.after(from.toDate()) && date.before(to.toDate());
+	}
 
-    public RDate copy() {
-        return new RDate(day, month, year);
-    }
+	public Date toDate() {
+		SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+		String st = day + "-" + month + "-" + year;
+		try {
+			return df.parse(st);
+		} catch (ParseException e) {
+			throw new RuntimeException("Date format error");
+		}
+	}
+
+	public RDate copy() {
+		return new RDate(day, month, year);
+	}
 }

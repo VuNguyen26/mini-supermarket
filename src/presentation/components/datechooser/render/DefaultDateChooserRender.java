@@ -11,7 +11,7 @@ public class DefaultDateChooserRender implements DateChooserRender {
 
     @Override
     public String renderLabelCurrentDate(DateChooser dateChooser, Date date) {
-        return "Hôm nay: " + dateChooser.getDateFormat().format(date);
+        return "Hủy";// + dateChooser.getDateFormat().format(date);
     }
 
     @Override

@@ -2,73 +2,48 @@ package dal.dao;
 
 import dal.DBConnection;
 import dto.GoodsReceipt;
-import dto.Supplier;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 
 public class GoodsReceiptDAO {
 
-	// Temporary functions for testing
 	private String querySingleString(String sql, Integer id) {
-    if (id == null) return null;
-    try (
-        Connection con = DBConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement(sql)
-    ) {
-        ps.setInt(1, id);
-        try (ResultSet rs = ps.executeQuery()) {
-            return rs.next() ? rs.getString(1) : null;
-        }
-    } catch (SQLException e) {
-        throw new RuntimeException(e);
-    }
-	}
-	public String getUserName(Integer id) {
-		return querySingleString("SELECT full_name FROM user WHERE user_id = ?", id);
-	}
-	public String getSupplierName(Integer id) {
-		return querySingleString("SELECT supplier_name FROM supplier WHERE supplier_id = ?", id);
-	}
-	public List<Supplier> getAllSupplier() {
-		String sql = "SELECT * FROM supplier";
-		List<Supplier> list = new LinkedList<>();
-
+		if (id == null) return null;
 		try (
-			Connection con = DBConnection.getConnection();
-			PreparedStatement ps = con.prepareStatement(sql)
-		){
+		Connection con = DBConnection.getConnection();
+		PreparedStatement ps = con.prepareStatement(sql)
+	) {
+			ps.setInt(1, id);
 			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					Supplier sup = new Supplier();
-					sup.setSupplierId(rs.getInt("supplier_id"));
-					sup.setSupplierName(rs.getString("supplier_name"));
-					list.add(sup);
-				}
+				return rs.next() ? rs.getString(1) : null;
 			}
-		} catch (Exception e) {
-				e.printStackTrace();
-        throw new RuntimeException(e.getMessage());
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
 		}
-		return list;
+	}
+
+	public String getUserFullName(Integer id) {
+		return querySingleString("SELECT full_name FROM user WHERE user_id = ?", id);
 	}
 
 	/**
-	* Retrieves goods receipts with optional filters and sort order.
-	*
-	* @param supplierId		: Include receipts from this supplier (nullable)
-	* @param after				: Include receipts created after this time (nullable)
-	* @param before				: Include receipts created before this time (nullable)
-	* @param sortBy				: The order for sorting
-	* @param isAscending	: Set this to true for ascending sorting order
-	* @return A list of goods receipts that match the requirements
-	*/
-	public List<GoodsReceipt> getList(
+ * Retrieves goods receipts with optional filters and sorting.
+ *
+ * @param supplierId   the supplier ID to filter by, or {@code null} for all suppliers
+ * @param after        include receipts created at or after this time, or {@code null}
+ * @param before       include receipts created before this time, or {@code null}
+ * @param sortBy       the database column used for sorting
+ * @param isAscending  {@code true} for ascending order, {@code false} for descending
+ * @return a list of goods receipts matching the given criteria
+ */
+	public List<GoodsReceipt> findAll(
 		Integer supplierId,
 		LocalDateTime after,
 		LocalDateTime before,
@@ -102,9 +77,9 @@ public class GoodsReceiptDAO {
 
 
 		try (
-			Connection con = DBConnection.getConnection();
-			PreparedStatement ps = con.prepareStatement(sql.toString())
-		){
+		Connection con = DBConnection.getConnection();
+		PreparedStatement ps = con.prepareStatement(sql.toString())
+	){
 			int paramIndex = 1;
 			if (supplierId != null) { ps.setInt(paramIndex++, supplierId); }
 			if (after != null) { ps.setObject(paramIndex++, after); }
@@ -124,11 +99,34 @@ public class GoodsReceiptDAO {
 				}
 			}
 		} catch (Exception e) {
-				e.printStackTrace();
-        throw new RuntimeException(e.getMessage());
+			e.printStackTrace();
+			throw new RuntimeException("Failed to retrieve goods receipts list", e);
 		}
 
 		return list;
 	}
-}
 
+	/**
+ * Inserts a new goods_receipt into the database and retrieves the generated ID.
+ *
+ * @param con the Connection to use
+ * @param gr the GoodsReceipt to be saved
+ * @return the generated gr_id if successful, or -1 if the insertion failed
+ * @throws SQLException if a database access error occurs
+ */
+	public int insert(Connection con, GoodsReceipt gr) throws SQLException {
+		String sql = "INSERT INTO goods_receipt (supplier_id, created_by, created_at, note, total_amount) VALUES (?, ?, ?, ?, ?)";
+
+		try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			ps.setInt(1, gr.getSupplierId());
+			ps.setInt(2, gr.getCreatedBy());
+			ps.setObject(3, gr.getCreatedAt());
+			ps.setString(4, gr.getNote());
+			ps.setBigDecimal(5, gr.getTotalAmount());
+			ps.executeUpdate();
+
+			ResultSet rs = ps.getGeneratedKeys();
+			return rs.next() ? rs.getInt(1) : -1;
+		}
+	}
+}

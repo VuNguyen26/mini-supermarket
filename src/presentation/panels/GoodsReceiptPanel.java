@@ -1,12 +1,8 @@
 package presentation.panels;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,16 +13,24 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 
 import bus.GoodsReceiptService;
+import bus.SupplierService;
+import bus.AuthService.AuthUser;
 import dto.GoodsReceipt;
 import dto.Supplier;
 import presentation.components.datechooser.DateBetween;
 import presentation.components.datechooser.DateChooser;
 import presentation.components.datechooser.listener.DateChooserAction;
 import presentation.components.datechooser.listener.DateChooserAdapter;
+import presentation.dialogs.ReceiptDialog;
+import util.DateUtils;
+import util.MoneyUtils;
 
 public class GoodsReceiptPanel extends JPanel {
 
 	private static final GoodsReceiptService service = new GoodsReceiptService();
+	private final SupplierService supplierService = new SupplierService();
+
+	private AuthUser currentUser;
 
 	private JTable table;
 	private GoodsReceiptTableModel model;
@@ -39,7 +43,8 @@ public class GoodsReceiptPanel extends JPanel {
 	private JComboBox<SupplierFilterItem> cboSupplierFilter;
 	private SupplierFilterItem selectedSupplierFilter;
 
-	public GoodsReceiptPanel() {
+	public GoodsReceiptPanel(AuthUser currentUser) {
+		this.currentUser = currentUser;
 		setOpaque(false);
 		setLayout(new BorderLayout(12, 12));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -47,15 +52,8 @@ public class GoodsReceiptPanel extends JPanel {
 		add(buildTable(), BorderLayout.CENTER);
 	}
 
-	// =======================
-	// Main components builder
-	// =======================
 	private JComponent buildTop() {
-		// ----------------------------------------------------------------------------------------
 		// West side of top panel: Filter label, Date and supplier filter combo box, sorting button
-		// ----------------------------------------------------------------------------------------
-		JPanel west = new JPanel();
-
 		DefaultComboBoxModel<DateFilterItem> cboDateFilterModel = new DefaultComboBoxModel<>();
 		for (DateFilterItem i : DateFilterItem.values()) { cboDateFilterModel.addElement(i); }
 		cboDateFilter = new JComboBox<>(cboDateFilterModel);
@@ -63,45 +61,46 @@ public class GoodsReceiptPanel extends JPanel {
 		cboDateFilter.setSize(50, 10);
 		cboDateFilter.addActionListener(e -> onDateFilterChange());
 
-		DefaultComboBoxModel<SupplierFilterItem> cboSupplierModel = new DefaultComboBoxModel<>();
-		cboSupplierModel.addElement(new SupplierFilterItem(null, "Tất cả nhà cung cấp"));
-		List<Supplier> suppliers = service.getAllSuppilers();
-		for (Supplier s : suppliers) {
-			cboSupplierModel.addElement(new SupplierFilterItem(s.getSupplierId(), s.getSupplierName()));
-		}
-		cboSupplierFilter = new JComboBox<>(cboSupplierModel);
-		cboSupplierFilter.setPreferredSize(new Dimension(240, 34));
-		cboSupplierFilter.addActionListener(e -> onSupplierFilterChange());
+		loadSuppliersFilter();
 
+		JPanel west = new JPanel();
 		west.setOpaque(false);
 		west.add(new JLabel("Lọc theo:"));
 		west.add(cboDateFilter);
 		west.add(cboSupplierFilter);
 
-		// -------------------------------------------------
-		// East side of top panel: Create new receipt button
-		// -------------------------------------------------
-		JPanel east = new JPanel();
-		JButton addBtn = new JButton("Tạo phiếu mới");
-		addBtn.setPreferredSize(new Dimension(120, 34));
+		// East side of top panel: Refresh and Create new receipt button
+		JButton refreshBtn = new JButton("Làm mới");
+    refreshBtn.setBackground(new Color(33, 150, 243));
+		refreshBtn.setForeground(Color.WHITE);
+		refreshBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+		refreshBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		refreshBtn.setPreferredSize(new Dimension(140, 40));
+		refreshBtn.addActionListener(e -> {model.loadData();});
 
+		JButton addBtn = new JButton("Tạo phiếu mới");
+    addBtn.setBackground(new Color(76, 175, 80));
+		addBtn.setForeground(Color.WHITE);
+		addBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+		addBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		addBtn.setPreferredSize(new Dimension(140, 40));
+		addBtn.addActionListener(e -> openReceiptDialog());
+
+		JPanel east = new JPanel();
 		east.setOpaque(false);
+		east.add(refreshBtn);
 		east.add(addBtn);
 
-		// -------------------------------------------------============
 		// South side of top panel: Custom date filter (hide on default)
-		// -------------------------------------------------============
-		JPanel south = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		customTimeTF = new JTextField(16);
 		customTimeTF.setVisible(false);
 		customTimeTF.setOpaque(false);
 
+		JPanel south = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
 		south.setOpaque(false);
 		south.add(customTimeTF);
 
-		// ---------
 		// Top panel
-		// ---------
 		JPanel top = new JPanel(new BorderLayout(10, 10));
 		initDateChooser();
 
@@ -115,27 +114,27 @@ public class GoodsReceiptPanel extends JPanel {
 	private JComponent buildTable() {
 		model = new GoodsReceiptTableModel();
 		table = new JTable(model);
-		table.setRowHeight(28);
+
+		table.getColumnModel().getColumn(0).setMaxWidth(50);
+
+		table.setRowHeight(40);
+		table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		table.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				handleViewDetail(e);
+			}
+		});
+
+		table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+		table.getTableHeader().setBackground(new Color(33, 150, 243));
+		table.getTableHeader().setForeground(Color.WHITE);
+		table.getTableHeader().setPreferredSize(new Dimension(0, 45));
 		table.getTableHeader().addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				int col = table.columnAtPoint(e.getPoint());
-				GoodsReceiptSort newSort = switch (col) {
-					case 0 -> GoodsReceiptSort.SUPPLIER;
-					case 1 -> GoodsReceiptSort.USER;
-					case 2 -> GoodsReceiptSort.CREATED_AT;
-					case 3 -> GoodsReceiptSort.TOTAL_AMOUNT;
-					default -> null;
-				};
-
-				if (newSort == null) return;
-				if (newSort == model.getSortBy()) {
-					model.toggleAscending();
-				} else {
-					model.setSortBy(newSort);
-					model.setAscending(true);
-				}
-				model.loadData();
+				handleSortColumn(e);
 			}
 		});
 		JScrollPane scrollPane = new JScrollPane(table);
@@ -143,14 +142,48 @@ public class GoodsReceiptPanel extends JPanel {
 		return scrollPane;
 	}
 
-	// =======================
+	private void openViewDetailDialog(GoodsReceipt receipt) {
+		Window owner = SwingUtilities.getWindowAncestor(this);
+		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, receipt);
+		dialog.setVisible(true);
+	}
+	private void handleViewDetail(MouseEvent e) {
+		// On double click
+		if (e.getClickCount() == 2) {
+			int row = table.getSelectedRow();
+			if (row != -1) {
+				GoodsReceipt selected = model.getReceiptAt(row);
+				openViewDetailDialog(selected);
+			}
+		}
+	}
+
+
+	private void handleSortColumn(MouseEvent e) {
+		int col = table.columnAtPoint(e.getPoint());
+		GoodsReceiptSort newSort = switch (col) {
+			case 1 -> GoodsReceiptSort.SUPPLIER;
+			case 2 -> GoodsReceiptSort.USER;
+			case 3 -> GoodsReceiptSort.CREATED_AT;
+			case 4 -> GoodsReceiptSort.TOTAL_AMOUNT;
+			default -> null;
+		};
+
+		if (newSort == null) return;
+		if (newSort == model.getSortBy()) {
+			model.toggleAscending();
+		} else {
+			model.setSortBy(newSort);
+			model.setAscending(true);
+		}
+		model.loadData();
+	}
+
 	// Setting up date chooser
-	// =======================
 	private void initDateChooser() {
 		dateChooser = new DateChooser();
 		dateChooser.setTextField(customTimeTF);
 		dateChooser.setDateSelectionMode(DateChooser.DateSelectionMode.BETWEEN_DATE_SELECTED);
-		dateChooser.setDateFormat(new SimpleDateFormat("d/M/yyyy"));
 		dateChooser.last28Days();
 		dateChooser.addActionDateChooserListener(new DateChooserAdapter() {
 			@Override
@@ -162,9 +195,14 @@ public class GoodsReceiptPanel extends JPanel {
 		});
 	}
 
-	// ============================
-	// JComboBox callback functions
-	// ============================
+	// Button callback functions
+	private void openReceiptDialog() {
+		Window owner = SwingUtilities.getWindowAncestor(this);
+		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, null);
+		dialog.setVisible(true);
+	}
+
+	// ComboBox callback functions
 	private void onDateFilterChange() {
 		selectedDateFilter = (DateFilterItem) cboDateFilter.getSelectedItem();
 		customTimeTF.setVisible(selectedDateFilter == DateFilterItem.CUSTOM);
@@ -189,11 +227,8 @@ public class GoodsReceiptPanel extends JPanel {
 		model.loadData();
 	}
 
-	// ============
-	// JTable Model
-	// ============
-	private static class GoodsReceiptTableModel extends AbstractTableModel {
-		private final String[] cols = { "Nhà cung cấp", "Tên nhân viên", "Thời gian nhập", "Tổng tiền", "Ghi chú" };
+	private class GoodsReceiptTableModel extends AbstractTableModel {
+		private final String[] cols = { "STT", "Nhà cung cấp", "Tên nhân viên", "Thời gian nhập", "Tổng tiền", "Ghi chú" };
 		private List<GoodsReceipt> receipts;
 		private Integer supplierId;
 		private LocalDateTime from;
@@ -207,12 +242,16 @@ public class GoodsReceiptPanel extends JPanel {
 			to = null;
 			sortBy = GoodsReceiptSort.CREATED_AT;
 			isAscending = true;
-			receipts = service.getList(supplierId, from, to, sortBy.column(), isAscending);
+			receipts = service.getReceiptsList(supplierId, from, to, sortBy.column(), isAscending);
 		}
 
 		public void loadData() {
-			this.receipts = service.getList(supplierId, from, to, sortBy.column(), isAscending);
+			this.receipts = service.getReceiptsList(supplierId, from, to, sortBy.column(), isAscending);
 			fireTableDataChanged();
+		}
+
+		public GoodsReceipt getReceiptAt(int row) {
+			return receipts.get(row);
 		}
 
 		@Override public int getColumnCount() { return cols.length; }
@@ -222,11 +261,12 @@ public class GoodsReceiptPanel extends JPanel {
 		public Object getValueAt(int row, int col) {
 			GoodsReceipt r = receipts.get(row);
 			return switch (col) {
-				case 0 -> service.getSupplierName(r.getSupplierId());
-				case 1 -> service.getUserName(r.getCreatedBy());
-				case 2 -> r.getCreatedAt();
-				case 3 -> r.getTotalAmount();
-				case 4 -> r.getNote();
+        case 0 -> row + 1;
+				case 1 -> supplierService.getById(r.getSupplierId());
+				case 2 -> service.getUserNameById(r.getCreatedBy());
+				case 3 -> DateUtils.formatDateTime(r.getCreatedAt());
+				case 4 -> MoneyUtils.format(r.getTotalAmount());
+				case 5 -> r.getNote();
 				default -> null;
 			};
 		}
@@ -245,9 +285,7 @@ public class GoodsReceiptPanel extends JPanel {
 		public void toggleAscending() { this.isAscending = !this.isAscending; }
 	}
 
-	// =======================
-	// Helper for JTable Model
-	// =======================
+	// Use to sort column
 	public enum GoodsReceiptSort {
 		SUPPLIER("gr.supplier_id"),
 		USER("gr.created_by"),
@@ -257,9 +295,7 @@ public class GoodsReceiptPanel extends JPanel {
 		GoodsReceiptSort(String column) { this.column = column; }
 		public String column() { return column; } }
 
-	// ====================
-	// Helper for JComboBox
-	// ====================
+	// Helper for ComboBox
 	private enum DateFilterItem {
 		NONE("Mọi thời gian"),
 		TODAY("Hôm nay"),
@@ -277,5 +313,17 @@ public class GoodsReceiptPanel extends JPanel {
 		public String name;
 		public SupplierFilterItem(Integer id, String name) { this.id = id; this.name = name; }
 		@Override public String toString() { return id != null ? name + " (" + id + ")" : name; }
+	}
+
+	private void loadSuppliersFilter() {
+		List<Supplier> suppliers = supplierService.getAll();
+		DefaultComboBoxModel<SupplierFilterItem> cboSupplierModel = new DefaultComboBoxModel<>();
+		cboSupplierModel.addElement(new SupplierFilterItem(null, "Tất cả nhà cung cấp"));
+		for (Supplier s : suppliers) {
+			cboSupplierModel.addElement(new SupplierFilterItem(s.getSupplierId(), s.getSupplierName()));
+		}
+		cboSupplierFilter = new JComboBox<>(cboSupplierModel);
+		cboSupplierFilter.setPreferredSize(new Dimension(240, 34));
+		cboSupplierFilter.addActionListener(e -> onSupplierFilterChange());
 	}
 }

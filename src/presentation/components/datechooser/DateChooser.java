@@ -28,6 +28,8 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -309,8 +311,22 @@ public class DateChooser extends JPanel {
 		return selectedDate.toDate();
 	}
 
+	public RDate getSelectedRDate() throws DateChooserException {
+		return selectedDate;
+	}
+
 	public void setSelectedDate(Date date) {
 		setSelectedDate(new RDate(date));
+	}
+
+	public void setSelectedDate(LocalDate date) {
+		setSelectedDate(Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+	}
+
+	public void setSelectedDate() {
+		this.selectedDate = null;
+		this.textField.setText(null);
+		return;
 	}
 
 	private void setSelectedDate(RDate date) throws DateChooserException {
@@ -502,32 +518,38 @@ public class DateChooser extends JPanel {
 
 	private void createLabelCurrentDate() {
 		labelCurrentDate = new JButton(dateChooserRender.renderLabelCurrentDate(this, new Date()));
-		labelCurrentDate.setForeground(themeColor);
+		labelCurrentDate.setForeground(Color.RED);
 		labelCurrentDate.setContentAreaFilled(false);
 		labelCurrentDate.setBorder(null);
 		labelCurrentDate.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		labelCurrentDate.addActionListener(e -> {
-			if (dateSelectionMode == DateSelectionMode.SINGLE_DATE_SELECTED) {
-				toDay();
-			} else {
-				if (selectedCount == 1) {
-					RDate now = new RDate();
-					int month = monthToIndex(spMonth.getValue().toString()) + 1;
-					int year = Integer.parseInt(spYear.getValue().toString());
-					if (now.getMonth() == month && now.getYear() == year) {
-						selectedDateBetween[1] = now;
-						selectedCount = 2;
-						repaint();
-						displayDate();
-						runEventDateBetweenChanged(new DateChooserAction(DateChooserAction.USER_SELECT));
-						closePopup();
-					} else {
-						displayDate(new RDate());
-					}
-				} else {
-					toDay();
-				}
+			if (dateSelectionMode != DateSelectionMode.BETWEEN_DATE_SELECTED) {
+				textField.setText(null);
+				selectedDate = null;
 			}
+			closePopup();
+			return;
+			// if (dateSelectionMode == DateSelectionMode.SINGLE_DATE_SELECTED) {
+			// 	toDay();
+			// } else {
+			// 	if (selectedCount == 1) {
+			// 		RDate now = new RDate();
+			// 		int month = monthToIndex(spMonth.getValue().toString()) + 1;
+			// 		int year = Integer.parseInt(spYear.getValue().toString());
+			// 		if (now.getMonth() == month && now.getYear() == year) {
+			// 			selectedDateBetween[1] = now;
+			// 			selectedCount = 2;
+			// 			repaint();
+			// 			displayDate();
+			// 			runEventDateBetweenChanged(new DateChooserAction(DateChooserAction.USER_SELECT));
+			// 			closePopup();
+			// 		} else {
+			// 			displayDate(new RDate());
+			// 		}
+			// 	} else {
+			// 		toDay();
+			// 	}
+			// }
 
 		});
 		add(labelCurrentDate);

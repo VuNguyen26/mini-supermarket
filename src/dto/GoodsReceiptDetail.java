@@ -13,13 +13,13 @@ public class GoodsReceiptDetail {
 	private BigDecimal lineTotal;
 	private String lotCode;
 	private LocalDate mfgDate;
-	private LocalDate expiryDate;
+	private LocalDate expiry;
 	private LocalDateTime receivedAt;
 
 	public GoodsReceiptDetail() {}
 
 	public GoodsReceiptDetail(int grdId, int grId, int productId, int qty, BigDecimal unitPrice, BigDecimal lineTotal,
-			String lotCode, LocalDate mfgDate, LocalDate expiryDate, LocalDateTime receivedAt) {
+			String lotCode, LocalDate mfgDate, LocalDate expiry, LocalDateTime receivedAt) {
 		this.grdId = grdId;
 		this.grId = grId;
 		this.productId = productId;
@@ -28,7 +28,7 @@ public class GoodsReceiptDetail {
 		this.lineTotal = lineTotal;
 		this.lotCode = lotCode;
 		this.mfgDate = mfgDate;
-		this.expiryDate = expiryDate;
+		this.expiry = expiry;
 		this.receivedAt = receivedAt;
 	}
 	public int getGrdId() { return grdId; }
@@ -55,8 +55,8 @@ public class GoodsReceiptDetail {
 	public LocalDate getMfgDate() { return mfgDate; }
 	public void setMfgDate(LocalDate mfgDate) { this.mfgDate = mfgDate; }
 
-	public LocalDate getExpiryDate() { return expiryDate; }
-	public void setExpiryDate(LocalDate expiryDate) { this.expiryDate = expiryDate; }
+	public LocalDate getExpiry() { return expiry; }
+	public void setExpiry(LocalDate expiry) { this.expiry = expiry; }
 
 	public LocalDateTime getReceivedAt() { return receivedAt; }
 	public void setReceivedAt(LocalDateTime receivedAt) { this.receivedAt = receivedAt; }
