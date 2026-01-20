@@ -1,7 +1,9 @@
 package bus;
 
 import dal.dao.StockAdjustmentDAO;
+import dal.dao.StockAdjustmentDetailDAO;
 import dto.StockAdjustment;
+import dto.StockAdjustmentDetail;
 import dto.StockAdjustmentReason;
 import dto.StockAdjustmentStatus;
 
@@ -10,6 +12,7 @@ import java.util.List;
 public class StockAdjustmentService {
 
     private final StockAdjustmentDAO stockAdjustmentDAO = new StockAdjustmentDAO();
+    private final StockAdjustmentDetailDAO stockAdjustmentDetailDAO = new StockAdjustmentDetailDAO();
 
     /**
      * Load danh sách phiếu kiểm kho
@@ -123,5 +126,59 @@ public class StockAdjustmentService {
         stockAdjustmentDAO.updateDraftInfo(sa);
     }
 
+    public List<StockAdjustmentDetail> getByStockAdjustment(int saId) {
+
+        // ===== Validate =====
+        if (saId <= 0) {
+            throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
+        }
+
+        return stockAdjustmentDetailDAO.findByAdjustmentId(saId);
+    }
+    
+     public void addDetail(StockAdjustmentDetail d) {
+
+        if (d == null) {
+            throw new IllegalArgumentException("Dữ liệu không hợp lệ");
+        }
+        if (d.getSaId() <= 0) {
+            throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
+        }
+        if (d.getProductId() <= 0) {
+            throw new IllegalArgumentException("Sản phẩm không hợp lệ");
+        }
+
+        // tự tính diff
+        d.setDiffQty(d.getCountedQty() - d.getSystemQty());
+
+        stockAdjustmentDetailDAO.insert(d);
+    }
+
+    /**
+     * Cập nhật 1 dòng kiểm kho
+     */
+    public void updateDetail(StockAdjustmentDetail d) {
+
+        if (d == null || d.getSadId() <= 0) {
+            throw new IllegalArgumentException("Dòng kiểm kho không hợp lệ");
+        }
+
+        // tự tính diff
+        d.setDiffQty(d.getCountedQty() - d.getSystemQty());
+
+        stockAdjustmentDetailDAO.update(d);
+    }
+
+    /**
+     * Xóa 1 dòng kiểm kho
+     */
+    public void deleteDetail(int sadId) {
+
+        if (sadId <= 0) {
+            throw new IllegalArgumentException("Dòng kiểm kho không hợp lệ");
+        }
+
+        stockAdjustmentDetailDAO.delete(sadId);
+    }
 
 }

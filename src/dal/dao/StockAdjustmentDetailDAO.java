@@ -14,9 +14,9 @@ public class StockAdjustmentDetailDAO {
     // ====== load danh sách chi tiết theo phiếu ======
     public List<StockAdjustmentDetail> findByAdjustmentId(int saId) {
         String sql =
-                "SELECT sad_id, sa_id, product_id, lot_id, " +
+                "SELECT sad_id, sa_id, s.product_id, product_name, lot_id, " +
                 "system_qty, counted_qty, diff_qty, note " +
-                "FROM stock_adjustment_detail " +
+                "FROM stock_adjustment_detail s JOIN product p ON s.product_id = p.product_id " +
                 "WHERE sa_id = ?";
 
         List<StockAdjustmentDetail> list = new ArrayList<>();
@@ -101,6 +101,7 @@ public class StockAdjustmentDetailDAO {
         d.setSadId(rs.getInt("sad_id"));
         d.setSaId(rs.getInt("sa_id"));
         d.setProductId(rs.getInt("product_id"));
+        d.setProductName(rs.getString("product_name"));
         d.setLotId(rs.getObject("lot_id", Long.class));
         d.setSystemQty(rs.getInt("system_qty"));
         d.setCountedQty(rs.getInt("counted_qty"));
