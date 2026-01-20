@@ -1,4 +1,4 @@
-﻿package dal.dao;
+package dal.dao;
 
 import dal.DBConnection;
 import dto.Customer;
