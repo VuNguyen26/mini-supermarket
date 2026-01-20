@@ -71,11 +71,11 @@ public class ProductPanel extends JPanel {
         filterPanel.setBackground(Color.WHITE);
 
         cboCategory = new JComboBox<>();
-        cboCategory.setPreferredSize(new Dimension(90, 35));
+        cboCategory.setPreferredSize(new Dimension(150, 35));
         cboCategory.addActionListener(e -> filterProducts());
 
         cboStatus = new JComboBox<>(new String[]{"Tất cả", "ACTIVE", "INACTIVE"});
-        cboStatus.setPreferredSize(new Dimension(90, 35));
+        cboStatus.setPreferredSize(new Dimension(120, 35));
         cboStatus.addActionListener(e -> filterProducts());
 
         filterPanel.add(new JLabel("Danh mục:"));
