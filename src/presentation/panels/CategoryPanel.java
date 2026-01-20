@@ -128,10 +128,16 @@ public class CategoryPanel extends JPanel {
     }
 
     // Panel that wraps cards and tracks viewport width to avoid horizontal scrolling
+    // Panel hiển thị card: CỐ ĐỊNH 3 card / 1 hàng
     private static class CardsPanel extends JPanel implements Scrollable {
+
+        private static final int GAP = 20;
+        private static final int COLS = 3;
+
         public CardsPanel() {
-            super(new FlowLayout(FlowLayout.LEFT, 20, 20));
+            super(new GridLayout(0, COLS, GAP, GAP));
             setBackground(new Color(245, 246, 248));
+            setBorder(new EmptyBorder(GAP, GAP, GAP, GAP));
         }
 
         @Override
@@ -146,53 +152,43 @@ public class CategoryPanel extends JPanel {
 
         @Override
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return orientation == SwingConstants.VERTICAL ? visibleRect.height - 20 : visibleRect.width - 20;
+            return visibleRect.height - 20;
         }
 
         @Override
         public boolean getScrollableTracksViewportWidth() {
-            return true; // keep width equal to viewport to wrap cards and prevent horizontal scroll
+            return true;
         }
 
         @Override
         public boolean getScrollableTracksViewportHeight() {
-            return false; // Allow vertical scrolling
+            return false;
         }
-        
+
         @Override
         public Dimension getPreferredSize() {
-            // Force recalculation based on components
+            // tính chiều cao để scroll mượt (GridLayout cần)
+            int total = getComponentCount();
+            int rows = (int) Math.ceil(total / (double) COLS);
+
+            int cardHeight = 180;
+            int height = (rows * cardHeight) + ((rows + 1) * GAP);
+
             if (getParent() instanceof JViewport) {
-                JViewport viewport = (JViewport) getParent();
-                int width = viewport.getWidth();
-                
-                // Calculate how many cards fit per row
-                int cardWidth = 280;
-                int gap = 20;
-                int cardsPerRow = Math.max(1, (width - gap) / (cardWidth + gap));
-                
-                // Calculate total rows needed
-                int totalCards = getComponentCount();
-                int rows = (int) Math.ceil((double) totalCards / cardsPerRow);
-                
-                // Calculate height
-                int cardHeight = 180;
-                int height = (rows * (cardHeight + gap)) + gap;
-                
-                return new Dimension(width, Math.max(height, viewport.getHeight()));
+                int width = ((JViewport) getParent()).getWidth();
+                return new Dimension(width, height);
             }
             return super.getPreferredSize();
         }
     }
 
     private JPanel createCategoryCard(Category category) {
-        JPanel card = new JPanel();
+        JPanel card = new RoundedPanel(18, new Color(225, 228, 234), 1);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(225, 228, 234), 1, true),
-                new EmptyBorder(15, 15, 15, 15)
-        ));
+
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
+
         card.setPreferredSize(new Dimension(280, 180));
         card.setMaximumSize(new Dimension(280, 180));
 
@@ -281,6 +277,45 @@ public class CategoryPanel extends JPanel {
 
         return card;
     }
+
+    private static class RoundedPanel extends JPanel {
+        private final int arc;
+        private final Color borderColor;
+        private final int borderThickness;
+
+        public RoundedPanel(int arc, Color borderColor, int borderThickness) {
+            this.arc = arc;
+            this.borderColor = borderColor;
+            this.borderThickness = borderThickness;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // nền bo góc
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+
+            g2.dispose();
+            super.paintComponent(g);
+        }
+
+        @Override
+        protected void paintBorder(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            g2.setColor(borderColor);
+            g2.setStroke(new BasicStroke(borderThickness));
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+
+            g2.dispose();
+        }
+    }
+
 
     private void addCategory() {
         CategoryDialog dialog = new CategoryDialog((Frame) SwingUtilities.getWindowAncestor(this), null);

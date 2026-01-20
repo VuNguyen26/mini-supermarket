@@ -45,14 +45,19 @@ public class SupplierPanel extends JPanel {
         searchPanel.setBackground(Color.WHITE);
 
         txtSearch = new JTextField(20);
-        txtSearch.setPreferredSize(new Dimension(250, 35));
+        txtSearch.setPreferredSize(new Dimension(250, 40));
         txtSearch.putClientProperty("JTextField.placeholderText", "Tìm theo tên hoặc SĐT...");
         txtSearch.addActionListener(e -> searchSuppliers());
 
         JButton btnSearch = createStyledButton("Tìm kiếm", new Color(33, 150, 243), Color.WHITE);
+        btnSearch.setPreferredSize(new Dimension(120, 40));
+        btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnSearch.addActionListener(e -> searchSuppliers());
 
-        searchPanel.add(new JLabel("Tìm kiếm:"));
+        JLabel lblSearch = new JLabel("Tìm kiếm:");
+        lblSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        searchPanel.add(lblSearch);
         searchPanel.add(txtSearch);
         searchPanel.add(btnSearch);
 
@@ -66,6 +71,8 @@ public class SupplierPanel extends JPanel {
         btnCreate.addActionListener(e -> createSupplier());
 
         btnRefresh = createStyledButton("Làm mới", new Color(76, 175, 80), Color.WHITE);
+        btnRefresh.setPreferredSize(new Dimension(120, 40));
+        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnRefresh.addActionListener(e -> loadData());
 
         buttonPanel.add(btnRefresh);
@@ -77,6 +84,7 @@ public class SupplierPanel extends JPanel {
         add(topPanel, BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
     }
+
 
     private JScrollPane buildTable() {
         tableModel = new SupplierTableModel();
