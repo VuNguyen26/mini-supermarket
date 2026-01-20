@@ -593,7 +593,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(makePlaceholder("DANH MỤC (CategoryPanel)")), "Danh mục");
 
         
-        contentPanel.add(wrapCard(makePlaceholder("KHUYẾN MÃI (PromotionPanel)")), "Khuyến mãi");
+        contentPanel.add(wrapCard(new presentation.panels.PromotionPanel(currentUser)), "Khuyến mãi");
         contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
         contentPanel.add(wrapCard(makePlaceholder("BÁO CÁO (ReportPanel)")), "Báo cáo");
 

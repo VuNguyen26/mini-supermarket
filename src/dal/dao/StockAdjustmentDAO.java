@@ -1,7 +1,6 @@
 package dal.dao;
 
 import dal.DBConnection;
-import dto.ProductOption;
 import dto.StockAdjustment;
 import dto.StockAdjustmentReason;
 import dto.StockAdjustmentStatus;
