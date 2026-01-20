@@ -10,11 +10,14 @@ import util.MoneyUtils;
 import util.RolePermission;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * ProductPanel - Quản lý sản phẩm (UI giống ảnh mẫu)
@@ -50,38 +53,38 @@ public class ProductPanel extends JPanel {
         JPanel topPanel = new JPanel(new BorderLayout(10, 10));
         topPanel.setBackground(Color.WHITE);
 
-        // Search Panel
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        searchPanel.setBackground(Color.WHITE);
+        // Combined controls row (search + filters on one line)
+        JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        controlsPanel.setBackground(Color.WHITE);
 
         txtSearch = new JTextField(20);
         txtSearch.setPreferredSize(new Dimension(250, 35));
         txtSearch.putClientProperty("JTextField.placeholderText", "Tìm theo mã sản phẩm...");
         txtSearch.addActionListener(e -> searchProducts());
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            private void onChange() { searchProducts(); }
+            @Override public void insertUpdate(DocumentEvent e) { onChange(); }
+            @Override public void removeUpdate(DocumentEvent e) { onChange(); }
+            @Override public void changedUpdate(DocumentEvent e) { onChange(); }
+        });
 
-        JButton btnSearch = createStyledButton("Tìm kiếm", new Color(33, 150, 243), Color.WHITE);
-        btnSearch.addActionListener(e -> searchProducts());
-
-        searchPanel.add(new JLabel("Tìm kiếm:"));
-        searchPanel.add(txtSearch);
-        searchPanel.add(btnSearch);
-
-        // Filter Panel
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        filterPanel.setBackground(Color.WHITE);
-
+        JLabel lblCategory = new JLabel("Danh mục:");
+        lblCategory.setPreferredSize(new Dimension(70, 35));
         cboCategory = new JComboBox<>();
         cboCategory.setPreferredSize(new Dimension(150, 35));
         cboCategory.addActionListener(e -> filterProducts());
 
-        cboStatus = new JComboBox<>(new String[]{"Tất cả", "ACTIVE", "INACTIVE"});
-        cboStatus.setPreferredSize(new Dimension(120, 35));
+        JLabel lblStatus = new JLabel("Trạng thái:");
+        lblStatus.setPreferredSize(new Dimension(70, 35));
+        cboStatus = new JComboBox<>(new String[]{"Tất cả", "Còn hàng", "Hết hàng"});
+        cboStatus.setPreferredSize(new Dimension(130, 35));
         cboStatus.addActionListener(e -> filterProducts());
 
-        filterPanel.add(new JLabel("Danh mục:"));
-        filterPanel.add(cboCategory);
-        filterPanel.add(new JLabel("Trạng thái:"));
-        filterPanel.add(cboStatus);
+        controlsPanel.add(txtSearch);
+        controlsPanel.add(lblCategory);
+        controlsPanel.add(cboCategory);
+        controlsPanel.add(lblStatus);
+        controlsPanel.add(cboStatus);
 
         // Button Panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -98,8 +101,7 @@ public class ProductPanel extends JPanel {
         buttonPanel.add(btnRefresh);
         buttonPanel.add(btnCreate);
 
-        topPanel.add(searchPanel, BorderLayout.WEST);
-        topPanel.add(filterPanel, BorderLayout.CENTER);
+        topPanel.add(controlsPanel, BorderLayout.CENTER);
         topPanel.add(buttonPanel, BorderLayout.EAST);
 
         add(topPanel, BorderLayout.NORTH);
@@ -241,7 +243,7 @@ public class ProductPanel extends JPanel {
     private void filterProducts() {
         try {
             String categoryName = (String) cboCategory.getSelectedItem();
-            String status = (String) cboStatus.getSelectedItem();
+            String stockOption = (String) cboStatus.getSelectedItem();
 
             Integer categoryId = null;
             if (categoryName != null && !categoryName.equals("Tất cả")) {
@@ -253,9 +255,18 @@ public class ProductPanel extends JPanel {
                 }
             }
 
-            String statusFilter = (status != null && !status.equals("Tất cả")) ? status : null;
+            // Query by category only; apply stock filter in-memory for clarity
+            productList = productService.filter(categoryId, null, null);
 
-            productList = productService.filter(categoryId, null, statusFilter);
+            if ("Còn hàng".equals(stockOption)) {
+                productList = productList.stream()
+                        .filter(p -> p.getStockQty() > 0)
+                        .collect(Collectors.toList());
+            } else if ("Hết hàng".equals(stockOption)) {
+                productList = productList.stream()
+                        .filter(p -> p.getStockQty() <= 0)
+                        .collect(Collectors.toList());
+            }
             tableModel.setProducts(productList);
             updateInfo();
         } catch (Exception e) {
