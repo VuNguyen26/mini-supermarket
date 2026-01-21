@@ -72,10 +72,7 @@ public class GoodsReceiptService {
 				lot.setStatus(InventoryLot.Status.AVAILABLE);
 				lot.setCreatedAt(LocalDateTime.now());
 
-				boolean success = lotDAO.insert(con, lot);
-				if (!success) {
-					throw new SQLException("Failed to save inventory lot for grdId: " + grdId);
-				}
+				lotDAO.insert(con, lot);
 			}
 			con.commit();
 			return true;

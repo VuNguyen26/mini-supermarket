@@ -9,7 +9,7 @@ public class DateUtils {
     // Format: 25/12/2023
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     // Format: 14:30:05 25/12/2023
-    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     /**
      * Format LocalDate to dd/MM/yyyy
@@ -20,7 +20,7 @@ public class DateUtils {
     }
 
     /**
-     * Format LocalDateTime to HH:mm:ss dd/MM/yyyy
+     * Format LocalDateTime to dd/MM/yyyy HH:mm:ss
      */
     public static String formatDateTime(LocalDateTime dateTime) {
         if (dateTime == null) return "";

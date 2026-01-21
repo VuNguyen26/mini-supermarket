@@ -195,7 +195,7 @@ public class GoodsReceiptPanel extends JPanel {
 
 // The table model for the GR table
 	private class GoodsReceiptTableModel extends AbstractTableModel {
-		private final String[] cols = { "STT", "Nhà cung cấp", "Tên nhân viên", "Thời gian nhập", "Tổng tiền", "Ghi chú" };
+		private final String[] cols = { "STT", "Nhà cung cấp", "Người tạo", "Ngày nhập", "Tổng tiền", "Ghi chú" };
 		public List<GoodsReceipt> receipts;
 		public Integer supplierId;
 		public LocalDateTime from;
