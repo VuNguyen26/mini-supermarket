@@ -1,50 +1,40 @@
 package presentation.dialogs;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
+import javax.swing.event.*;
+import javax.swing.text.*;
 
-import bus.GoodsReceiptService;
-import bus.ProductService;
-import bus.SupplierService;
+import bus.*;
+import dto.*;
 import bus.AuthService.AuthUser;
-import dto.GoodsReceipt;
-import dto.GoodsReceiptDetail;
-import dto.Product;
-import dto.Supplier;
-import presentation.components.datechooser.DateChooser;
-import presentation.components.datechooser.RDate;
+import presentation.components.datechooser.*;
 
 import java.awt.*;
+import java.time.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ReceiptDialog extends JDialog {
 
-	private GoodsReceiptService goodsReceiptService = new GoodsReceiptService();
-	private SupplierService supplierService = new SupplierService();
 	private ProductService productService = new ProductService();
+	private SupplierService supplierService = new SupplierService();
+	private GoodsReceiptService grService = new GoodsReceiptService();
 
 	private AuthUser currentUser;
+
 	private GoodsReceipt receiptToShow;
-	private List<ProductRow> rows = new ArrayList<>();
+
+	private List<ProductRow> productRows = new ArrayList<>();
+
 	private List<Product> allProducts;
 	private List<Supplier> allSuppliers;
 
-	private JScrollPane productListPane;
-	private JPanel productList;
-	private JTextField txtTotalAmount;
-	private JTextField txtNote;
 	private JComboBox<Supplier> cboSupplier;
-	private JButton createBtn;
-	private JButton addProductBtn;
+	private JPanel productList;
+	private JScrollPane productListPane;
+	private JButton createBtn, addProductBtn;
+	private JTextField txtTotalAmount, txtNote;
 
 	public ReceiptDialog(Window owner, AuthUser currentUser, GoodsReceipt receiptToShow) {
 		super(owner,
@@ -190,8 +180,8 @@ public class ReceiptDialog extends JDialog {
 	}
 
 	private void addProductRow() {
-		ProductRow row = new ProductRow(rows.size() + 1);
-		rows.add(row);
+		ProductRow row = new ProductRow(productRows.size() + 1);
+		productRows.add(row);
 
 		row.panel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(235, 235, 235)),
@@ -209,7 +199,7 @@ public class ReceiptDialog extends JDialog {
 		});
 	}
 	private void addProductRowWithData(GoodsReceiptDetail detail) {
-		ProductRow row = new ProductRow(rows.size() + 1);
+		ProductRow row = new ProductRow(productRows.size() + 1);
 		for (int i = 0; i < row.cboProduct.getItemCount(); i++) {
 			Product p = row.cboProduct.getItemAt(i);
 			if (p != null && p.getProductId() == detail.getProductId()) {
@@ -231,7 +221,7 @@ public class ReceiptDialog extends JDialog {
 		row.txtMfg.setEnabled(false);
 		row.txtExpiry.setEnabled(false);
 		row.btnDelete.setVisible(false);
-		rows.add(row);
+		productRows.add(row);
 		productList.add(row.panel);
 	}
 
@@ -340,8 +330,8 @@ public class ReceiptDialog extends JDialog {
 			}
 		}
 		txtNote.setText(receiptToShow.getNote());
-		List<GoodsReceiptDetail> details = goodsReceiptService.getDetailsByReceiptId(receiptToShow.getGrId());
-		rows.clear();
+		List<GoodsReceiptDetail> details = grService.getDetailsByReceiptId(receiptToShow.getGrId());
+		productRows.clear();
 		productList.removeAll();
 		for (GoodsReceiptDetail detail : details) {
 			addProductRowWithData(detail);
@@ -358,8 +348,8 @@ public class ReceiptDialog extends JDialog {
 			return;
 		}
 		List<GoodsReceiptDetail> details = new ArrayList<>();
-		for (int i = 0; i < rows.size(); i++) {
-			ProductRow row = rows.get(i);
+		for (int i = 0; i < productRows.size(); i++) {
+			ProductRow row = productRows.get(i);
 			Product selectedProduct = (Product) row.cboProduct.getSelectedItem();
 
 			if (selectedProduct == null) {
@@ -446,7 +436,10 @@ public class ReceiptDialog extends JDialog {
 		gr.setTotalAmount(updateGrandTotal());
 		gr.setNote(txtNote.getText());
 
-		if (goodsReceiptService.createFullReceipt(gr, details)) {
+		System.out.println("gr.totalAmount: " + gr.getTotalAmount());
+		System.out.println("detials.size(): " + details.size());
+
+		if (grService.createFullReceipt(gr, details)) {
 			JOptionPane.showMessageDialog(this,
 				"Tạo phiếu nhập hàng thành công!",
 				"Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -460,7 +453,7 @@ public class ReceiptDialog extends JDialog {
 
 	private BigDecimal updateGrandTotal() {
 		BigDecimal grandTotal = new BigDecimal(0);
-		for (ProductRow row : rows) {
+		for (ProductRow row : productRows) {
 			try {
 				String q = row.txtQty.getText().trim();
 				String p = row.txtPrice.getText().trim();
@@ -488,11 +481,11 @@ public class ReceiptDialog extends JDialog {
 	}
 
 	private void removeRow(ProductRow row) {
-		if (rows.size() > 1) {
-			rows.remove(row);
+		if (productRows.size() > 1) {
+			productRows.remove(row);
 			productList.remove(row.panel);
-			for (int i = 0; i < rows.size(); i++) {
-				rows.get(i).labelIndex.setText(String.valueOf(i + 1));
+			for (int i = 0; i < productRows.size(); i++) {
+				productRows.get(i).labelIndex.setText(String.valueOf(i + 1));
 			}
 			updateGrandTotal();
 			revalidate();

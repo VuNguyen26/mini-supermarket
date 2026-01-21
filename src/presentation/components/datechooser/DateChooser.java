@@ -49,7 +49,7 @@ public class DateChooser extends JPanel {
 	private JPopupMenu popup;
 	private JTextField textField;
 	private JButton labelCurrentDate;
-	private String startCharacter = "Từ ";
+	private String startCharacter = "";
 	private String betweenCharacter = " đến ";
 	private DateChooserRender dateChooserRender = new DefaultDateChooserRender();
 	private JSpinner spMonth;

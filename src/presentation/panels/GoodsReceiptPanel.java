@@ -8,6 +8,7 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 import dto.*;
 import util.*;
@@ -133,6 +134,9 @@ public class GoodsReceiptPanel extends JPanel {
 	// ==================================
 
 	// Styling whole table
+		DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+		center.setHorizontalAlignment(JLabel.CENTER);
+    grTable.setDefaultRenderer(Object.class, center);
 		grTable.setRowHeight(40);
 		grTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 		grTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);

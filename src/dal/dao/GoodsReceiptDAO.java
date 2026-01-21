@@ -38,11 +38,11 @@ public class GoodsReceiptDAO {
 /**
  * Retrieves all goods receipts with optional filters and sorting.
  *
- * @param supplierId   the supplier ID to filter by, or {@code null} for all suppliers
- * @param after        include receipts created at or after this time, or {@code null}
- * @param before       include receipts created before this time, or {@code null}
+ * @param supplierId   the supplier ID to filter by, or null for all suppliers
+ * @param after        filter receipts created at or after this time, or null}
+ * @param before       filter receipts created before this time, or null}
  * @param sortBy       the database column used for sorting
- * @param isAscending  {@code true} for ascending order, {@code false} for descending
+ * @param isAscending  true for ascending order, false for descending
  * @return a filtered list of goods receipts
  */
 	public List<GoodsReceipt> findFiltered(
@@ -101,7 +101,7 @@ public class GoodsReceiptDAO {
 				}
 			}
 		} catch (SQLException e) {
-			throw new RuntimeException("Failed to retrieve goods receipts list: " + e.getMessage(), e);
+			throw new RuntimeException("Failed to retrieve goods receipt list: " + e.getMessage(), e);
 		}
 
 		return list;
