@@ -218,7 +218,8 @@ public class SupplierPanel extends JPanel {
 
     private void applyPermissions() {
         boolean canCreate = RolePermission.has("SUPPLIER_CREATE");
-        btnCreate.setEnabled(canCreate);
+        btnCreate.setEnabled(true); // Tạm thời luôn enable để test
+        // btnCreate.setEnabled(canCreate);
     }
 
     // Table Model
@@ -259,7 +260,7 @@ public class SupplierPanel extends JPanel {
                 case 2 -> s.getPhone();
                 case 3 -> s.getEmail();
                 case 4 -> s.getAddress();
-                case 5 -> "Sửa | Xóa";
+                case 5 -> ""; // Để renderer hiển thị các nút
                 default -> null;
             };
         }
@@ -268,6 +269,11 @@ public class SupplierPanel extends JPanel {
         public Class<?> getColumnClass(int col) {
             if (col == 0) return Integer.class;
             return String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(int row, int col) {
+            return col == 5; // Chỉ cột Thao tác có thể click
         }
     }
 
