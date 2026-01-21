@@ -11,7 +11,7 @@ public class DBConnection {
     private static final String PORT = "3306";
     private static final String DB_NAME = "mini_supermarket";
     private static final String USER = "root";
-    private static final String PASS = "19092005";
+    private static final String PASS = "1234";
     // =======================================
 
     private static final String URL =

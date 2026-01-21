@@ -4,6 +4,7 @@
 *.jar
 *.war
 *.ear
+*.xml
 hs_err_pid*
 
 # IntelliJ
@@ -24,6 +25,7 @@ nbbuild/
 
 # VS Code
 .vscode/
+target/
 
 # OS
 .DS_Store

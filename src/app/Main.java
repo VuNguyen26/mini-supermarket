@@ -1,12 +1,17 @@
 package app;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import bus.AuthService.AuthUser;
 import presentation.LoginFrame;
+import presentation.MainFrame;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class Main {
+    // DEBUG MODE for bypass login, quick view
+    private static final boolean DEBUG_MODE = true;
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -29,10 +34,20 @@ public class Main {
                 // fallback to system L&F
                 try {
                     UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
 
-            new LoginFrame().setVisible(true);
+            if (DEBUG_MODE) {
+                AuthUser administrator = new AuthUser();
+                administrator.fullName = "";
+                administrator.roleName = "";
+
+                MainFrame main = new MainFrame(administrator);
+                main.setVisible(true);
+            } else {
+                new LoginFrame().setVisible(true);
+            }
         });
     }
 }
