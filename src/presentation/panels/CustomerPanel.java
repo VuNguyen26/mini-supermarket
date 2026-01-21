@@ -225,7 +225,8 @@ public class CustomerPanel extends JPanel {
 
     private void applyPermissions() {
         boolean canCreate = RolePermission.has("CUSTOMER_CREATE");
-        btnCreate.setEnabled(canCreate);
+        btnCreate.setEnabled(true); // Tạm thời luôn enable để test
+        // btnCreate.setEnabled(canCreate);
     }
 
     // Table Model
@@ -266,7 +267,7 @@ public class CustomerPanel extends JPanel {
                 case 2 -> c.getPhone();
                 case 3 -> c.getAddress();
                 case 4 -> c.getPoints();
-                case 5 -> "Sửa | Xóa";
+                case 5 -> ""; // Để renderer hiển thị các nút
                 default -> null;
             };
         }
@@ -275,6 +276,11 @@ public class CustomerPanel extends JPanel {
         public Class<?> getColumnClass(int col) {
             if (col == 0 || col == 4) return Integer.class;
             return String.class;
+        }
+
+        @Override
+        public boolean isCellEditable(int row, int col) {
+            return col == 5; // Chỉ cột Thao tác có thể click
         }
     }
 
