@@ -49,6 +49,7 @@ public class StockAdjustmentDialog extends JDialog {
             fillData(editingSA);
         }
 
+        setMinimumSize(new Dimension(480, 380));
         pack();
         setLocationRelativeTo(owner);
     }

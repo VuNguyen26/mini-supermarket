@@ -10,6 +10,7 @@ import presentation.dialogs.StockAdjustmentDialog;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
@@ -100,6 +101,9 @@ public class StockAdjustmentPanel extends JPanel {
         tblAdjustment.setRowHeight(36);
         tblAdjustment.setShowGrid(true);
         tblAdjustment.setGridColor(new Color(220, 220, 220));
+        JTableHeader header = tblAdjustment.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
@@ -159,6 +163,9 @@ public class StockAdjustmentPanel extends JPanel {
         tblDetail.setRowHeight(32);
         tblDetail.setShowGrid(true);
         tblDetail.setGridColor(new Color(220, 220, 220));
+        JTableHeader header = tblDetail.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
