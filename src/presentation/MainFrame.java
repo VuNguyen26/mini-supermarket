@@ -241,6 +241,7 @@ public class MainFrame extends JFrame {
         addNavItem(nav, "Báo cáo", "📊");
 
         addNavItem(nav, "Nhân viên", "🛡️");
+        addNavItem(nav, "Lịch sử", "📋");
         addNavItem(nav, "Phân quyền", "🔑");
 
         nav.add(Box.createVerticalGlue());
@@ -591,9 +592,10 @@ public class MainFrame extends JFrame {
 
         contentPanel.add(wrapCard(makePlaceholder("KHUYẾN MÃI (PromotionPanel)")), "Khuyến mãi");
         contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
-        contentPanel.add(wrapCard(makePlaceholder("BÁO CÁO (ReportPanel)")), "Báo cáo");
+        contentPanel.add(wrapCard(new presentation.panels.ReportPanel()), "Báo cáo");
 
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
+        contentPanel.add(wrapCard(new presentation.panels.AuditLogPanel()), "Lịch sử");
         contentPanel.add(wrapCard(new presentation.panels.RolePermissionPanel()), "Phân quyền");
     }
 
@@ -661,6 +663,7 @@ public class MainFrame extends JFrame {
         setNavVisible("Báo cáo", RolePermission.has(PermissionCodes.REPORT_VIEW));
 
         setNavVisible("Nhân viên", RolePermission.has(PermissionCodes.USER_MANAGE));
+        setNavVisible("Lịch sử", RolePermission.has(PermissionCodes.AUDIT_VIEW));
         setNavVisible("Phân quyền", RolePermission.has(PermissionCodes.ROLE_PERMISSION_MANAGE));
 
         if (navPanel != null) {

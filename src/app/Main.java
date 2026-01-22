@@ -2,7 +2,6 @@ package app;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import presentation.LoginFrame;
-
 import javax.swing.*;
 import java.awt.*;
 
@@ -11,7 +10,6 @@ public class Main {
         SwingUtilities.invokeLater(() -> {
             try {
                 FlatLightLaf.setup();
-                
                 UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 13));
                 UIManager.put("Component.arc", 12);
                 UIManager.put("Button.arc", 12);
