@@ -110,6 +110,7 @@ public class PromotionDAO {
             ps.setBigDecimal(6, promo.getValue());
             ps.setBigDecimal(7, promo.getMinOrderAmount());
             ps.setString(8, promo.getStatus());
+            ps.setInt(9, promo.getPromoId());
 
             return ps.executeUpdate() > 0;
 
@@ -127,7 +128,7 @@ public class PromotionDAO {
             ps.setInt(1, promoId);
             ps.executeUpdate();
         } catch (Exception e) {
-            throw new RuntimeException("Delete pp failed: " + e.getMessage(), e);
+            throw new RuntimeException("Delete promotion failed: " + e.getMessage(), e);
         }
 
     }

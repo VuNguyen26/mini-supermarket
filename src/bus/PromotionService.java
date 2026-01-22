@@ -78,4 +78,43 @@ public class PromotionService {
         promotionDAO.delete(promoId);
     }
 
+    public int addProduct(PromotionProduct pp){
+        if(pp.getPromoId() <= 0){
+            throw new IllegalArgumentException("Promotion Id is not valid!");
+        }
+
+        if(pp.getProductId() <= 0){
+            throw new IllegalArgumentException("Product Id is not valid!");
+        }
+
+        return promotionProductDAO.insert(pp);
+    }
+
+    public boolean updateProduct(PromotionProduct pp){
+
+        if(pp.getPpId() <= 0){
+            throw new IllegalArgumentException("Promotion_product Id is not valid!");
+        }
+
+        return promotionProductDAO.update(pp);
+    }
+
+    public void deleteProduct(int ppId){
+
+        if(ppId <= 0){
+            throw new IllegalArgumentException("Promotion_product Id is not valid!");
+        }
+
+        promotionProductDAO.delete(ppId);
+    }
+
+    public PromotionProduct getPPById(int ppId){
+
+        if(ppId <= 0){
+            throw new IllegalArgumentException("Promotion_product Id is not valid!");
+        }
+
+        return promotionProductDAO.findById(ppId);
+    }
+
 }

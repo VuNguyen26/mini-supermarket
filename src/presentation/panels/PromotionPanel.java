@@ -6,6 +6,7 @@ import dto.Promotion;
 import dto.PromotionProduct;
 import dto.StockAdjustment;
 import presentation.dialogs.PromotionDialog;
+import presentation.dialogs.PromotionProductDialog;
 import presentation.dialogs.StockAdjustmentDialog;
 
 import javax.swing.*;
@@ -64,6 +65,9 @@ public class PromotionPanel extends JPanel {
                             currentUser
                     );
             dialog.setVisible(true);
+            if(dialog.isSaved()){
+                loadPromotions();
+            }
         });
 
         btnView.addActionListener(e -> {
@@ -168,7 +172,7 @@ public class PromotionPanel extends JPanel {
         };
 
         tblPromotionProduct = new JTable(ppModel);
-        tblPromotionProduct.setRowHeight(32);
+        tblPromotionProduct.setRowHeight(40);
         tblPromotionProduct.setShowGrid(true);
         tblPromotionProduct.setGridColor(new Color(220, 220, 220));
 
@@ -197,75 +201,76 @@ public class PromotionPanel extends JPanel {
         JButton btnDelete = new JButton("Xóa");
 
 
-        // // ===== THÊM =====
-        // btnAdd.addActionListener(e -> {
-        //     if (!canEditProduct()) return;
+        // ===== THÊM =====
+        btnAdd.addActionListener(e -> {
+            if (!canEditProduct()) return;
 
-        //     StockAdjustmentDetailDialog dialog =
-        //             new StockAdjustmentDetailDialog(
-        //                     SwingUtilities.getWindowAncestor(this),
-        //                     selectedPromotion.getSaId()
-        //             );
+            PromotionProductDialog dialog =
+                    new PromotionProductDialog(
+                            SwingUtilities.getWindowAncestor(this),
+                            selectedPromotion
+                    );
 
-        //     dialog.setVisible(true);
+            dialog.setVisible(true);
 
-        //     if (dialog.isSaved()) {
-        //         loadPromotionProduct(selectedPromotion);
-        //     }
-        // });
+            if (dialog.isSaved()) {
+                loadPromotionProduct(selectedPromotion);
+            }
+        });
 
         // // ===== SỬA =====
-        // btnEdit.addActionListener(e -> {
-        //     if (!canEditProduct()) return;
+        btnEdit.addActionListener(e -> {
+            if (!canEditProduct()) return;
 
-        //     int row = tblPromotionProduct.getSelectedRow();
-        //     if (row < 0) {
-        //         JOptionPane.showMessageDialog(this, "Chọn 1 dòng để sửa");
-        //         return;
-        //     }
+            int row = tblPromotionProduct.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(this, "Chọn 1 dòng để sửa");
+                return;
+            }
 
-        //     int sadId = (int) ppModel.getValueAt(row, 0);
+            int ppId = (int) ppModel.getValueAt(row, 0);
 
-        //     StockAdjustmentDetail detail =
-        //             saService.getDetailById(sadId); // 🔥 QUAN TRỌNG
+            PromotionProduct promotionProduct =
+                    promoService.getPPById(ppId); // 🔥 QUAN TRỌNG
 
-        //     StockAdjustmentDetailDialog dialog =
-        //             new StockAdjustmentDetailDialog(
-        //                     SwingUtilities.getWindowAncestor(this),
-        //                     detail
-        //             );
+            PromotionProductDialog dialog =
+                    new PromotionProductDialog(
+                            SwingUtilities.getWindowAncestor(this),
+                            selectedPromotion,
+                            promotionProduct
+                    );
 
-        //     dialog.setVisible(true);
+            dialog.setVisible(true);
 
-        //     if (dialog.isSaved()) {
-        //         loadPromotionProduct(selectedPromotion);
-        //     }
-        // });
+            if (dialog.isSaved()) {
+                loadPromotionProduct(selectedPromotion);
+            }
+        });
 
         // // ===== XÓA =====
-        // btnDelete.addActionListener(e -> {
-        //     if (!canEditProduct()) return;
+        btnDelete.addActionListener(e -> {
+            if (!canEditProduct()) return;
 
-        //     int row = tblPromotionProduct.getSelectedRow();
-        //     if (row < 0) {
-        //         JOptionPane.showMessageDialog(this, "Chọn 1 dòng để xóa");
-        //         return;
-        //     }
+            int row = tblPromotionProduct.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(this, "Chọn 1 dòng để xóa");
+                return;
+            }
 
-        //     int sadId = (int) ppModel.getValueAt(row, 0);
+            int ppId = (int) ppModel.getValueAt(row, 0);
 
-        //     int confirm = JOptionPane.showConfirmDialog(
-        //             this,
-        //             "Bạn có chắc muốn xóa dòng này?",
-        //             "Xác nhận",
-        //             JOptionPane.YES_NO_OPTION
-        //     );
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "Bạn có chắc muốn xóa dòng này?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION
+            );
 
-        //     if (confirm == JOptionPane.YES_OPTION) {
-        //         saService.deleteDetail(sadId);
-        //         loadPromotionProduct(selectedPromotion);
-        //     }
-        // });
+            if (confirm == JOptionPane.YES_OPTION) {
+                promoService.deleteProduct(ppId);
+                loadPromotionProduct(selectedPromotion);
+            }
+        });
 
         panel.add(btnAdd);
         panel.add(btnEdit);
