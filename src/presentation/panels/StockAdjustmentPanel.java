@@ -89,11 +89,11 @@ public class StockAdjustmentPanel extends JPanel {
 
     private JComponent buildAdjustmentTable() {
         adjustmentModel = new DefaultTableModel(
-                new Object[]{"ID", "Mã phiếu", "Lý do", "Trạng thái", "Ngày tạo", "Ghi chú", "Tương tác"},
+                new Object[]{"ID", "Mã phiếu", "Trạng thái", "Tương tác"},
                 0
         ) {
             public boolean isCellEditable(int r, int c) {
-                return c == 6;
+                return c == 3;
             }
         };
 
@@ -102,23 +102,20 @@ public class StockAdjustmentPanel extends JPanel {
         tblAdjustment.setShowGrid(true);
         tblAdjustment.setGridColor(new Color(220, 220, 220));
         JTableHeader header = tblAdjustment.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(new Color(0, 123, 255));
+        header.setForeground(Color.WHITE);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
-        DefaultTableCellRenderer left = new DefaultTableCellRenderer();
-        left.setHorizontalAlignment(SwingConstants.LEFT);
 
         tblAdjustment.getColumnModel().getColumn(0).setCellRenderer(center); 
         tblAdjustment.getColumnModel().getColumn(1).setCellRenderer(center);
         tblAdjustment.getColumnModel().getColumn(2).setCellRenderer(center); 
-        tblAdjustment.getColumnModel().getColumn(3).setCellRenderer(center); 
-        tblAdjustment.getColumnModel().getColumn(4).setCellRenderer(center);
-        tblAdjustment.getColumnModel().getColumn(5).setCellRenderer(left);
-        tblAdjustment.getColumnModel().getColumn(6).setCellRenderer(center);
-        tblAdjustment.getColumnModel().getColumn(6).setCellRenderer(new ActionCellRenderer());
-        tblAdjustment.getColumnModel().getColumn(6).setCellEditor(new ActionCellEditor());
+        tblAdjustment.getColumnModel().getColumn(3).setCellRenderer(center);
+        tblAdjustment.getColumnModel().getColumn(3).setCellRenderer(new ActionCellRenderer());
+        tblAdjustment.getColumnModel().getColumn(3).setCellEditor(new ActionCellEditor());
 
 
         // Click → load chi tiết
@@ -164,7 +161,9 @@ public class StockAdjustmentPanel extends JPanel {
         tblDetail.setShowGrid(true);
         tblDetail.setGridColor(new Color(220, 220, 220));
         JTableHeader header = tblDetail.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(new Color(0, 123, 255));
+        header.setForeground(Color.WHITE);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
@@ -293,10 +292,7 @@ public class StockAdjustmentPanel extends JPanel {
             adjustmentModel.addRow(new Object[]{
                     sa.getSaId(),
                     sa.getSaCode(),
-                    sa.getReason(),
                     sa.getStatus(),
-                    sa.getCreatedAt(),
-                    sa.getNote(),
                     sa
             });
         }
@@ -325,12 +321,15 @@ public class StockAdjustmentPanel extends JPanel {
     class ActionCellRenderer extends JPanel implements TableCellRenderer {
 
         private final JButton editBtn = new JButton("Sửa");
+        private final JButton deleteBtn = new JButton("Xóa");
 
         public ActionCellRenderer() {
             setLayout(new FlowLayout(FlowLayout.CENTER, 10, 8));
             setOpaque(true);
             editBtn.setFocusable(false);
+            deleteBtn.setFocusable(false);
             add(editBtn);
+            add(deleteBtn);
         }
 
         @Override
@@ -355,6 +354,7 @@ public class StockAdjustmentPanel extends JPanel {
 
             if (sa.getStatus() == dto.StockAdjustmentStatus.DRAFT) {
                 add(editBtn);
+                add(deleteBtn);
             }
 
             return this;
@@ -366,17 +366,20 @@ public class StockAdjustmentPanel extends JPanel {
 
         private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         private final JButton editBtn = new JButton("Sửa");
+        private final JButton deleteBtn = new JButton("Xóa");
         private StockAdjustment currentSA;
 
         public ActionCellEditor() {
             panel.setOpaque(true);
             editBtn.setFocusable(false);
+            deleteBtn.setFocusable(false);
             editBtn.addActionListener(e -> {
                 fireEditingStopped();
                 openEditDialog();
             });
 
             panel.add(editBtn);
+            panel.add(deleteBtn);
         }
 
         private void openEditDialog() {
@@ -422,6 +425,7 @@ public class StockAdjustmentPanel extends JPanel {
 
             if (currentSA.getStatus() == dto.StockAdjustmentStatus.DRAFT) {
                 panel.add(editBtn);
+                panel.add(deleteBtn);
             }
 
             return panel;

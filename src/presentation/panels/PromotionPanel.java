@@ -120,7 +120,9 @@ public class PromotionPanel extends JPanel {
         tblPromotion.setShowGrid(true);
         tblPromotion.setGridColor(new Color(220, 220, 220));
         JTableHeader header = tblPromotion.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(new Color(0, 123, 255));
+        header.setForeground(Color.WHITE);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
@@ -180,7 +182,9 @@ public class PromotionPanel extends JPanel {
         tblPromotionProduct.setShowGrid(true);
         tblPromotionProduct.setGridColor(new Color(220, 220, 220));
         JTableHeader header = tblPromotionProduct.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(new Color(0, 123, 255));
+        header.setForeground(Color.WHITE);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
