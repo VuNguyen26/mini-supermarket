@@ -122,6 +122,20 @@ public class StockAdjustmentDAO {
             );
         }
     }
+
+    public void delete(int saId) {
+        String sql = "DELETE FROM stock_adjustment WHERE sa_id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+            PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, saId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Delete stock adjustment failed: " + e.getMessage(), e);
+        }
+
+    }
     
     // ====== map ResultSet -> DTO ======
     private StockAdjustment map(ResultSet rs) throws Exception {

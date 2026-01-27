@@ -27,7 +27,7 @@ public class StockAdjustmentDetailDialog extends JDialog {
 
     /* ================= CONSTRUCTORS ================= */
 
-    // THÊM
+    // ADD
     public StockAdjustmentDetailDialog(Window owner, int saId) {
         super(owner, "Thêm chi tiết kiểm kho", ModalityType.APPLICATION_MODAL);
         this.saId = saId;
@@ -36,7 +36,7 @@ public class StockAdjustmentDetailDialog extends JDialog {
         loadProducts();
     }
 
-    // SỬA
+    // EDIT
     public StockAdjustmentDetailDialog(Window owner, StockAdjustmentDetail detail) {
         super(owner, "Sửa chi tiết kiểm kho", ModalityType.APPLICATION_MODAL);
         this.detail = detail;

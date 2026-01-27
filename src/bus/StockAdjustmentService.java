@@ -138,7 +138,24 @@ public class StockAdjustmentService {
         return stockAdjustmentDetailDAO.findByAdjustmentId(saId);
     }
     
-     public void addDetail(StockAdjustmentDetail d) {
+    public void delete(int saId){
+        if (saId <= 0) {
+            throw new IllegalArgumentException("Id không hợp lệ");
+        }
+
+        StockAdjustment currentSA = stockAdjustmentDAO.findById(saId);
+        if (currentSA == null) {
+            throw new IllegalArgumentException("Không tìm thấy phiếu kiểm kho theo ID");
+        }
+
+        if(currentSA.getStatus() != StockAdjustmentStatus.DRAFT){
+            throw new IllegalArgumentException("Không thể xóa phiếu ngoài trạng thái DRAFT");
+        }
+
+        stockAdjustmentDAO.delete(saId);
+    }
+
+    public void addDetail(StockAdjustmentDetail d) {
 
         if (d == null) {
             throw new IllegalArgumentException("Dữ liệu không hợp lệ");

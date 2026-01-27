@@ -15,6 +15,7 @@ public class StockAdjustmentDialog extends JDialog {
     private final StockAdjustmentService service = new StockAdjustmentService();
     private final AuthUser currentUser;
     private final StockAdjustment editingSA; // null = thêm mới
+    private final String Mode;
 
     private boolean saved = false;
 
@@ -26,12 +27,27 @@ public class StockAdjustmentDialog extends JDialog {
 
     /* ================= CONSTRUCTORS ================= */
 
-    /** Thêm mới */
+    // Xem
+    public StockAdjustmentDialog(Window owner, StockAdjustment sa){
+        super(owner, "Chi tiết phiếu",  ModalityType.APPLICATION_MODAL);
+        this.Mode = "VIEW";
+        this.editingSA = sa;
+        this.currentUser = null;
+        initUI();
+        if(editingSA != null){
+            fillData(editingSA);
+        }
+        setMinimumSize(new Dimension(480, 380));
+        pack();
+        setLocationRelativeTo(owner);
+    }
+
+    // Thêm mới
     public StockAdjustmentDialog(Window owner, AuthUser currentUser) {
         this(owner, currentUser, null);
     }
 
-    /** Sửa */
+    // Sửa
     public StockAdjustmentDialog(Window owner,
                                  AuthUser currentUser,
                                  StockAdjustment editingSA) {
@@ -43,6 +59,7 @@ public class StockAdjustmentDialog extends JDialog {
 
         this.currentUser = currentUser;
         this.editingSA = editingSA;
+        this.Mode = (this.editingSA == null ? "ADD" : "EDIT");
 
         initUI();
         if (editingSA != null) {
@@ -122,7 +139,9 @@ public class StockAdjustmentDialog extends JDialog {
         btnSave.addActionListener(e -> onSave());
 
         buttons.add(btnCancel);
-        buttons.add(btnSave);
+        if(this.Mode.compareTo("VIEW") != 0 ){
+            buttons.add(btnSave);
+        }
 
         add(buttons, BorderLayout.SOUTH);
 
@@ -141,8 +160,8 @@ public class StockAdjustmentDialog extends JDialog {
         cboStatus.setSelectedItem(sa.getStatus());
         txtNote.setText(sa.getNote());
 
-        // Nếu không phải DRAFT → chỉ xem
-        if (sa.getStatus() != StockAdjustmentStatus.DRAFT) {
+        // Nếu chỉ xem -> disable Btns
+        if (this.Mode.compareTo("VIEW") == 0) {
             txtCode.setEnabled(false);
             cboReason.setEnabled(false);
             cboStatus.setEnabled(false);

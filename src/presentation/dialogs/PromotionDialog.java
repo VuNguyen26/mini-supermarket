@@ -33,7 +33,7 @@ public class PromotionDialog extends JDialog {
 
     // VIEW
     public PromotionDialog(Window owner, Promotion promo) {
-        super(owner, "Xem chi tiết khuyến mãi", ModalityType.APPLICATION_MODAL);
+        super(owner, "Chi tiết khuyến mãi", ModalityType.APPLICATION_MODAL);
         this.Mode = "VIEW";
         this.promo = promo;
         this.currentUser = null;

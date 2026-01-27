@@ -56,6 +56,8 @@ public class StockAdjustmentPanel extends JPanel {
         panel.add(title, BorderLayout.WEST);
 
         JButton btnAdd = new JButton("+ Thêm phiếu");
+        JButton btnView = new JButton("Xem chi tiết");
+
         btnAdd.addActionListener(e -> {
             StockAdjustmentDialog dialog =
                     new StockAdjustmentDialog(
@@ -67,8 +69,16 @@ public class StockAdjustmentPanel extends JPanel {
                 loadAdjustments();
             }
         });
+        btnView.addActionListener(e -> {
+            StockAdjustmentDialog dialog = new StockAdjustmentDialog(SwingUtilities.getWindowAncestor(this), selectedAdjustment);
+            dialog.setVisible(true);
+        });
 
-        panel.add(btnAdd, BorderLayout.EAST);
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.add(btnView);
+        rightPanel.add(btnAdd);
+
+        panel.add(rightPanel, BorderLayout.EAST);
         return panel;
     }
 
@@ -373,9 +383,28 @@ public class StockAdjustmentPanel extends JPanel {
             panel.setOpaque(true);
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
+
             editBtn.addActionListener(e -> {
                 fireEditingStopped();
                 openEditDialog();
+            });
+            deleteBtn.addActionListener(e -> {
+                fireEditingStopped();
+
+                int confirm = JOptionPane.showConfirmDialog(
+                    panel,
+                    "Bạn có chắc muốn xóa dòng này?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION
+                );
+
+                if(confirm == JOptionPane.YES_OPTION){
+                    saService.delete(currentSA.getSaId());
+                    loadAdjustments();
+                    tblAdjustment.revalidate();
+                    tblAdjustment.repaint();
+                }
+
             });
 
             panel.add(editBtn);
