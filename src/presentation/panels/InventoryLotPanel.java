@@ -20,7 +20,7 @@ import presentation.components.datechooser.*;
 import presentation.components.datechooser.listener.*;
 import presentation.dialogs.InventoryLotDialog;
 
-public class InventoryLotPanelTemp extends JPanel {
+public class InventoryLotPanel extends JPanel {
 
 	private final InventoryLotService lotService = new InventoryLotService();
 	private final ProductService productService = new ProductService();
@@ -40,7 +40,7 @@ public class InventoryLotPanelTemp extends JPanel {
 	private JSpinner expiryWarnThresholdSp;
 
 
-	public InventoryLotPanelTemp(AuthUser currentUser, Product product) {
+	public InventoryLotPanel(AuthUser currentUser, Product product) {
 		this.currentUser = currentUser;
 		this.selectedProduct = product;
 		setOpaque(false);
