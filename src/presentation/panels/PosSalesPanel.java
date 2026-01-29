@@ -24,6 +24,14 @@ import bus.SalesService;
 public class PosSalesPanel extends JPanel {
     Font lolitaFont = new Font("lolita", Font.PLAIN, 14);
 
+    // Card Layout Components
+    private static final String CARD_POS = "POS";
+    private static final String CARD_PAYMENT = "PAYMENT";
+    private final CardLayout cardLayout = new CardLayout();
+    private final JPanel cardRoot = new JPanel(cardLayout);
+    private final JPanel pnlPosCard = new JPanel(new BorderLayout());
+    private final JPanel pnlPaymentCard = new JPanel(new BorderLayout());
+
     // Left Components
     private JTextField txtSearch;
     private JTable tableProducts;
@@ -38,7 +46,7 @@ public class PosSalesPanel extends JPanel {
     private JTable tableCart;
     private DefaultTableModel modelCart;
 
-    // Payment Panel
+    // Payment Summary (in POS card)
     private JLabel lblSubTotalValue;
     private JLabel lblDiscountValue;
     private JLabel lblTotalValue;
@@ -56,6 +64,9 @@ public class PosSalesPanel extends JPanel {
         setOpaque(false);
         setLayout(new BorderLayout());
 
+        // POS main view
+        pnlPosCard.setOpaque(false);
+
         JComponent left = buildLeftProductPane();
         JComponent right = buildRightPaymentPane();
 
@@ -69,7 +80,31 @@ public class PosSalesPanel extends JPanel {
         split.setResizeWeight(0.5);
         split.setDividerLocation(600);
 
-        add(split, BorderLayout.CENTER);
+        pnlPosCard.add(split, BorderLayout.CENTER);
+
+        // Payment overlay card
+        pnlPaymentCard.setOpaque(false);
+
+        // Card container
+        cardRoot.setOpaque(false);
+        cardRoot.add(pnlPosCard, CARD_POS);
+        cardRoot.add(pnlPaymentCard, CARD_PAYMENT);
+
+        add(cardRoot, BorderLayout.CENTER);
+        showPosCard();
+    }
+
+    private void showPosCard() {
+        cardLayout.show(cardRoot, CARD_POS);
+    }
+
+    private void showPaymentCard(PaymentPanel panel) {
+        pnlPaymentCard.removeAll();
+        pnlPaymentCard.add(panel, BorderLayout.CENTER);
+        pnlPaymentCard.revalidate();
+        pnlPaymentCard.repaint();
+        cardLayout.show(cardRoot, CARD_PAYMENT);
+        panel.requestFocusInWindow();
     }
 
     private void loadDataToTable() {
@@ -271,9 +306,7 @@ public class PosSalesPanel extends JPanel {
         btnPay.setForeground(Color.WHITE);
         btnPay.setFont(new Font("Arial", Font.BOLD, 14));
         btnPay.setPreferredSize(new Dimension(0, 50));
-        btnPay.addActionListener(e -> {
-            new Thread(() -> doPayment()).start();
-        });
+        btnPay.addActionListener(e -> doPayment());
 
         paymentContainer.add(paymentSummary, BorderLayout.CENTER);
         paymentContainer.add(btnPay, BorderLayout.SOUTH);
@@ -363,90 +396,138 @@ public class PosSalesPanel extends JPanel {
             return;
         }
 
-        double totalAmount = 0;
-        for (int i = 0; i < modelCart.getRowCount(); i++) {
-            totalAmount += Double.parseDouble(modelCart.getValueAt(i, 4).toString().replace(",", "").replace(" đ", ""));
+        final List<SalesInvoiceDetail> detailsSnapshot = buildDetailsFromCart();
+
+        final double subTotal = parseMoney(lblSubTotalValue.getText());
+        final double discount = parseMoney(lblDiscountValue.getText());
+        double grandTotal = parseMoney(lblTotalValue.getText());
+        if (grandTotal <= 0) {
+            grandTotal = Math.max(0, subTotal - discount);
         }
 
-        JDialog paymentDialog = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Thanh toán", true);
-        paymentDialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        PaymentPanel paymentPanel = new PaymentPanel(detailsSnapshot, subTotal, discount, grandTotal,
+                new PaymentPanel.PaymentListener() {
+                    @Override
+                    public void onConfirm(String method, double customerPay, double change) {
+                        startProcessTransaction(method, customerPay, change, detailsSnapshot);
+                    }
 
-        PaymentPanel pnlPayment = new PaymentPanel(totalAmount, new PaymentPanel.PaymentListener() {
-            @Override
-            public void onConfirm(String method, double customerPay, double change) {
-                paymentDialog.dispose();
-                processTransaction(method, customerPay, change);
-            }
+                    @Override
+                    public void onBack() {
+                        showPosCard();
+                    }
+                });
 
-            @Override
-            public void onCancel() {
-                paymentDialog.dispose();
-            }
-        });
-
-        paymentDialog.setContentPane(pnlPayment);
-        paymentDialog.setPreferredSize(new Dimension(720, 520));
-        paymentDialog.pack();
-        paymentDialog.setLocationRelativeTo(this);
-
-        paymentDialog.setVisible(true);
+        showPaymentCard(paymentPanel);
     }
 
+    private List<SalesInvoiceDetail> buildDetailsFromCart() {
+        List<SalesInvoiceDetail> details = new ArrayList<>();
+        for (int i = 0; i < modelCart.getRowCount(); i++) {
+            int pId = (int) modelCart.getValueAt(i, 0);
+            String pName = (String) modelCart.getValueAt(i, 1);
+            int qty = Integer.parseInt(modelCart.getValueAt(i, 2).toString());
+            double price = Double.parseDouble(modelCart.getValueAt(i, 3).toString());
 
-private void processTransaction(String method, double given, double change) {
-        try {
-            double subTotal = parseMoney(lblSubTotalValue.getText());
-            double discount = parseMoney(lblDiscountValue.getText());
-            double grandTotal = parseMoney(lblTotalValue.getText());
-
-            SalesInvoice invoice = new SalesInvoice();
-            
-            Object selectedObj = cboCustomers.getSelectedItem();
-            int cusId = 0;
-            if (selectedObj instanceof Customer) {
-                cusId = ((Customer) selectedObj).getCustomerId();
-            }
-            invoice.setCustomerId(cusId);
-            
-            invoice.setCreatedBy(1); 
-            invoice.setPaymentMethod(method);
-            invoice.setSubTotal(subTotal);  
-            invoice.setDiscount(discount);   
-            invoice.setGrandTotal(grandTotal);
-            List<SalesInvoiceDetail> details = new ArrayList<>();
-            for (int i = 0; i < modelCart.getRowCount(); i++) {
-                int pId = (int) modelCart.getValueAt(i, 0);
-                String pName = (String) modelCart.getValueAt(i, 1);
-                int qty = Integer.parseInt(modelCart.getValueAt(i, 2).toString());
-                double price = Double.parseDouble(modelCart.getValueAt(i, 3).toString());
-                SalesInvoiceDetail item = new SalesInvoiceDetail(pId, 0, qty, price);
-                item.setProductName(pName);
-                details.add(item);
-            }
-            Payment payment = new Payment(0, method, grandTotal, "Thanh toán POS");
-            SalesService service = new SalesService();
-            boolean success = service.processSale(invoice, details, payment);
-
-            if (success) {
-                JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
-                new presentation.dialogs.PaymentDialog(parent, grandTotal, change, invoice.getInvId()).setVisible(true);
-                new presentation.dialogs.InvoicePrintPreviewDialog(parent, invoice, details, (Customer)selectedObj, given, change).setVisible(true);
-                modelCart.setRowCount(0);
-                updateTotalMoney();
-                loadDataToTable();
-            } else {
-                JOptionPane.showMessageDialog(this, "Thanh toán thất bại! Có thể do kho không đủ hàng.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi hệ thống: " + e.getMessage());
+            SalesInvoiceDetail item = new SalesInvoiceDetail(pId, 0, qty, price);
+            item.setProductName(pName);
+            details.add(item);
         }
+        return details;
+    }
+
+    private void startProcessTransaction(String method, double given, double change,
+            List<SalesInvoiceDetail> detailsSnapshot) {
+        Object selectedObj = cboCustomers.getSelectedItem();
+        final Customer customerForPrint = (selectedObj instanceof Customer)
+                ? (Customer) selectedObj
+                : new Customer(0, "Khách lẻ", "");
+
+        final int cusId = (selectedObj instanceof Customer)
+                ? ((Customer) selectedObj).getCustomerId()
+                : 0;
+
+        final double subTotal = parseMoney(lblSubTotalValue.getText());
+        final double discount = parseMoney(lblDiscountValue.getText());
+        double grandTotal = parseMoney(lblTotalValue.getText());
+        if (grandTotal <= 0) {
+            grandTotal = Math.max(0, subTotal - discount);
+        }
+        final double finalGrandTotal = grandTotal;
+
+        final SalesInvoice invoice = new SalesInvoice();
+        invoice.setCustomerId(cusId);
+        invoice.setCreatedBy(1);
+        invoice.setPaymentMethod(method);
+        invoice.setSubTotal(subTotal);
+        invoice.setDiscount(discount);
+        invoice.setGrandTotal(finalGrandTotal);
+
+        final Payment payment = new Payment(0, method, finalGrandTotal, "Thanh toán POS");
+        final SalesService service = new SalesService();
+
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>() {
+            private Exception error;
+
+            @Override
+            protected Boolean doInBackground() {
+                try {
+                    return service.processSale(invoice, detailsSnapshot, payment);
+                } catch (Exception ex) {
+                    error = ex;
+                    return false;
+                }
+            }
+
+            @Override
+            protected void done() {
+                setCursor(Cursor.getDefaultCursor());
+
+                boolean success;
+                try {
+                    success = get();
+                } catch (Exception ex) {
+                    error = ex;
+                    success = false;
+                }
+
+                if (success) {
+                    JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(PosSalesPanel.this);
+
+                    // Dialogs
+                    new presentation.dialogs.PaymentDialog(parent, finalGrandTotal, change, invoice.getInvId())
+                            .setVisible(true);
+                    new presentation.dialogs.InvoicePrintPreviewDialog(parent, invoice, detailsSnapshot,
+                            customerForPrint, given, change).setVisible(true);
+
+                    // Reset UI
+                    modelCart.setRowCount(0);
+                    updateTotalMoney();
+                    loadDataToTable();
+
+                    showPosCard();
+                    return;
+                }
+
+                String msg;
+                if (error != null && error.getMessage() != null && !error.getMessage().trim().isEmpty()) {
+                    msg = error.getMessage();
+                } else {
+                    msg = "Thanh toán thất bại! Có thể do kho không đủ hàng.";
+                }
+                JOptionPane.showMessageDialog(PosSalesPanel.this, msg, "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        };
+
+        worker.execute();
     }
 
     private double parseMoney(String text) {
         try {
-            if(text == null) return 0;
+            if (text == null)
+                return 0;
             return Double.parseDouble(text.replace(",", "").replace(" đ", "").replace(" đồng", "").trim());
         } catch (NumberFormatException e) {
             return 0;

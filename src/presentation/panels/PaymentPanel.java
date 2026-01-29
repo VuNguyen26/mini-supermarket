@@ -2,138 +2,350 @@ package presentation.panels;
 
 import dal.dao.BankConfigDAO;
 import dto.BankConfig;
+import dto.SalesInvoiceDetail;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
-
+import java.util.List;
 
 public class PaymentPanel extends JPanel {
+
     public interface PaymentListener {
         void onConfirm(String method, double customerPay, double change);
-        void onCancel();
+        void onBack();
     }
 
-    private final double totalAmount;
+    private static final class MethodOption {
+        final String code;
+        final String label;
+
+        MethodOption(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private final List<SalesInvoiceDetail> details;
+    private final double subTotal;
+    private final double discount;
+    private final double grandTotal;
     private final PaymentListener listener;
+
     private final DecimalFormat moneyFmt = new DecimalFormat("#,###");
-    private final JComboBox<String> cboMethod = new JComboBox<>(new String[]{"CASH", "CARD", "TRANSFER"});
+
+    private final JTable tblInvoice = new JTable();
+    private DefaultTableModel modelInvoice;
+
+    private final JLabel lblSubTotalValue = new JLabel();
+    private final JLabel lblDiscountValue = new JLabel();
+    private final JLabel lblGrandTotalValue = new JLabel();
+
+    private final JComboBox<MethodOption> cboMethod = new JComboBox<>(new MethodOption[]{
+            new MethodOption("CASH", "Tiền mặt"),
+            new MethodOption("CARD", "Thẻ"),
+            new MethodOption("TRANSFER", "Ngân hàng (QR)")
+    });
+
     private final JTextField txtCustomerPay = new JTextField();
-    private final JLabel lblTotalValue = new JLabel();
-    private final JLabel lblChangeTitle = new JLabel("Tiền thừa");
-    private final JLabel lblChangeValue = new JLabel("---");
+    private final JLabel lblDiffTitle = new JLabel("Tiền thừa");
+    private final JLabel lblDiffValue = new JLabel("---");
+    private final JButton btnConfirm = new JButton("XÁC NHẬN");
+
     private final JPanel pnlQuickAdd = new JPanel();
     private final JPanel pnlQrCard = new JPanel(new BorderLayout(8, 8));
     private final JLabel lblQrImage = new JLabel(" ", SwingConstants.CENTER);
     private final JLabel lblQrInfo = new JLabel(" ");
-    private BufferedImage qrCached;
-    private String qrCacheKey;
 
-    public PaymentPanel(double totalAmount, PaymentListener listener) {
-        this.totalAmount = totalAmount;
+    // QR cache
+    private volatile String qrCacheKey;
+    private volatile ImageIcon qrCacheIcon;
+
+    public PaymentPanel(List<SalesInvoiceDetail> details,
+                        double subTotal,
+                        double discount,
+                        double grandTotal,
+                        PaymentListener listener) {
+        this.details = details;
+        this.subTotal = subTotal;
+        this.discount = discount;
+        this.grandTotal = grandTotal;
         this.listener = listener;
 
-        setLayout(new BorderLayout(12, 12));
-        setBorder(new EmptyBorder(16, 16, 16, 16));
+        initUI();
+        bindEvents();
+        applyMethodUI();   
+        updateComputed();  
+    }
 
-        setPreferredSize(new Dimension(720, 520));
+    private void initUI() {
+        setLayout(new BorderLayout(12, 12));
+        setBorder(new EmptyBorder(12, 12, 12, 12));
+        setOpaque(true);
 
         add(buildHeader(), BorderLayout.NORTH);
-        add(buildContent(), BorderLayout.CENTER);
+
+        JComponent left = buildInvoicePane();
+        JComponent right = buildPaymentPane();
+
+        left.setMinimumSize(new Dimension(520, 0));
+        right.setMinimumSize(new Dimension(360, 0));
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
+        split.setBorder(null);
+        split.setDividerSize(10);
+        split.setContinuousLayout(true);
+        split.setResizeWeight(0.65);
+
+        add(split, BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
-
-        cboMethod.addActionListener(e -> applyMethodUI());
-        txtCustomerPay.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                updateChangePreview();
-            }
-        });
-
-        bindKeys();
-
-        lblTotalValue.setText(moneyFmt.format(Math.round(totalAmount)) + " đ");
-        cboMethod.setSelectedItem("CASH");
-        applyMethodUI();
     }
 
     private JComponent buildHeader() {
-        JPanel header = new JPanel(new BorderLayout(8, 4));
+        JPanel header = new JPanel(new BorderLayout(8, 0));
         header.setOpaque(false);
 
-        JLabel title = new JLabel("THANH TOÁN");
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
+        JButton btnBack = new JButton("Quay lại");
+        btnBack.setFocusable(false);
+        btnBack.addActionListener(e -> {
+            if (listener != null) listener.onBack();
+        });
 
-        JPanel totalBox = new JPanel(new BorderLayout());
-        totalBox.setOpaque(false);
+        JLabel lblTitle = new JLabel("THANH TOÁN", SwingConstants.CENTER);
+        lblTitle.setFont(lblTitle.getFont().deriveFont(Font.BOLD, 18f));
 
-        JLabel totalLbl = new JLabel("Tổng cần thanh toán");
-        totalLbl.setFont(totalLbl.getFont().deriveFont(Font.PLAIN, 12f));
+        JLabel lblTotal = new JLabel(formatMoney(grandTotal), SwingConstants.RIGHT);
+        lblTotal.setFont(lblTotal.getFont().deriveFont(Font.BOLD, 20f));
 
-        lblTotalValue.setFont(lblTotalValue.getFont().deriveFont(Font.BOLD, 26f));
-
-        totalBox.add(totalLbl, BorderLayout.NORTH);
-        totalBox.add(lblTotalValue, BorderLayout.CENTER);
-
-        header.add(title, BorderLayout.WEST);
-        header.add(totalBox, BorderLayout.EAST);
+        header.add(btnBack, BorderLayout.WEST);
+        header.add(lblTitle, BorderLayout.CENTER);
+        header.add(lblTotal, BorderLayout.EAST);
 
         return header;
     }
 
-    private JComponent buildContent() {
-        JPanel content = new JPanel(new BorderLayout(12, 12));
-        content.setOpaque(false);
+    private JComponent buildInvoicePane() {
+        JPanel left = new JPanel(new BorderLayout(10, 10));
+        left.setOpaque(false);
 
-        JPanel formCard = buildCard();
-        formCard.setLayout(new GridBagLayout());
+        // Table model
+        String[] cols = {"Mã SP", "Tên SP", "Số lượng", "Giá", "Thành tiền"};
+        modelInvoice = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 0) return Integer.class;
+                if (columnIndex == 2) return Integer.class;
+                if (columnIndex == 3 || columnIndex == 4) return Double.class;
+                return Object.class;
+            }
+        };
+
+        if (details != null) {
+            for (SalesInvoiceDetail d : details) {
+                int pid = d.getProductId();
+                String name = d.getProductName();
+                if (name == null || name.trim().isEmpty()) {
+                    name = "SP #" + pid;
+                }
+                int qty = d.getQty();
+                double price = d.getUnitPrice();
+                double lineTotal = qty * price;
+
+                modelInvoice.addRow(new Object[]{pid, name, qty, price, lineTotal});
+            }
+        }
+
+        tblInvoice.setModel(modelInvoice);
+        tblInvoice.setRowHeight(28);
+        tblInvoice.setFillsViewportHeight(true);
+
+        // Render money columns
+        DefaultTableCellRenderer rightMoney = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                           boolean hasFocus, int row, int column) {
+                if (value instanceof Number) {
+                    value = moneyFmt.format(((Number) value).doubleValue());
+                }
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setHorizontalAlignment(SwingConstants.RIGHT);
+                return c;
+            }
+        };
+        tblInvoice.getColumnModel().getColumn(3).setCellRenderer(rightMoney);
+        tblInvoice.getColumnModel().getColumn(4).setCellRenderer(rightMoney);
+
+        // Qty align center
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(SwingConstants.CENTER);
+        tblInvoice.getColumnModel().getColumn(2).setCellRenderer(center);
+
+        JScrollPane sp = new JScrollPane(tblInvoice);
+        sp.setBorder(cardBorder("Chi tiết hóa đơn"));
+
+        left.add(sp, BorderLayout.CENTER);
+        left.add(buildTotalsCard(), BorderLayout.SOUTH);
+
+        return left;
+    }
+
+    private JComponent buildTotalsCard() {
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBorder(cardBorder(null));
+        card.setOpaque(false);
+
+        lblSubTotalValue.setHorizontalAlignment(SwingConstants.RIGHT);
+        lblDiscountValue.setHorizontalAlignment(SwingConstants.RIGHT);
+        lblGrandTotalValue.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        lblSubTotalValue.setText(formatMoney(subTotal));
+        lblDiscountValue.setText(formatMoney(discount));
+        lblGrandTotalValue.setText(formatMoney(grandTotal));
+
+        lblGrandTotalValue.setFont(lblGrandTotalValue.getFont().deriveFont(Font.BOLD, 18f));
+        lblGrandTotalValue.setForeground(Color.RED);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.insets = new Insets(4, 6, 4, 6);
         gbc.anchor = GridBagConstraints.WEST;
+
+        card.add(new JLabel("Tổng trước giảm:"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(lblSubTotalValue, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        card.add(new JLabel("Tiền giảm giá:"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(lblDiscountValue, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        JLabel lbl = new JLabel("Tổng sau giảm:");
+        lbl.setFont(lbl.getFont().deriveFont(Font.BOLD, 16f));
+        card.add(lbl, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(lblGrandTotalValue, gbc);
+
+        return card;
+    }
+
+    private JComponent buildPaymentPane() {
+        JPanel right = new JPanel(new BorderLayout(10, 10));
+        right.setOpaque(false);
+
+        JPanel body = new JPanel();
+        body.setOpaque(false);
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+
+        body.add(buildPaymentFormCard());
+        body.add(Box.createVerticalStrut(10));
+        body.add(buildQrCard());
+
+        JScrollPane scroll = new JScrollPane(body);
+        scroll.setBorder(null);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+        right.add(scroll, BorderLayout.CENTER);
+        return right;
+    }
+
+    private JComponent buildPaymentFormCard() {
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBorder(cardBorder("Thông tin thanh toán"));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(6, 6, 6, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+
+        // Method
+        card.add(new JLabel("Phương thức"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        cboMethod.setPreferredSize(new Dimension(220, 34));
+        card.add(cboMethod, gbc);
+
+        // Customer pay
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        card.add(new JLabel("Khách đưa"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        txtCustomerPay.setPreferredSize(new Dimension(220, 34));
+        txtCustomerPay.setHorizontalAlignment(SwingConstants.RIGHT);
+        txtCustomerPay.setFont(txtCustomerPay.getFont().deriveFont(15f));
+        txtCustomerPay.setText(moneyFmt.format(Math.round(grandTotal)));
+        card.add(txtCustomerPay, gbc);
+
+        // Diff 
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+
+        lblDiffTitle.setFont(lblDiffTitle.getFont().deriveFont(Font.BOLD));
+        card.add(lblDiffTitle, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        formCard.add(new JLabel("Phương thức"), gbc);
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        cboMethod.setPreferredSize(new Dimension(180, 34));
-        formCard.add(cboMethod, gbc);
+        lblDiffValue.setHorizontalAlignment(SwingConstants.RIGHT);
+        lblDiffValue.setFont(lblDiffValue.getFont().deriveFont(Font.BOLD, 15f));
+        card.add(lblDiffValue, gbc);
 
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.weightx = 0;
-        formCard.add(new JLabel("Khách đưa"), gbc);
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        txtCustomerPay.setPreferredSize(new Dimension(180, 34));
-        formCard.add(txtCustomerPay, gbc);
-
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.weightx = 0;
-        formCard.add(lblChangeTitle, gbc);
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        lblChangeValue.setFont(lblChangeValue.getFont().deriveFont(Font.BOLD, 16f));
-        formCard.add(lblChangeValue, gbc);
-
+        // Quick add 
         gbc.gridy++;
         gbc.gridx = 0;
         gbc.gridwidth = 2;
-        gbc.weightx = 1.0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
         pnlQuickAdd.setOpaque(false);
         pnlQuickAdd.setLayout(new BorderLayout(6, 6));
@@ -144,36 +356,47 @@ public class PaymentPanel extends JPanel {
         pnlQuickAdd.add(quickLbl, BorderLayout.NORTH);
         pnlQuickAdd.add(buildQuickButtons(), BorderLayout.CENTER);
 
-        formCard.add(pnlQuickAdd, gbc);
+        card.add(pnlQuickAdd, gbc);
 
-        pnlQrCard.setBorder(cardBorder());
-        pnlQrCard.setPreferredSize(new Dimension(320, 0));
+        return card;
+    }
 
-        JLabel qrTitle = new JLabel("QUÉT MÃ QR");
-        qrTitle.setFont(qrTitle.getFont().deriveFont(Font.BOLD, 14f));
+    private JComponent buildQrCard() {
+        pnlQrCard.setBorder(cardBorder("Ngân hàng (QR)"));
+        pnlQrCard.setOpaque(false);
 
-        lblQrImage.setPreferredSize(new Dimension(280, 280));
+        lblQrImage.setPreferredSize(new Dimension(320, 320));
         lblQrImage.setBorder(new LineBorder(new Color(0, 0, 0, 30), 1, true));
+
         lblQrInfo.setFont(lblQrInfo.getFont().deriveFont(Font.PLAIN, 12f));
+        lblQrInfo.setForeground(new Color(80, 80, 80));
 
-        JPanel qrTop = new JPanel(new BorderLayout());
-        qrTop.setOpaque(false);
-        qrTop.add(qrTitle, BorderLayout.NORTH);
-        qrTop.add(new JLabel("Chuyển khoản đúng số tiền để hệ thống ghi nhận nhanh hơn."), BorderLayout.CENTER);
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        top.add(new JLabel("Quét mã để chuyển khoản đúng số tiền."), BorderLayout.CENTER);
 
-        JPanel qrCenter = new JPanel(new BorderLayout(8, 8));
-        qrCenter.setOpaque(false);
-        qrCenter.add(lblQrImage, BorderLayout.CENTER);
-        qrCenter.add(lblQrInfo, BorderLayout.SOUTH);
+        JPanel center = new JPanel(new BorderLayout(8, 8));
+        center.setOpaque(false);
+        center.add(lblQrImage, BorderLayout.CENTER);
+        center.add(lblQrInfo, BorderLayout.SOUTH);
 
-        pnlQrCard.setLayout(new BorderLayout(8, 8));
-        pnlQrCard.add(qrTop, BorderLayout.NORTH);
-        pnlQrCard.add(qrCenter, BorderLayout.CENTER);
+        pnlQrCard.removeAll();
+        pnlQrCard.add(top, BorderLayout.NORTH);
+        pnlQrCard.add(center, BorderLayout.CENTER);
 
-        content.add(formCard, BorderLayout.CENTER);
-        content.add(pnlQrCard, BorderLayout.EAST);
+        pnlQrCard.setVisible(false);
+        return pnlQrCard;
+    }
 
-        return content;
+    private JComponent buildFooter() {
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        footer.setOpaque(false);
+
+        btnConfirm.setPreferredSize(new Dimension(160, 36));
+        btnConfirm.setFont(btnConfirm.getFont().deriveFont(Font.BOLD));
+
+        footer.add(btnConfirm);
+        return footer;
     }
 
     private JPanel buildQuickButtons() {
@@ -196,6 +419,7 @@ public class PaymentPanel extends JPanel {
         row2.add(buildAddBtn("+100", 100_000));
         row2.add(buildAddBtn("+200", 200_000));
         row2.add(buildAddBtn("+500", 500_000));
+        row2.add(buildAddBtn("Reset", -1_000_000_000));
 
         container.add(row1);
         container.add(Box.createVerticalStrut(6));
@@ -208,73 +432,61 @@ public class PaymentPanel extends JPanel {
         JButton btn = new JButton(label);
         btn.setFocusable(false);
         btn.addActionListener(e -> {
-            Long current = tryParseMoney(txtCustomerPay.getText());
-            long base = (current == null) ? 0 : current;
-            long newValue = base + addAmount;
+            long base = parseMoneyToLong(txtCustomerPay.getText());
+            long newValue = Math.max(0, base + addAmount);
             txtCustomerPay.setText(moneyFmt.format(newValue));
             txtCustomerPay.requestFocusInWindow();
-            updateChangePreview();
+            updateComputed();
         });
         return btn;
     }
 
-    private JComponent buildFooter() {
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        footer.setOpaque(false);
+    private CompoundBorder cardBorder(String title) {
+        LineBorder line = new LineBorder(new Color(0, 0, 0, 30), 1, true);
+        EmptyBorder pad = new EmptyBorder(10, 10, 10, 10);
+        if (title == null || title.trim().isEmpty()) {
+            return new CompoundBorder(line, pad);
+        }
+        return new CompoundBorder(BorderFactory.createTitledBorder(line, title), pad);
+    }
 
-        JButton btnCancel = new JButton("Hủy bỏ (ESC)");
-        JButton btnConfirm = new JButton("XÁC NHẬN (ENTER)");
-
-        btnCancel.addActionListener(e -> {
-            if (listener != null) listener.onCancel();
+    private void bindEvents() {
+        cboMethod.addActionListener(e -> {
+            applyMethodUI();
+            updateComputed();
         });
 
-        btnConfirm.addActionListener(e -> onConfirm());
-        txtCustomerPay.addActionListener(e -> onConfirm());
-
-        footer.add(btnCancel);
-        footer.add(btnConfirm);
-
-        return footer;
-    }
-
-    private JPanel buildCard() {
-        JPanel p = new JPanel();
-        p.setBorder(cardBorder());
-        p.setOpaque(true);
-        return p;
-    }
-
-    private CompoundBorder cardBorder() {
-        return new CompoundBorder(
-                new LineBorder(new Color(0, 0, 0, 30), 1, true),
-                new EmptyBorder(10, 10, 10, 10)
-        );
-    }
-
-    private void bindKeys() {
-        getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "cancel");
-        getActionMap().put("cancel", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (listener != null) listener.onCancel();
-            }
+        txtCustomerPay.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { updateComputed(); }
+            @Override public void removeUpdate(DocumentEvent e) { updateComputed(); }
+            @Override public void changedUpdate(DocumentEvent e) { updateComputed(); }
         });
 
-        getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "confirm");
-        getActionMap().put("confirm", new AbstractAction() {
+        btnConfirm.addActionListener(e -> confirm());
+
+        bindKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "back", () -> {
+            if (listener != null) listener.onBack();
+        });
+
+        bindKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "confirm", this::confirm);
+
+        txtCustomerPay.addActionListener(e -> confirm());
+    }
+
+    private void bindKey(KeyStroke ks, String name, Runnable action) {
+        InputMap im = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        ActionMap am = getActionMap();
+        im.put(ks, name);
+        am.put(name, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                onConfirm();
+                action.run();
             }
         });
     }
 
     private void applyMethodUI() {
-        String method = (String) cboMethod.getSelectedItem();
-        if (method == null) method = "CASH";
+        String method = getSelectedMethodCode();
 
         boolean isCash = "CASH".equals(method);
         boolean isTransfer = "TRANSFER".equals(method);
@@ -282,16 +494,11 @@ public class PaymentPanel extends JPanel {
         txtCustomerPay.setEditable(isCash);
         pnlQuickAdd.setVisible(isCash);
 
-        pnlQrCard.setVisible(isTransfer);
-
         if (!isCash) {
-            txtCustomerPay.setText(moneyFmt.format(Math.round(totalAmount)));
-        } else {
-            if (txtCustomerPay.getText() == null) txtCustomerPay.setText("");
+            txtCustomerPay.setText(moneyFmt.format(Math.round(grandTotal)));
         }
 
-        updateChangePreview();
-
+        pnlQrCard.setVisible(isTransfer);
         if (isTransfer) {
             loadQrCodeAsync();
         } else {
@@ -299,134 +506,166 @@ public class PaymentPanel extends JPanel {
             lblQrImage.setText(" ");
             lblQrInfo.setText(" ");
         }
+
+        revalidate();
+        repaint();
     }
 
-    private void updateChangePreview() {
-        Long given = tryParseMoney(txtCustomerPay.getText());
-        if (given == null) {
-            lblChangeTitle.setText("Tiền thừa");
-            lblChangeValue.setText("---");
+    private void updateComputed() {
+        String method = getSelectedMethodCode();
+
+        double pay = "CASH".equals(method) ? parseMoneyToLong(txtCustomerPay.getText()) : grandTotal;
+        double diff = pay - grandTotal;
+
+        if (diff >= 0) {
+            lblDiffTitle.setText("Tiền thừa");
+            lblDiffValue.setText(formatMoney(diff));
+            lblDiffValue.setForeground(new Color(0, 120, 60));
+        } else {
+            lblDiffTitle.setText("Còn thiếu");
+            lblDiffValue.setText(formatMoney(-diff));
+            lblDiffValue.setForeground(new Color(176, 0, 32));
+        }
+
+        boolean valid = !"CASH".equals(method) || diff >= 0;
+        btnConfirm.setEnabled(valid);
+    }
+
+    private void confirm() {
+        if (!btnConfirm.isEnabled()) {
+            Toolkit.getDefaultToolkit().beep();
             return;
         }
 
-        double diff = given - totalAmount;
-
-        if (diff >= 0) {
-            lblChangeTitle.setText("Tiền thừa");
-            lblChangeValue.setText(moneyFmt.format(Math.round(diff)) + " đ");
-        } else {
-            lblChangeTitle.setText("Còn thiếu");
-            lblChangeValue.setText(moneyFmt.format(Math.round(-diff)) + " đ");
-        }
-    }
-
-    private void onConfirm() {
-        String method = (String) cboMethod.getSelectedItem();
-        if (method == null) method = "CASH";
+        String method = getSelectedMethodCode();
 
         if ("CASH".equals(method)) {
-            Long given = tryParseMoney(txtCustomerPay.getText());
-            if (given == null) {
+            long given = parseMoneyToLong(txtCustomerPay.getText());
+            if (given <= 0) {
                 JOptionPane.showMessageDialog(this, "Vui lòng nhập số tiền khách đưa.");
                 txtCustomerPay.requestFocusInWindow();
                 return;
             }
 
-            if (given < totalAmount) {
-                long thiếu = (long) Math.ceil(totalAmount - given);
+            if (given < grandTotal) {
+                long thiếu = (long) Math.ceil(grandTotal - given);
                 JOptionPane.showMessageDialog(this, "Khách đưa chưa đủ. Còn thiếu " + moneyFmt.format(thiếu) + " đ");
                 txtCustomerPay.requestFocusInWindow();
                 return;
             }
 
-            double change = given - totalAmount;
-            if (listener != null) {
-                listener.onConfirm(method, given.doubleValue(), change);
-            }
-        } else {
-            if (listener != null) {
-                listener.onConfirm(method, totalAmount, 0);
-            }
+            double change = given - grandTotal;
+            if (listener != null) listener.onConfirm(method, given, change);
+            return;
         }
+
+        if (listener != null) listener.onConfirm(method, grandTotal, 0);
     }
 
-    private Long tryParseMoney(String input) {
-        if (input == null) return null;
-        String digits = input.replaceAll("[^0-9]", "");
-        if (digits.isEmpty()) return null;
-        try {
-            return Long.parseLong(digits);
-        } catch (NumberFormatException ex) {
-            return null;
+    private String getSelectedMethodCode() {
+        Object obj = cboMethod.getSelectedItem();
+        if (obj instanceof MethodOption) {
+            return ((MethodOption) obj).code;
         }
+        return "CASH";
     }
 
     private void loadQrCodeAsync() {
-        BankConfig config = new BankConfigDAO().getFirstConfig();
-        if (config == null || config.getBankId() == null || config.getBankId().trim().isEmpty()
-                || config.getaccountNumber() == null || config.getaccountNumber().trim().isEmpty()
-                || config.getTemplate() == null || config.getTemplate().trim().isEmpty()) {
-            lblQrImage.setIcon(null);
-            lblQrImage.setText("Chưa cấu hình QR");
-            lblQrInfo.setText("Vui lòng cấu hình bankconfig trong DB.");
+        final long amount = Math.max(0, Math.round(grandTotal));
+        final String key = "amount=" + amount;
+        // Cache
+        if (key.equals(qrCacheKey) && qrCacheIcon != null) {
+            lblQrImage.setText(" ");
+            lblQrImage.setIcon(qrCacheIcon);
             return;
         }
 
-        long amount = Math.round(totalAmount);
-        String addInfo = "Thanh toán POS";
-        String accountName = (config.getAccountName() == null) ? "" : config.getAccountName();
-
-        String url = buildVietQrUrl(config.getBankId(), config.getaccountNumber(), config.getTemplate(), amount, addInfo, accountName);
-
-        String cacheKey = url;
-        if (cacheKey.equals(qrCacheKey) && qrCached != null) {
-            setQrImage(qrCached, config);
-            return;
-        }
-
-        qrCacheKey = cacheKey;
         lblQrImage.setIcon(null);
-        lblQrImage.setText("Đang tải QR...");
+        lblQrImage.setText("Đang tạo mã QR...");
         lblQrInfo.setText(" ");
 
         new Thread(() -> {
             try {
+                BankConfig config = new BankConfigDAO().getFirstConfig();
+                if (config == null) {
+                    throw new Exception("Chưa cấu hình tài khoản ngân hàng (bankconfig).");
+                }
+
+                String bankId = safe(config.getBankId());
+                String accountNumber = safe(config.getaccountNumber());
+                String template = safe(config.getTemplate());
+                if (template.isEmpty()) template = "compact";
+
+                if (bankId.isEmpty() || accountNumber.isEmpty()) {
+                    throw new Exception("Thiếu bankId hoặc số tài khoản trong bankconfig.");
+                }
+
+                String addInfo = URLEncoder.encode("Thanh toan POS", StandardCharsets.UTF_8);
+                String accName = safe(config.getAccountName());
+                String accNameEnc = URLEncoder.encode(accName, StandardCharsets.UTF_8);
+
+                String url = String.format(
+                        "https://img.vietqr.io/image/%s-%s-%s.png?amount=%s&addInfo=%s&accountName=%s",
+                        bankId, accountNumber, template, String.valueOf(amount), addInfo, accNameEnc
+                );
+
                 BufferedImage img = ImageIO.read(new URL(url));
-                if (img == null) throw new RuntimeException("Không tải được QR");
+                if (img == null) {
+                    throw new Exception("Không tải được hình QR (image null).");
+                }
 
-                qrCached = img;
+                Image scaled = img.getScaledInstance(320, 320, Image.SCALE_SMOOTH);
+                ImageIcon icon = new ImageIcon(scaled);
 
-                SwingUtilities.invokeLater(() -> setQrImage(img, config));
+                qrCacheKey = key;
+                qrCacheIcon = icon;
+
+                String infoLine = "STK: " + accountNumber + (accName.isEmpty() ? "" : (" • " + accName));
+
+                SwingUtilities.invokeLater(() -> {
+                    lblQrImage.setText(" ");
+                    lblQrImage.setIcon(icon);
+                    lblQrInfo.setText(infoLine);
+                });
+
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() -> {
                     lblQrImage.setIcon(null);
-                    lblQrImage.setText("Không tải được QR");
-                    lblQrInfo.setText(ex.getMessage() == null ? "" : ex.getMessage());
+                    lblQrImage.setText("<html><div style='text-align:center'>Lỗi tạo QR<br/>"
+                            + escapeHtml(ex.getMessage()) + "</div></html>");
+                    lblQrInfo.setText(" ");
                 });
             }
-        }, "vietqr-loader").start();
+        }, "qr-loader").start();
     }
 
-    private void setQrImage(BufferedImage img, BankConfig config) {
-        int w = 280;
-        int h = 280;
-        Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
-        lblQrImage.setText(" ");
-        lblQrImage.setIcon(new ImageIcon(scaled));
 
-        String info = "STK: " + config.getaccountNumber()
-                + " • Tên: " + (config.getAccountName() == null ? "" : config.getAccountName());
-        lblQrInfo.setText(info);
+    private String formatMoney(double amount) {
+        long v = Math.round(amount);
+        return moneyFmt.format(Math.max(0, v)) + " đ";
     }
 
-    private String buildVietQrUrl(String bankId, String accountNumber, String template, long amount, String addInfo, String accountName) {
-        String base = "https://img.vietqr.io/image/" + bankId + "-" + accountNumber + "-" + template + ".png";
-        String qAddInfo = URLEncoder.encode(addInfo == null ? "" : addInfo, StandardCharsets.UTF_8);
-        String qName = URLEncoder.encode(accountName == null ? "" : accountName, StandardCharsets.UTF_8);
+    private long parseMoneyToLong(String input) {
+        if (input == null) return 0;
+        String digits = input.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) return 0;
+        try {
+            return Long.parseLong(digits);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
 
-        return base
-                + "?amount=" + amount
-                + "&addInfo=" + qAddInfo
-                + "&accountName=" + qName;
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }

@@ -22,12 +22,6 @@ public class PaymentDialog extends JDialog {
         JPanel header = new JPanel(new BorderLayout(12, 0));
         header.setOpaque(false);
 
-        JLabel lblCheck = new JLabel("✔", SwingConstants.CENTER);
-        lblCheck.setFont(lblCheck.getFont().deriveFont(Font.BOLD, 40f));
-        lblCheck.setForeground(new Color(0, 153, 76));
-        lblCheck.setPreferredSize(new Dimension(56, 56));
-        header.add(lblCheck, BorderLayout.WEST);
-
         JPanel headerText = new JPanel();
         headerText.setOpaque(false);
         headerText.setLayout(new BoxLayout(headerText, BoxLayout.Y_AXIS));
