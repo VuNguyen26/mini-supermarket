@@ -15,6 +15,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -35,7 +36,7 @@ public class StockAdjustmentPanel extends JPanel {
     public StockAdjustmentPanel(AuthUser currentUser) {
         this.currentUser = currentUser;
         initUI();
-        loadAdjustments();
+        loadAdjustments("");
     }
 
     private void initUI() {
@@ -53,7 +54,22 @@ public class StockAdjustmentPanel extends JPanel {
 
         JLabel title = new JLabel("Danh sách kiểm kho");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        panel.add(title, BorderLayout.WEST);
+
+        JTextField txtSearch = new JTextField();
+        txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        txtSearch.setMinimumSize(new Dimension(150, 20));
+        txtSearch.setPreferredSize(new Dimension(300, 24));
+        txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
+        txtSearch.addActionListener(e -> {
+            String keyword = txtSearch.getText().trim();
+            loadAdjustments(keyword);
+        });
+
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftPanel.add(title);
+        leftPanel.add(txtSearch);
+
+        panel.add(leftPanel, BorderLayout.WEST);
 
         JButton btnAdd = new JButton("+ Thêm phiếu");
         JButton btnView = new JButton("Xem chi tiết");
@@ -66,7 +82,7 @@ public class StockAdjustmentPanel extends JPanel {
                     );
             dialog.setVisible(true);
             if (dialog.isSaved()) {
-                loadAdjustments();
+                loadAdjustments("");
             }
         });
         btnView.addActionListener(e -> {
@@ -295,9 +311,9 @@ public class StockAdjustmentPanel extends JPanel {
 
     /* ================= LOAD DATA ================= */
 
-    private void loadAdjustments() {
+    private void loadAdjustments(String searchTxt) {
         adjustmentModel.setRowCount(0);
-        List<StockAdjustment> list = saService.getAll();
+        List<StockAdjustment> list = saService.getAll(searchTxt);
         for (StockAdjustment sa : list) {
             adjustmentModel.addRow(new Object[]{
                     sa.getSaId(),
@@ -400,7 +416,7 @@ public class StockAdjustmentPanel extends JPanel {
 
                 if(confirm == JOptionPane.YES_OPTION){
                     saService.delete(currentSA.getSaId());
-                    loadAdjustments();
+                    loadAdjustments("");
                     tblAdjustment.revalidate();
                     tblAdjustment.repaint();
                 }
@@ -427,7 +443,7 @@ public class StockAdjustmentPanel extends JPanel {
             dialog.setVisible(true);
 
             if (dialog.isSaved()) {
-                loadAdjustments();
+                loadAdjustments("");
                 tblAdjustment.revalidate();
                 tblAdjustment.repaint();
             }

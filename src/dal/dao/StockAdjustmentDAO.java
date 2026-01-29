@@ -14,21 +14,33 @@ import java.util.List;
 public class StockAdjustmentDAO {
 
     // ====== load danh sách phiếu kiểm kho ======
-    public List<StockAdjustment> findAll() {
+    public List<StockAdjustment> findAll(String keyword) {
         String sql =
                 "SELECT sa_id, sa_code, created_by, created_at, reason, status, note " +
-                "FROM stock_adjustment " +
-                "ORDER BY created_at DESC";
+                "FROM stock_adjustment ";
 
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        
+        if(hasKeyword){
+            sql += "WHERE sa_code LIKE ? ";
+        }
+
+        sql += "ORDER BY created_at DESC";
+        
         List<StockAdjustment> list = new ArrayList<>();
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+            PreparedStatement ps = con.prepareStatement(sql)) {
 
+            if (hasKeyword) {
+                ps.setString(1, "%" + keyword.trim() + "%");
+            }
+
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 list.add(map(rs));
             }
+
         } catch (Exception e) {
             throw new RuntimeException("Load stock adjustments failed: " + e.getMessage(), e);
         }

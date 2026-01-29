@@ -20,8 +20,8 @@ public class StockAdjustmentService {
      * Load danh sách phiếu kiểm kho
      * Dùng cho màn hình sidebar "Kiểm kho"
      */
-    public List<StockAdjustment> getAll() {
-        return stockAdjustmentDAO.findAll();
+    public List<StockAdjustment> getAll(String searchTxt) {
+        return stockAdjustmentDAO.findAll(searchTxt);
     }
 
     /**

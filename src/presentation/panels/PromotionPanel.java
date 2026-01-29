@@ -36,7 +36,7 @@ public class PromotionPanel extends JPanel {
     public PromotionPanel(AuthUser currentUser) {
         this.currentUser = currentUser;
         initUI();
-        loadPromotions();
+        loadPromotions("");
     }
 
     private void initUI() {
@@ -52,9 +52,24 @@ public class PromotionPanel extends JPanel {
     private JComponent buildHeader() {
         JPanel panel = new JPanel(new BorderLayout());
 
-        JLabel title = new JLabel("Danh sách chương trình khuyến mãi");
+        JLabel title = new JLabel("Danh sách khuyến mãi");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        panel.add(title, BorderLayout.WEST);
+
+        JTextField txtSearch = new JTextField();
+        txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        txtSearch.setMinimumSize(new Dimension(150, 20));
+        txtSearch.setPreferredSize(new Dimension(300, 24));
+        txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
+        txtSearch.addActionListener(e -> {
+            String keyword = txtSearch.getText().trim();
+            loadPromotions(keyword);
+        });
+
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftPanel.add(title);
+        leftPanel.add(txtSearch);
+
+        panel.add(leftPanel, BorderLayout.WEST);
 
         JButton btnAdd = new JButton("+ Thêm khuyến mãi");
         JButton btnView = new JButton("Xem chi tiết");
@@ -67,7 +82,7 @@ public class PromotionPanel extends JPanel {
                     );
             dialog.setVisible(true);
             if(dialog.isSaved()){
-                loadPromotions();
+                loadPromotions("");
             }
         });
 
@@ -299,9 +314,9 @@ public class PromotionPanel extends JPanel {
 
     /* ================= LOAD DATA ================= */
 
-    private void loadPromotions() {
+    private void loadPromotions(String searchTxt) {
         promotionModel.setRowCount(0);
-        List<Promotion> list = promoService.getAll();
+        List<Promotion> list = promoService.getAll(searchTxt);
         for (Promotion promo : list) {
             promotionModel.addRow(new Object[]{
                     promo.getPromoId(),
@@ -407,7 +422,7 @@ public class PromotionPanel extends JPanel {
 
                 if(confirm == JOptionPane.YES_OPTION){
                     promoService.delete(currentPromo.getPromoId());
-                    loadPromotions();
+                    loadPromotions("");
                     tblPromotion.revalidate();
                     tblPromotion.repaint();
                 }
@@ -433,7 +448,7 @@ public class PromotionPanel extends JPanel {
             dialog.setVisible(true);
 
             if (dialog.isSaved()) {
-                loadPromotions();
+                loadPromotions("");
                 tblPromotion.revalidate();
                 tblPromotion.repaint();
             }

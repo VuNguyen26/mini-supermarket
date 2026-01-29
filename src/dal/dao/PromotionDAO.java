@@ -13,18 +13,30 @@ import java.util.List;
 
 public class PromotionDAO {
 
-    public List<Promotion> findAll() {
+    public List<Promotion> findAll(String keyword) {
         String sql =
                 "SELECT promo_id, promo_code, promo_name, start_at, end_at, type, value, min_order_amount, created_by, status, created_at " +
-                "FROM promotion " +
-                "ORDER BY created_at DESC";
+                "FROM promotion ";
+
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+
+        if(hasKeyword){
+            sql += "WHERE promo_code LIKE ? OR promo_name LIKE ? ";
+        }
+
+        sql += "ORDER BY created_at DESC";
 
         List<Promotion> list = new ArrayList<>();
 
         try (Connection con = DBConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+            PreparedStatement ps = con.prepareStatement(sql)) {
 
+            if (hasKeyword) {
+                ps.setString(1, "%" + keyword.trim() + "%");
+                ps.setString(2, "%" + keyword.trim() + "%");
+            }
+
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 list.add(map(rs));
             }

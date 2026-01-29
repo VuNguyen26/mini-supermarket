@@ -12,8 +12,8 @@ public class PromotionService {
     private final PromotionDAO promotionDAO = new PromotionDAO();
     private final PromotionProductDAO promotionProductDAO = new PromotionProductDAO();
 
-    public List<Promotion> getAll(){
-        return promotionDAO.findAll();
+    public List<Promotion> getAll(String searchTxt){
+        return promotionDAO.findAll(searchTxt);
     }
 
     public Promotion getById(int promoId){
