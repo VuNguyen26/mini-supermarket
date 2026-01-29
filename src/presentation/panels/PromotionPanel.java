@@ -58,7 +58,8 @@ public class PromotionPanel extends JPanel {
         JTextField txtSearch = new JTextField();
         txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         txtSearch.setMinimumSize(new Dimension(150, 20));
-        txtSearch.setPreferredSize(new Dimension(300, 24));
+        txtSearch.setPreferredSize(new Dimension(250, 25));
+        txtSearch.setMaximumSize(new Dimension(300, 27));;
         txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
         txtSearch.addActionListener(e -> {
             String keyword = txtSearch.getText().trim();
