@@ -1,225 +1,263 @@
 package presentation.panels;
 
 import bus.ReportService;
-import dal.dao.SalesInvoiceDAO;
-import dto.InventoryLot;
-import dto.SalesInvoice;
-import util.PermissionCodes;
-import util.RolePermission;
-
+import dto.ReportProduct;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.List;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.SwingConstants;
+
 
 public class ReportPanel extends JPanel {
+
     private final ReportService reportService = new ReportService();
 
-    private JTabbedPane tabbedPane;
-    private JPanel revenuePanel;
-    private JPanel topProductsPanel;
-    private JPanel inventoryPanel;
-
-    private JTextField startDateField;
-    private JTextField endDateField;
-    private JButton generateReportBtn;
+    private JTable table;
+    private DefaultTableModel model;
+    private JPanel chartPanel;
+    private JSpinner fromDate;
+    private JSpinner toDate;
+    private JComboBox<String> typeBox;
 
     public ReportPanel() {
-        initComponents();
-        setupLayout();
-        setupPermissions();
-        loadInitialData();
+        setBackground(Color.WHITE);
+        setLayout(new BorderLayout(12, 12));
+        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        initToolbar();
+        initTable();
     }
+    private void centerTableContent(JTable table) {
 
-    private void initComponents() {
-        tabbedPane = new JTabbedPane();
+        /* căn giữa nội dung bảng*/
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // Revenue Report Tab
-        revenuePanel = createRevenuePanel();
-        tabbedPane.addTab("Doanh thu", revenuePanel);
-
-        // Top Products Tab
-        topProductsPanel = createTopProductsPanel();
-        tabbedPane.addTab("Top sản phẩm", topProductsPanel);
-
-        // Inventory by Expiry Tab
-        inventoryPanel = createInventoryPanel();
-        tabbedPane.addTab("Tồn kho theo HSD", inventoryPanel);
-    }
-
-    private void setupLayout() {
-        setLayout(new BorderLayout());
-        add(tabbedPane, BorderLayout.CENTER);
-    }
-
-    private void setupPermissions() {
-        // Check if user has report view permission
-        if (!RolePermission.has(PermissionCodes.REPORT_VIEW)) {
-            JOptionPane.showMessageDialog(this, "Bạn không có quyền xem báo cáo",
-                                        "Không có quyền", JOptionPane.WARNING_MESSAGE);
-            setEnabled(false);
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setCellRenderer(center);
         }
     }
 
-    private void loadInitialData() {
-        // Load current month data by default
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
+    private void initToolbar() {
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        toolbar.setBackground(Color.WHITE);
+        toolbar.setOpaque(true);
+        fromDate = new JSpinner(new SpinnerDateModel(new java.util.Date(), null, null, Calendar.DAY_OF_MONTH));
+        toDate = new JSpinner(new SpinnerDateModel(new java.util.Date(), null, null, Calendar.DAY_OF_MONTH));
 
-        startDateField.setText(monthStart.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        endDateField.setText(now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        fromDate.setEditor(new JSpinner.DateEditor(fromDate, "dd-MM-yyyy"));
+        toDate.setEditor(new JSpinner.DateEditor(toDate, "dd-MM-yyyy"));
 
-        generateRevenueReport();
-        generateTopProductsReport();
-        generateInventoryReport();
+        typeBox = new JComboBox<>(new String[]{
+                "Top bán chạy",
+                "Top doanh thu",
+                "Biểu đồ cột" // tạo biểu đồ
+        });
+
+        JButton btnLoad = new JButton("Xem báo cáo");
+        btnLoad.addActionListener(e -> loadData());
+
+
+        toolbar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220,220,220)),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
+        toolbar.setBackground(new Color(245, 245, 245));
+
+        toolbar.add(new JLabel("Từ ngày"));
+        toolbar.add(fromDate);
+        toolbar.add(new JLabel("Đến ngày"));
+        toolbar.add(toDate);
+        toolbar.add(typeBox);
+        toolbar.add(btnLoad);
+
+        add(toolbar, BorderLayout.NORTH);
     }
 
-    private JPanel createRevenuePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+    private void initTable() {
+        // ===== TABLE =====
+        model = new DefaultTableModel(
+                new Object[]{"Mã SP", "Tên sản phẩm", "Số lượng", "Doanh thu", "Tổng"}, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
+        };
 
-        // Date range selector
-        JPanel datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        datePanel.add(new JLabel("Từ ngày:"));
-        startDateField = new JTextField(20);
-        datePanel.add(startDateField);
+        table = new JTable(model);
+        table.setRowHeight(40);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setBackground(Color.WHITE);
+        table.setForeground(Color.BLACK);
+        table.setShowVerticalLines(false);
+        table.setShowHorizontalLines(true);
+        table.setGridColor(new Color(230, 230, 230));
+        table.setFillsViewportHeight(true);
 
-        datePanel.add(new JLabel("Đến ngày:"));
-        endDateField = new JTextField(20);
-        datePanel.add(endDateField);
+        centerTableContent(table); // Can giua
+        DefaultTableCellRenderer headerRenderer =
+                (DefaultTableCellRenderer) table.getTableHeader().getDefaultRenderer();
+        headerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
 
-        generateReportBtn = new JButton("Tạo báo cáo");
-        generateReportBtn.addActionListener(e -> generateRevenueReport());
-        datePanel.add(generateReportBtn);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        table.getTableHeader().setBackground(Color.WHITE);
+        table.getTableHeader().setForeground(Color.BLACK);
 
-        panel.add(datePanel, BorderLayout.NORTH);
+        JScrollPane tableScroll = new JScrollPane(table);
+        tableScroll.setBorder(BorderFactory.createTitledBorder("Danh sách báo cáo"));
+        tableScroll.setBackground(Color.WHITE);
+        tableScroll.getViewport().setBackground(Color.WHITE);
+        tableScroll.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(220,220,220)),
+                        BorderFactory.createEmptyBorder(24, 24, 24, 24)
+                )
+        );
 
-        // Revenue display
-        JPanel contentPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-        contentPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        JLabel totalRevenueLabel = new JLabel("Tổng doanh thu: 0 VND");
-        totalRevenueLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        contentPanel.add(totalRevenueLabel);
+        // ===== CHART PANEL (placeholder) =====
+        chartPanel = new JPanel(new BorderLayout());
+        chartPanel.setBackground(Color.WHITE);
+        chartPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220,220,220)),
+                BorderFactory.createEmptyBorder(24,24,24,24)
+                )
+        );
 
-        JLabel invoiceCountLabel = new JLabel("Số hóa đơn: 0");
-        invoiceCountLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        contentPanel.add(invoiceCountLabel);
 
-        // Store labels for updating
-        panel.putClientProperty("totalRevenueLabel", totalRevenueLabel);
-        panel.putClientProperty("invoiceCountLabel", invoiceCountLabel);
+        // tạm thời để label (sẽ vẽ sau)
+        chartPanel.add(
+                new JLabel("Biểu đồ sẽ hiển thị ở đây", SwingConstants.CENTER),
+                BorderLayout.CENTER
+        );
 
-        panel.add(contentPanel, BorderLayout.CENTER);
+        // ===== SPLIT PANE =====
+        JSplitPane splitPane = new JSplitPane(
+                JSplitPane.HORIZONTAL_SPLIT,
+                tableScroll,
+                chartPanel
+        );
 
-        return panel;
+        splitPane.setResizeWeight(0.6); // 60% bảng, 40% biểu đồ
+        splitPane.setContinuousLayout(true);
+        splitPane.setDividerSize(6);
+        splitPane.setBorder(null);
+
+        add(splitPane, BorderLayout.CENTER);
     }
 
-    private JPanel createTopProductsPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+    private LocalDate convert(JSpinner spinner) {
+        return ((java.util.Date) spinner.getValue())
+                .toInstant()
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate();
+    }
+    private void showBarChart(LocalDate from, LocalDate to) {
+        List<ReportProduct> list =
+                reportService.getTopProducts(from, to, "qty", 10);
 
-        String[] columnNames = {"Sản phẩm", "Số lượng bán"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
-        JScrollPane scrollPane = new JScrollPane(table);
-
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        // Store table for updating
-        panel.putClientProperty("table", table);
-        panel.putClientProperty("model", model);
-
-        return panel;
+        chartPanel.removeAll();
+        chartPanel.add(new BarChartPanel(list), BorderLayout.CENTER);
+        chartPanel.revalidate();
+        chartPanel.repaint();
     }
 
-    private JPanel createInventoryPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+    private void loadTableReport(LocalDate from, LocalDate to, int typeIndex) {
+        /* load danh sach báo cáo
+        *
+        * */
 
-        String[] columnNames = {"Mã lô", "Sản phẩm", "Số lượng", "Hạn sử dụng", "Trạng thái"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        JTable table = new JTable(model);
-        JScrollPane scrollPane = new JScrollPane(table);
+        String type = typeIndex == 0 ? "qty" : "revenue";
 
-        panel.add(scrollPane, BorderLayout.CENTER);
+        List<ReportProduct> list =
+                reportService.getTopProducts(from, to, type, 10);
 
-        // Store table for updating
-        panel.putClientProperty("table", table);
-        panel.putClientProperty("model", model);
+        model.setRowCount(0);
 
-        return panel;
-    }
-
-    private void generateRevenueReport() {
-        try {
-            LocalDateTime startDate = LocalDateTime.parse(startDateField.getText(),
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-            LocalDateTime endDate = LocalDateTime.parse(endDateField.getText(),
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-
-            BigDecimal revenue = reportService.getRevenueReport(startDate, endDate);
-
-            // Get invoice count
-            List<SalesInvoice> invoices = new SalesInvoiceDAO().getInvoicesByDateRange(startDate, endDate);
-            int invoiceCount = invoices.size();
-
-            // Update labels
-            JLabel totalRevenueLabel = (JLabel) revenuePanel.getClientProperty("totalRevenueLabel");
-            totalRevenueLabel.setText("Tổng doanh thu: " + revenue + " VND");
-
-            JLabel invoiceCountLabel = (JLabel) revenuePanel.getClientProperty("invoiceCountLabel");
-            invoiceCountLabel.setText("Số hóa đơn: " + invoiceCount);
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi tạo báo cáo doanh thu: " + e.getMessage(),
-                                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+        for (ReportProduct rp : list) {
+            model.addRow(new Object[]{
+                    rp.getProductId(),
+                    rp.getProductName(),
+                    rp.getTotalQuantity(),
+                    rp.getTotalRevenue()
+            });
         }
     }
 
-    private void generateTopProductsReport() {
+    private void loadData() {
         try {
-            LocalDateTime startDate = LocalDateTime.parse(startDateField.getText(),
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-            LocalDateTime endDate = LocalDateTime.parse(endDateField.getText(),
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            LocalDate from = convert(fromDate);
+            LocalDate to = convert(toDate);
 
-            List<ReportRow> topProducts = reportService.getTopSellingProducts(startDate, endDate, 10);
+            int typeIndex = typeBox.getSelectedIndex();
 
-            DefaultTableModel model = (DefaultTableModel) topProductsPanel.getClientProperty("model");
-            model.setRowCount(0);
-
-            for (ReportRow row : topProducts) {
-                model.addRow(new Object[]{row.getLabel(), row.getValue()});
+            if (typeIndex <= 1) {
+                loadTableReport(from, to, typeIndex);
+            } else if (typeIndex == 2) {
+                showBarChart(from, to);
             }
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi tạo báo cáo top sản phẩm: " + e.getMessage(),
-                                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Không thể tải báo cáo",
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void generateInventoryReport() {
-        try {
-            List<InventoryLot> lots = reportService.getInventoryByExpiryDate();
+}
 
-            DefaultTableModel model = (DefaultTableModel) inventoryPanel.getClientProperty("model");
-            model.setRowCount(0);
 
-            for (InventoryLot lot : lots) {
-                model.addRow(new Object[]{
-                    lot.getLotCode(),
-                    lot.getProductName(),
-                    lot.getQuantity(),
-                    lot.getExpiryDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                    lot.getStatus()
-                });
-            }
+class BarChartPanel extends JPanel {
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi tạo báo cáo tồn kho: " + e.getMessage(),
-                                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+    private final List<ReportProduct> data;
+
+    BarChartPanel(List<ReportProduct> data) {
+        this.data = data;
+        setBackground(Color.WHITE);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (data == null || data.isEmpty()) return;
+
+        int w = getWidth();
+        int h = getHeight();
+        int barWidth = w / data.size();
+
+        // Long -> int (đúng kiểu)
+        int max = data.stream()
+                .mapToInt(rp -> rp.getTotalQuantity().intValue())
+                .max()
+                .orElse(1);
+
+        for (int i = 0; i < data.size(); i++) {
+            int value = data.get(i).getTotalQuantity().intValue();
+
+            int barHeight = (int) ((double) value / max * (h - 60));
+
+            g.setColor(new Color(100, 149, 237));
+            g.fillRect(
+                    i * barWidth + 20,
+                    h - barHeight - 30,
+                    barWidth - 40,
+                    barHeight
+            );
+
+            g.setColor(Color.BLACK);
+            g.drawString(
+                    data.get(i).getProductName(),
+                    i * barWidth + 20,
+                    h - 10
+            );
         }
     }
 }
+
+

@@ -10,74 +10,97 @@ import java.util.List;
 
 public class InventoryLotDAO {
 
+    /**
+     * Lấy toàn bộ lô hàng tồn kho
+     */
     public List<InventoryLot> getAllInventoryLots() throws SQLException {
+
         String sql = """
-            SELECT il.lot_id, il.product_id, p.product_name, il.lot_code,
-                   il.quantity, il.cost_price, il.expiry_date, il.manufactured_date,
-                   il.status, il.created_at
-            FROM inventory_lot il
-            LEFT JOIN product p ON il.product_id = p.product_id
-            ORDER BY il.expiry_date ASC
+            SELECT lot_id,
+                   product_id,
+                   quantity,
+                   remaining_quantity,
+                   import_date,
+                   expiry_date,
+                   import_price
+            FROM inventory_lot
+            ORDER BY expiry_date ASC
             """;
 
         List<InventoryLot> lots = new ArrayList<>();
+
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                InventoryLot lot = new InventoryLot();
-                lot.setLotId(rs.getInt("lot_id"));
-                lot.setProductId(rs.getInt("product_id"));
-                lot.setProductName(rs.getString("product_name"));
-                lot.setLotCode(rs.getString("lot_code"));
-                lot.setQuantity(rs.getInt("quantity"));
-                lot.setCostPrice(rs.getBigDecimal("cost_price"));
-                lot.setExpiryDate(rs.getDate("expiry_date").toLocalDate());
-                lot.setManufacturedDate(rs.getDate("manufactured_date").toLocalDate());
-                lot.setStatus(rs.getString("status"));
-                lot.setCreatedAt(rs.getDate("created_at").toLocalDate());
-                lots.add(lot);
+                lots.add(mapResultSet(rs));
             }
         }
+
         return lots;
     }
 
+    /**
+     * Lấy các lô hàng sắp hết hạn trong N ngày
+     */
     public List<InventoryLot> getExpiringLots(int daysAhead) throws SQLException {
+
         String sql = """
-            SELECT il.lot_id, il.product_id, p.product_name, il.lot_code,
-                   il.quantity, il.cost_price, il.expiry_date, il.manufactured_date,
-                   il.status, il.created_at
-            FROM inventory_lot il
-            LEFT JOIN product p ON il.product_id = p.product_id
-            WHERE il.expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
-            AND il.quantity > 0
-            ORDER BY il.expiry_date ASC
+            SELECT lot_id,
+                   product_id,
+                   quantity,
+                   remaining_quantity,
+                   import_date,
+                   expiry_date,
+                   import_price
+            FROM inventory_lot
+            WHERE expiry_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+              AND remaining_quantity > 0
+            ORDER BY expiry_date ASC
             """;
 
         List<InventoryLot> lots = new ArrayList<>();
+
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, daysAhead);
+            ps.setInt(1, daysAhead);
 
-            try (ResultSet rs = stmt.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    InventoryLot lot = new InventoryLot();
-                    lot.setLotId(rs.getInt("lot_id"));
-                    lot.setProductId(rs.getInt("product_id"));
-                    lot.setProductName(rs.getString("product_name"));
-                    lot.setLotCode(rs.getString("lot_code"));
-                    lot.setQuantity(rs.getInt("quantity"));
-                    lot.setCostPrice(rs.getBigDecimal("cost_price"));
-                    lot.setExpiryDate(rs.getDate("expiry_date").toLocalDate());
-                    lot.setManufacturedDate(rs.getDate("manufactured_date").toLocalDate());
-                    lot.setStatus(rs.getString("status"));
-                    lot.setCreatedAt(rs.getDate("created_at").toLocalDate());
-                    lots.add(lot);
+                    lots.add(mapResultSet(rs));
                 }
             }
         }
+
         return lots;
+    }
+
+    /**
+     * Map ResultSet → InventoryLot DTO
+     */
+    private InventoryLot mapResultSet(ResultSet rs) throws SQLException {
+
+        InventoryLot lot = new InventoryLot();
+
+        lot.setLotId(rs.getLong("lot_id"));
+        lot.setProductId(rs.getLong("product_id"));
+        lot.setQuantity(rs.getInt("quantity"));
+        lot.setRemainingQuantity(rs.getInt("remaining_quantity"));
+
+        Date importDate = rs.getDate("import_date");
+        if (importDate != null) {
+            lot.setImportDate(importDate.toLocalDate());
+        }
+
+        Date expiryDate = rs.getDate("expiry_date");
+        if (expiryDate != null) {
+            lot.setExpiryDate(expiryDate.toLocalDate());
+        }
+
+        lot.setImportPrice(rs.getDouble("import_price"));
+
+        return lot;
     }
 }

@@ -1,14 +1,14 @@
 package dal.dao;
 
-import  dto.ReportProduct;
-import dal.DBConnection;
-
-import java.sql.Connection;
+import  java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import dal.DBConnection;
+import dto.ReportProduct;
 
 public class ReportDAO {
 
@@ -28,13 +28,13 @@ public class ReportDAO {
 
         String sql =
                 "SELECT p.product_id, p.product_name, " +
-                        "       SUM(oi.quantity) AS qty, " +
-                        "       SUM(oi.quantity * oi.sale_price) AS revenue " +
-                        "FROM order_items oi " +
-                        "JOIN orders o ON oi.order_id = o.order_id " +
-                        "JOIN product p ON oi.product_id = p.product_id " +
-                        "WHERE o.status = 'COMPLETED' " +
-                        "  AND o.order_date BETWEEN ? AND ? " +
+                        "       SUM(si.quantity) AS qty, " +
+                        "       SUM(si.quantity * si.unit_price) AS revenue " +
+                        "FROM sales_invoice_detail si " +
+                        "JOIN sales_invoice s ON si.invoice_id = s.invoice_id " +
+                        "JOIN product p ON si.product_id = p.product_id " +
+                        "WHERE s.status = 'COMPLETED' " +
+                        "  AND DATE(s.created_at) BETWEEN ? AND ? " +
                         "GROUP BY p.product_id, p.product_name " +
                         "ORDER BY " + orderBy + " DESC " +
                         "LIMIT ?";
@@ -61,4 +61,5 @@ public class ReportDAO {
 
         return list;
     }
+
 }
