@@ -4,122 +4,165 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Ellipse2D;
 import java.text.DecimalFormat;
 
 public class PaymentDialog extends JDialog {
 
+    private static final Color COLOR_PRIMARY = new Color(39, 174, 96); // Green
+    private static final Color COLOR_BG = new Color(255, 255, 255); // White    
+    private static final Color COLOR_TEXT_MAIN = new Color(44, 62, 80); // Dark Blue
+    private static final Color COLOR_TEXT_SUB = new Color(127, 140, 141); // Gray
+    private static final Color COLOR_ERROR = new Color(192, 57, 43); // Red
+
     private final DecimalFormat moneyFmt = new DecimalFormat("#,###");
 
     public PaymentDialog(JFrame parent, double total, double change, int invoiceId) {
-        super(parent, "Thanh toán thành công", true);
+        super(parent, "Giao dịch thành công", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
+        setUndecorated(true); 
+        JPanel contentPane = new JPanel(new BorderLayout(0, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(COLOR_BG);
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
+                g2.setColor(new Color(230, 230, 230));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
+            }
+        };
+        contentPane.setOpaque(false);
+        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5)); 
 
-        JPanel content = new JPanel(new BorderLayout(12, 12));
-        content.setBorder(new EmptyBorder(16, 16, 16, 16));
-        setContentPane(content);
+        setContentPane(contentPane);
+        JPanel pnlHeader = new JPanel();
+        pnlHeader.setOpaque(false);
+        pnlHeader.setLayout(new BoxLayout(pnlHeader, BoxLayout.Y_AXIS));
+        pnlHeader.setBorder(new EmptyBorder(30, 0, 20, 0));
 
-        JPanel header = new JPanel(new BorderLayout(12, 0));
-        header.setOpaque(false);
+        JLabel lblIcon = new JLabel() {
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(70, 70);
+            }
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                g2.setColor(COLOR_PRIMARY);
+                g2.fill(new Ellipse2D.Double(0, 0, 70, 70));
+                
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
-        JPanel headerText = new JPanel();
-        headerText.setOpaque(false);
-        headerText.setLayout(new BoxLayout(headerText, BoxLayout.Y_AXIS));
+                g2.drawLine(20, 36, 32, 48);
+                g2.drawLine(32, 48, 50, 24);
+            }
+        };
+        lblIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblTitle = new JLabel("Giao dịch hoàn tất");
-        lblTitle.setFont(lblTitle.getFont().deriveFont(Font.BOLD, 18f));
+        JLabel lblTitle = new JLabel("Thanh toán thành công!");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblTitle.setForeground(COLOR_PRIMARY);
+        lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        
+        pnlHeader.add(lblIcon);
+        pnlHeader.add(Box.createVerticalStrut(15));
+        pnlHeader.add(lblTitle);
 
-        JLabel lblSub = new JLabel("Mã hóa đơn: #" + invoiceId);
-        lblSub.setFont(lblSub.getFont().deriveFont(Font.PLAIN, 13f));
-        lblSub.setForeground(new Color(90, 90, 90));
+        JPanel pnlBody = new JPanel(new GridLayout(3, 1, 0, 5));
+        pnlBody.setOpaque(false);
+        pnlBody.setBorder(new EmptyBorder(10, 40, 20, 40));
 
-        headerText.add(lblTitle);
-        headerText.add(Box.createVerticalStrut(4));
-        headerText.add(lblSub);
+        pnlBody.add(createDetailRow("Tổng thanh toán", formatMoney(total), true));
+        
+        String changeLabel = change >= 0 ? "Tiền thừa trả khách" : "Khách còn thiếu";
+        Color changeColor = change >= 0 ? COLOR_TEXT_MAIN : COLOR_ERROR;
+        pnlBody.add(createDetailRow(changeLabel, formatMoney(Math.abs(change)), false, changeColor));
 
-        header.add(headerText, BorderLayout.CENTER);
-        content.add(header, BorderLayout.NORTH);
+        pnlBody.add(createDetailRow("Mã hóa đơn", "#" + invoiceId, false, COLOR_TEXT_SUB));
 
-        JPanel card = new JPanel(new GridBagLayout());
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0, 0, 0, 40), 1, true),
-                new EmptyBorder(12, 12, 12, 12)
-        ));
+        JPanel pnlFooter = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        pnlFooter.setOpaque(false);
+        pnlFooter.setBorder(new EmptyBorder(0, 0, 25, 0));
 
-        GridBagConstraints gc = new GridBagConstraints();
-        gc.gridx = 0;
-        gc.gridy = 0;
-        gc.insets = new Insets(6, 0, 6, 0);
-        gc.anchor = GridBagConstraints.WEST;
+        JButton btnConfirm = new JButton("HOÀN TẤT & IN (Enter)");
+        styleButton(btnConfirm);
+        btnConfirm.addActionListener(e -> dispose());
+        
+        pnlFooter.add(btnConfirm);
 
-        JLabel lblTotalTitle = new JLabel("Tổng thanh toán:");
-        JLabel lblTotalValue = new JLabel(formatMoney(total));
-        lblTotalValue.setFont(lblTotalValue.getFont().deriveFont(Font.BOLD, 16f));
+        add(pnlHeader, BorderLayout.NORTH);
+        add(pnlBody, BorderLayout.CENTER);
+        add(pnlFooter, BorderLayout.SOUTH);
 
-        addRow(card, gc, lblTotalTitle, lblTotalValue);
-
-        JLabel lblChangeTitle;
-        JLabel lblChangeValue;
-        if (change >= 0) {
-            lblChangeTitle = new JLabel("Tiền thừa trả khách:");
-            lblChangeValue = new JLabel(formatMoney(change));
-            lblChangeValue.setForeground(new Color(0, 102, 0));
-        } else {
-            lblChangeTitle = new JLabel("Khách còn thiếu:");
-            lblChangeValue = new JLabel(formatMoney(Math.abs(change)));
-            lblChangeValue.setForeground(new Color(176, 0, 32));
-        }
-        lblChangeValue.setFont(lblChangeValue.getFont().deriveFont(Font.BOLD, 15f));
-
-        addRow(card, gc, lblChangeTitle, lblChangeValue);
-
-        JLabel lblHint = new JLabel("Nhấn Enter để tiếp tục xem hóa đơn.");
-        lblHint.setFont(lblHint.getFont().deriveFont(Font.PLAIN, 12f));
-        lblHint.setForeground(new Color(110, 110, 110));
-
-        gc.gridx = 0;
-        gc.gridy++;
-        gc.gridwidth = 2;
-        gc.weightx = 1;
-        gc.anchor = GridBagConstraints.WEST;
-        card.add(lblHint, gc);
-
-        content.add(card, BorderLayout.CENTER);
-
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        footer.setOpaque(false);
-
-        JButton btnContinue = new JButton("Tiếp tục (In hóa đơn)");
-        btnContinue.setPreferredSize(new Dimension(170, 34));
-
-        btnContinue.addActionListener(e -> dispose());
-
-        footer.add(btnContinue);
-        content.add(footer, BorderLayout.SOUTH);
-
-        getRootPane().setDefaultButton(btnContinue);
-        installKeyBindings(btnContinue);
+        installKeyBindings(btnConfirm);
 
         pack();
-        setMinimumSize(new Dimension(420, getPreferredSize().height));
+        setSize(400, 450); 
         setLocationRelativeTo(parent);
     }
 
-    private void addRow(JPanel panel, GridBagConstraints gc, JComponent left, JComponent right) {
-        GridBagConstraints c1 = (GridBagConstraints) gc.clone();
-        c1.gridx = 0;
-        c1.gridwidth = 1;
-        c1.weightx = 0;
-        c1.fill = GridBagConstraints.NONE;
-        panel.add(left, c1);
+    private JPanel createDetailRow(String title, String value, boolean isBig) {
+        return createDetailRow(title, value, isBig, COLOR_TEXT_MAIN);
+    }
 
-        GridBagConstraints c2 = (GridBagConstraints) gc.clone();
-        c2.gridx = 1;
-        c2.weightx = 1;
-        c2.anchor = GridBagConstraints.EAST;
-        panel.add(right, c2);
+    private JPanel createDetailRow(String title, String value, boolean isBig, Color valueColor) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblTitle.setForeground(COLOR_TEXT_SUB);
 
-        gc.gridy++;
+        JLabel lblValue = new JLabel(value);
+        lblValue.setForeground(valueColor);
+        
+        if (isBig) {
+            lblValue.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        } else {
+            lblValue.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        }
+
+        p.add(lblTitle, BorderLayout.WEST);
+        p.add(lblValue, BorderLayout.EAST);
+        
+        if (isBig) {
+            p.setBorder(BorderFactory.createCompoundBorder(
+                new EmptyBorder(0,0,10,0),
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(240,240,240))
+            ));
+        }
+
+        return p;
+    }
+
+    private void styleButton(JButton btn) {
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(COLOR_PRIMARY);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setPreferredSize(new Dimension(250, 45));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(COLOR_PRIMARY.darker());
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(COLOR_PRIMARY);
+            }
+        });
     }
 
     private String formatMoney(double v) {
@@ -127,20 +170,16 @@ public class PaymentDialog extends JDialog {
     }
 
     private void installKeyBindings(JButton defaultButton) {
-        Action close = new AbstractAction() {
+        JRootPane rp = getRootPane();
+        rp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"), "close");
+        rp.getActionMap().put("close", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 dispose();
             }
-        };
+        });
 
-        JRootPane rp = getRootPane();
-        rp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke("ESCAPE"), "close");
-        rp.getActionMap().put("close", close);
-
-        rp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke("ENTER"), "enter");
+        rp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ENTER"), "enter");
         rp.getActionMap().put("enter", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
