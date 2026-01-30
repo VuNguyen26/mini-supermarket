@@ -61,15 +61,18 @@ public class StockAdjustmentPanel extends JPanel {
 
     private JComponent buildHeader() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setPreferredSize(new Dimension(0, 40));
 
         JLabel title = new JLabel("Danh sách kiểm kho");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         txtSearch = new JTextField();
         txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         txtSearch.setMinimumSize(new Dimension(150, 20));
-        txtSearch.setPreferredSize(new Dimension(250, 25));
-        txtSearch.setMaximumSize(new Dimension(300, 27));
+        txtSearch.setPreferredSize(new Dimension(250, 28));
+        txtSearch.setMaximumSize(new Dimension(270, 30));
         txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
         txtSearch.addActionListener(e -> {
             String keyword = txtSearch.getText().trim();
@@ -86,6 +89,21 @@ public class StockAdjustmentPanel extends JPanel {
         JButton btnView = new JButton("Xem chi tiết");
         JButton btnExcel = new JButton("Xuất Excel");
 
+        btnAdd.setPreferredSize(new Dimension(110, 30));
+        btnView.setPreferredSize(new Dimension(110, 30));
+        btnExcel.setPreferredSize(new Dimension(100, 30));
+
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnView.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+        btnAdd.setBackground(new Color(40, 167, 69));
+        btnAdd.setForeground(Color.WHITE);
+        btnView.setBackground(new Color(0, 123, 255));
+        btnView.setForeground(Color.WHITE);
+        btnExcel.setBackground(new Color(29, 111, 66));
+        btnExcel.setForeground(Color.WHITE);
+
         btnAdd.addActionListener(e -> {
             StockAdjustmentDialog dialog =
                     new StockAdjustmentDialog(
@@ -99,6 +117,10 @@ public class StockAdjustmentPanel extends JPanel {
             }
         });
         btnView.addActionListener(e -> {
+            if (selectedAdjustment == null){
+                JOptionPane.showMessageDialog(this, "Chưa chọn phiếu để xem");
+                return;
+            }
             StockAdjustmentDialog dialog = new StockAdjustmentDialog(SwingUtilities.getWindowAncestor(this), selectedAdjustment);
             dialog.setVisible(true);
         });
@@ -309,6 +331,17 @@ public class StockAdjustmentPanel extends JPanel {
         JButton btnEdit = new JButton("Sửa");
         JButton btnDelete = new JButton("Xóa");
 
+        btnAdd.setBackground(new Color(40, 167, 69));
+        btnAdd.setForeground(Color.WHITE);
+        btnEdit.setBackground(new Color(255, 193, 7));
+        //btnEdit.setForeground(new Color(33, 37, 41));
+        btnEdit.setForeground(Color.WHITE);
+        btnDelete.setBackground(new Color(220, 53, 69));
+        btnDelete.setForeground(Color.WHITE);
+
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
         // ===== THÊM =====
         btnAdd.addActionListener(e -> {
@@ -441,6 +474,12 @@ public class StockAdjustmentPanel extends JPanel {
         public ActionCellRenderer() {
             setLayout(new FlowLayout(FlowLayout.CENTER, 10, 8));
             setOpaque(true);
+            editBtn.setBackground(new Color(255, 193, 7));
+            editBtn.setForeground(Color.WHITE);
+            deleteBtn.setBackground(new Color(220, 53, 69));
+            deleteBtn.setForeground(Color.WHITE);
+            editBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            deleteBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
             add(editBtn);
@@ -486,6 +525,10 @@ public class StockAdjustmentPanel extends JPanel {
 
         public ActionCellEditor() {
             panel.setOpaque(true);
+            editBtn.setBackground(new Color(224, 168, 0));
+            editBtn.setForeground(new Color(33, 37, 41));
+            deleteBtn.setBackground(new Color(176, 42, 55));
+            deleteBtn.setForeground(Color.WHITE);
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
 

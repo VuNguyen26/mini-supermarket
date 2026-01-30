@@ -62,15 +62,18 @@ public class PromotionPanel extends JPanel {
 
     private JComponent buildHeader() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setPreferredSize(new Dimension(0, 40));
 
         JLabel title = new JLabel("Danh sách khuyến mãi");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         txtSearch = new JTextField();
         txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         txtSearch.setMinimumSize(new Dimension(150, 20));
-        txtSearch.setPreferredSize(new Dimension(250, 25));
-        txtSearch.setMaximumSize(new Dimension(300, 27));;
+        txtSearch.setPreferredSize(new Dimension(200, 28));
+        txtSearch.setMaximumSize(new Dimension(270, 30));;
         txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
         txtSearch.addActionListener(e -> {
             String keyword = txtSearch.getText().trim();
@@ -86,6 +89,21 @@ public class PromotionPanel extends JPanel {
         JButton btnAdd = new JButton("+ Thêm khuyến mãi");
         JButton btnView = new JButton("Xem chi tiết");
         JButton btnExcel = new JButton("Xuất Excel");
+        
+        btnAdd.setPreferredSize(new Dimension(150, 30));
+        btnView.setPreferredSize(new Dimension(110, 30));
+        btnExcel.setPreferredSize(new Dimension(100, 30));
+
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnView.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+        btnAdd.setBackground(new Color(40, 167, 69));
+        btnAdd.setForeground(Color.WHITE);
+        btnView.setBackground(new Color(0, 123, 255));
+        btnView.setForeground(Color.WHITE);
+        btnExcel.setBackground(new Color(29, 111, 66));
+        btnExcel.setForeground(Color.WHITE);
 
         btnAdd.addActionListener(e -> {
             PromotionDialog dialog =
@@ -314,20 +332,31 @@ public class PromotionPanel extends JPanel {
         tblPromotionProduct.getColumnModel().getColumn(2).setCellRenderer(left); 
 
         panel.add(new JScrollPane(tblPromotionProduct), BorderLayout.CENTER);
-        panel.add(buildDetailButtons(), BorderLayout.SOUTH);
+        panel.add(buildProductsButtons(), BorderLayout.SOUTH);
 
         return panel;
     }
 
     /* ================= DETAIL BUTTONS ================= */
 
-    private JComponent buildDetailButtons() {
+    private JComponent buildProductsButtons() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
         JButton btnAdd = new JButton("Thêm");
         JButton btnEdit = new JButton("Sửa");
         JButton btnDelete = new JButton("Xóa");
 
+        btnAdd.setBackground(new Color(40, 167, 69));
+        btnAdd.setForeground(Color.WHITE);
+        btnEdit.setBackground(new Color(255, 193, 7));
+        //btnEdit.setForeground(new Color(33, 37, 41));
+        btnEdit.setForeground(Color.WHITE);
+        btnDelete.setBackground(new Color(220, 53, 69));
+        btnDelete.setForeground(Color.WHITE);
+
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
         // ===== THÊM =====
         btnAdd.addActionListener(e -> {
@@ -455,6 +484,12 @@ public class PromotionPanel extends JPanel {
         public ActionCellRenderer() {
             setLayout(new FlowLayout(FlowLayout.CENTER, 8, 4));
             setOpaque(true);
+            editBtn.setBackground(new Color(255, 193, 7));
+            editBtn.setForeground(Color.WHITE);
+            deleteBtn.setBackground(new Color(220, 53, 69));
+            deleteBtn.setForeground(Color.WHITE);
+            editBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            deleteBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
 
@@ -503,7 +538,11 @@ public class PromotionPanel extends JPanel {
 
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
-
+            
+            editBtn.setBackground(new Color(224, 168, 0));
+            editBtn.setForeground(new Color(33, 37, 41));
+            deleteBtn.setBackground(new Color(176, 42, 55));
+            deleteBtn.setForeground(Color.WHITE);
             editBtn.setPreferredSize(btnSize);
             deleteBtn.setPreferredSize(btnSize);
 
