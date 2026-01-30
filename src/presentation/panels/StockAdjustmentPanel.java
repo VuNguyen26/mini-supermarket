@@ -15,10 +15,19 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
-import java.awt.event.FocusAdapter;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
+import java.io.File;
+import java.io.FileOutputStream;
+
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class StockAdjustmentPanel extends JPanel {
 
@@ -27,6 +36,7 @@ public class StockAdjustmentPanel extends JPanel {
 
     private JTable tblAdjustment;
     private JTable tblDetail;
+    private JTextField txtSearch;
 
     private DefaultTableModel adjustmentModel;
     private DefaultTableModel detailModel;
@@ -36,7 +46,7 @@ public class StockAdjustmentPanel extends JPanel {
     public StockAdjustmentPanel(AuthUser currentUser) {
         this.currentUser = currentUser;
         initUI();
-        loadAdjustments("");
+        loadAdjustments((!txtSearch.getText().isEmpty() ? txtSearch.getText() : ""));
     }
 
     private void initUI() {
@@ -55,7 +65,7 @@ public class StockAdjustmentPanel extends JPanel {
         JLabel title = new JLabel("Danh sách kiểm kho");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
 
-        JTextField txtSearch = new JTextField();
+        txtSearch = new JTextField();
         txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         txtSearch.setMinimumSize(new Dimension(150, 20));
         txtSearch.setPreferredSize(new Dimension(250, 25));
@@ -74,6 +84,7 @@ public class StockAdjustmentPanel extends JPanel {
 
         JButton btnAdd = new JButton("+ Thêm phiếu");
         JButton btnView = new JButton("Xem chi tiết");
+        JButton btnExcel = new JButton("Xuất Excel");
 
         btnAdd.addActionListener(e -> {
             StockAdjustmentDialog dialog =
@@ -83,7 +94,8 @@ public class StockAdjustmentPanel extends JPanel {
                     );
             dialog.setVisible(true);
             if (dialog.isSaved()) {
-                loadAdjustments("");
+                txtSearch.setText("");
+                loadAdjustments(txtSearch.getText());
             }
         });
         btnView.addActionListener(e -> {
@@ -91,7 +103,83 @@ public class StockAdjustmentPanel extends JPanel {
             dialog.setVisible(true);
         });
 
+        btnExcel.addActionListener(e -> {
+            int row = tblAdjustment.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(this, "Chọn 1 phiếu để xuất chi tiết");
+                return;
+            }
+            int saId = (int) tblAdjustment.getValueAt(row, 0);
+            List<StockAdjustmentDetail> list = saService.getByStockAdjustment(saId);
+            if (list.isEmpty()){
+                JOptionPane.showMessageDialog(this, "Không có dữ liệu để xuất Excel!");
+                return;
+            }
+
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Lưu tại");
+            chooser.setSelectedFile(new File("Stock_Adjustment.xlsx"));
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+            int result = chooser.showSaveDialog(this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File file = chooser.getSelectedFile();
+
+                if (file.exists()) {
+                    int confirm = JOptionPane.showConfirmDialog(
+                        this,
+                        "File đã tồn tại. Ghi đè?",
+                        "Xác nhận",
+                        JOptionPane.YES_NO_OPTION
+                    );
+                    if (confirm != JOptionPane.YES_OPTION) return;
+                }
+
+                if (!file.getName().toLowerCase().endsWith(".xlsx")) {
+                    file = new File(file.getAbsolutePath() + ".xlsx");
+                }
+
+                try {
+                    Workbook workbook = new XSSFWorkbook();
+                    Sheet sheet = workbook.createSheet("Chi tiết phiếu kiểm kho");
+                    Row titleRow = sheet.createRow(0);
+                    titleRow.createCell(0).setCellValue("Chi tiết phiếu kiểm mã " + selectedAdjustment.getSaCode());
+                    sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 7));
+                    Row headerRow = sheet.createRow(1);
+                    headerRow.createCell(0).setCellValue("STT");
+                    headerRow.createCell(1).setCellValue("ID");
+                    headerRow.createCell(2).setCellValue("Sản phẩm");
+                    headerRow.createCell(3).setCellValue("Lô");
+                    headerRow.createCell(4).setCellValue("Đếm hệ thống");
+                    headerRow.createCell(5).setCellValue("Đếm thực tế");
+                    headerRow.createCell(6).setCellValue("Đếm chênh lệch");
+                    headerRow.createCell(7).setCellValue("Ghi chú");
+                    int stt = 1;
+                    for (StockAdjustmentDetail d : list){
+                        Row dataRow = sheet.createRow(stt + 1);
+                        dataRow.createCell(0).setCellValue(stt);
+                        dataRow.createCell(1).setCellValue(d.getSadId());
+                        dataRow.createCell(2).setCellValue(d.getProductName());
+                        dataRow.createCell(3).setCellValue(d.getLotCode());
+                        dataRow.createCell(4).setCellValue(d.getSystemQty());
+                        dataRow.createCell(5).setCellValue(d.getCountedQty());
+                        dataRow.createCell(6).setCellValue(d.getDiffQty());
+                        dataRow.createCell(7).setCellValue(d.getNote());
+                        stt++;
+                    }
+                    FileOutputStream out = new FileOutputStream(file);
+                    workbook.write(out);
+                    out.close();
+                    workbook.close();
+                    JOptionPane.showMessageDialog(this, "Xuất Excel thành công!");
+                } catch(Exception ex){
+                    JOptionPane.showMessageDialog(this, "Xuất Excel thất bại! " + ex.getMessage());
+                }
+
+            }
+        });
+
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.add(btnExcel);
         rightPanel.add(btnView);
         rightPanel.add(btnAdd);
 
@@ -417,7 +505,7 @@ public class StockAdjustmentPanel extends JPanel {
 
                 if(confirm == JOptionPane.YES_OPTION){
                     saService.delete(currentSA.getSaId());
-                    loadAdjustments("");
+                    loadAdjustments(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                     tblAdjustment.revalidate();
                     tblAdjustment.repaint();
                 }
@@ -444,7 +532,7 @@ public class StockAdjustmentPanel extends JPanel {
             dialog.setVisible(true);
 
             if (dialog.isSaved()) {
-                loadAdjustments("");
+                loadAdjustments(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                 tblAdjustment.revalidate();
                 tblAdjustment.repaint();
             }

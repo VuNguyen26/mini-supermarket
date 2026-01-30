@@ -4,20 +4,30 @@ import bus.AuthService.AuthUser;
 import bus.PromotionService;
 import dto.Promotion;
 import dto.PromotionProduct;
-import dto.StockAdjustment;
 import presentation.dialogs.PromotionDialog;
 import presentation.dialogs.PromotionProductDialog;
-import presentation.dialogs.StockAdjustmentDialog;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableModel;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PromotionPanel extends JPanel {
@@ -27,6 +37,7 @@ public class PromotionPanel extends JPanel {
 
     private JTable tblPromotion;
     private JTable tblPromotionProduct;
+    private JTextField txtSearch;
 
     private DefaultTableModel promotionModel;
     private DefaultTableModel ppModel;
@@ -36,7 +47,7 @@ public class PromotionPanel extends JPanel {
     public PromotionPanel(AuthUser currentUser) {
         this.currentUser = currentUser;
         initUI();
-        loadPromotions("");
+        loadPromotions(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
     }
 
     private void initUI() {
@@ -55,7 +66,7 @@ public class PromotionPanel extends JPanel {
         JLabel title = new JLabel("Danh sách khuyến mãi");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
 
-        JTextField txtSearch = new JTextField();
+        txtSearch = new JTextField();
         txtSearch.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         txtSearch.setMinimumSize(new Dimension(150, 20));
         txtSearch.setPreferredSize(new Dimension(250, 25));
@@ -74,6 +85,7 @@ public class PromotionPanel extends JPanel {
 
         JButton btnAdd = new JButton("+ Thêm khuyến mãi");
         JButton btnView = new JButton("Xem chi tiết");
+        JButton btnExcel = new JButton("Xuất Excel");
 
         btnAdd.addActionListener(e -> {
             PromotionDialog dialog =
@@ -83,7 +95,8 @@ public class PromotionPanel extends JPanel {
                     );
             dialog.setVisible(true);
             if(dialog.isSaved()){
-                loadPromotions("");
+                txtSearch.setText("");
+                loadPromotions(txtSearch.getText());
             }
         });
 
@@ -97,7 +110,95 @@ public class PromotionPanel extends JPanel {
 
         });
 
+        btnExcel.addActionListener(e -> {
+            List<Promotion> list = new ArrayList<>();
+
+            TableModel model = tblPromotion.getModel();
+            int rowCount = model.getRowCount();
+
+            if (rowCount <= 0){
+                JOptionPane.showMessageDialog(this, "Không có dữ liệu để xuất Excel!");
+                return;
+            }
+
+            for (int i = 0; i < rowCount; i++) {
+                Object value = model.getValueAt(i, 0); // cột đầu tiên
+                if (value != null) {
+                    list.add(promoService.getById((int) value));
+                }
+            }
+
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Lưu tại");
+            chooser.setSelectedFile(new File("Promotion.xlsx"));
+            chooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+            int result = chooser.showSaveDialog(this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File file = chooser.getSelectedFile();
+
+                if (file.exists()) {
+                    int confirm = JOptionPane.showConfirmDialog(
+                        this,
+                        "File đã tồn tại. Ghi đè?",
+                        "Xác nhận",
+                        JOptionPane.YES_NO_OPTION
+                    );
+                    if (confirm != JOptionPane.YES_OPTION) return;
+                }
+
+                if (!file.getName().toLowerCase().endsWith(".xlsx")) {
+                    file = new File(file.getAbsolutePath() + ".xlsx");
+                }
+
+                try {
+                    Workbook workbook = new XSSFWorkbook();
+                    Sheet sheet = workbook.createSheet("Chương trình khuyến mãi");
+                    Row titleRow = sheet.createRow(0);
+                    titleRow.createCell(0).setCellValue("Danh sách chương trình khuyến mãi");
+                    sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 10));
+                    Row headerRow = sheet.createRow(1);
+                    headerRow.createCell(0).setCellValue("STT");
+                    headerRow.createCell(1).setCellValue("ID");
+                    headerRow.createCell(2).setCellValue("Mã");
+                    headerRow.createCell(3).setCellValue("Tên KM");
+                    headerRow.createCell(4).setCellValue("Loại");
+                    headerRow.createCell(5).setCellValue("Giá trị");
+                    headerRow.createCell(6).setCellValue("Đơn tối thiểu");
+                    headerRow.createCell(7).setCellValue("Bắt đầu");
+                    headerRow.createCell(8).setCellValue("Kết thúc");
+                    headerRow.createCell(9).setCellValue("Trạng thái");
+                    headerRow.createCell(10).setCellValue("Ngày tạo");
+                    int stt = 1;
+                    for (Promotion p : list){
+                        Row dataRow = sheet.createRow(stt + 1);
+                        dataRow.createCell(0).setCellValue(stt);
+                        dataRow.createCell(1).setCellValue(p.getPromoId());
+                        dataRow.createCell(2).setCellValue(p.getPromoCode());
+                        dataRow.createCell(3).setCellValue(p.getPromoName());
+                        dataRow.createCell(4).setCellValue(p.getType().name());
+                        dataRow.createCell(5).setCellValue(p.getValue().doubleValue());
+                        dataRow.createCell(6).setCellValue(p.getMinOrderAmount().doubleValue());
+                        dataRow.createCell(7).setCellValue(p.getStartAt().toString().replace('T', ' '));
+                        dataRow.createCell(8).setCellValue(p.getEndAt().toString().replace('T', ' '));
+                        dataRow.createCell(9).setCellValue(p.getStatus());
+                        dataRow .createCell(10).setCellValue(p.getCreatedAt().toString().replace('T', ' '));
+                        stt++;
+                    }
+                    FileOutputStream out = new FileOutputStream(file);
+                    workbook.write(out);
+                    out.close();
+                    workbook.close();
+                    JOptionPane.showMessageDialog(this, "Xuất Excel thành công!");
+                } catch(Exception ex){
+                    JOptionPane.showMessageDialog(this, "Xuất Excel thất bại! " + ex.getMessage());
+                }
+
+            }
+
+        });
+
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.add(btnExcel);
         rightPanel.add(btnView);
         rightPanel.add(btnAdd);
 
@@ -112,7 +213,7 @@ public class PromotionPanel extends JPanel {
         JSplitPane splitPane = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT,
                 buildPromotionTable(),
-                buildDetailSection()
+                buildPromotionProductSection()
         );
         splitPane.setDividerLocation(280);
         splitPane.setResizeWeight(0.5);
@@ -132,7 +233,7 @@ public class PromotionPanel extends JPanel {
         };
 
         tblPromotion = new JTable(promotionModel);
-        tblPromotion.setRowHeight(44);
+        tblPromotion.setRowHeight(36);
         tblPromotion.setShowGrid(true);
         tblPromotion.setGridColor(new Color(220, 220, 220));
         JTableHeader header = tblPromotion.getTableHeader();
@@ -177,7 +278,7 @@ public class PromotionPanel extends JPanel {
 
     /* ================= PRODUCT SECTION ================= */
 
-    private JComponent buildDetailSection() {
+    private JComponent buildPromotionProductSection() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
 
         JLabel title = new JLabel("Danh sách sản phẩm của chương trình khuyến mãi");
@@ -194,7 +295,7 @@ public class PromotionPanel extends JPanel {
         };
 
         tblPromotionProduct = new JTable(ppModel);
-        tblPromotionProduct.setRowHeight(38);
+        tblPromotionProduct.setRowHeight(32);
         tblPromotionProduct.setShowGrid(true);
         tblPromotionProduct.setGridColor(new Color(220, 220, 220));
         JTableHeader header = tblPromotionProduct.getTableHeader();
@@ -423,7 +524,7 @@ public class PromotionPanel extends JPanel {
 
                 if(confirm == JOptionPane.YES_OPTION){
                     promoService.delete(currentPromo.getPromoId());
-                    loadPromotions("");
+                    loadPromotions(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                     tblPromotion.revalidate();
                     tblPromotion.repaint();
                 }
@@ -449,7 +550,7 @@ public class PromotionPanel extends JPanel {
             dialog.setVisible(true);
 
             if (dialog.isSaved()) {
-                loadPromotions("");
+                loadPromotions(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                 tblPromotion.revalidate();
                 tblPromotion.repaint();
             }
