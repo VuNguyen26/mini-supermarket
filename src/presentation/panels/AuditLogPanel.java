@@ -1,122 +1,150 @@
 package presentation.panels;
 
-import dal.dao.AuditLogDAO;
+import bus.AuditLogService;
 import dto.AuditLog;
 
 import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class AuditLogPanel extends JPanel {
 
-    private final AuditLogDAO auditLogDAO = new AuditLogDAO();
+    private final DefaultTableModel model;
+    private final JTable table;
 
-    private JTable table;
-    private DefaultTableModel model;
-    private JTextField txtKeyword;
-    private JComboBox<String> cbAction;
+    private static final Color MAIN_BLUE = new Color(33, 150, 243);
+    private static final Color LIGHT_BLUE_BORDER = new Color(180, 210, 245);
 
-    public AuditLogPanel() {
-        setLayout(new BorderLayout(12, 12));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+    public AuditLogPanel(AuditLogService service) {
+        setLayout(new BorderLayout(0, 12));
+        setBackground(Color.WHITE);
+        setBorder(new EmptyBorder(20, 24, 20, 24));
 
-        initToolbar();
-        initTable();
-        loadData();
-    }
+        // ===== HEADER =====
+        JLabel title = new JLabel("AUDIT LOG");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        title.setForeground(MAIN_BLUE);
 
-    // ================= TOOLBAR =================
-    private void initToolbar() {
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        JLabel subtitle = new JLabel("Lịch sử thao tác người dùng trong hệ thống");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subtitle.setForeground(Color.GRAY);
 
-        txtKeyword = new JTextField(18);
-        cbAction = new JComboBox<>(new String[]{
-                "Tất cả",
-                "CREATE",
-                "UPDATE",
-                "DELETE",
-                "LOGIN",
-                "LOGOUT"
-        });
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.add(title);
+        headerPanel.add(Box.createVerticalStrut(6));
+        headerPanel.add(subtitle);
 
-        JButton btnSearch = new JButton("Tìm kiếm");
-        btnSearch.addActionListener(e -> loadData());
+        add(headerPanel, BorderLayout.NORTH);
 
-        JButton btnRefresh = new JButton("Làm mới");
-        btnRefresh.addActionListener(e -> {
-            txtKeyword.setText("");
-            cbAction.setSelectedIndex(0);
-            loadData();
-        });
-
-        toolbar.add(new JLabel("Từ khóa"));
-        toolbar.add(txtKeyword);
-        toolbar.add(new JLabel("Hành động"));
-        toolbar.add(cbAction);
-        toolbar.add(btnSearch);
-        toolbar.add(btnRefresh);
-
-        add(toolbar, BorderLayout.NORTH);
-    }
-
-    // ================= TABLE =================
-    private void initTable() {
+        // ===== TABLE =====
         model = new DefaultTableModel(
-                new Object[]{
-                        "Thời gian",
-                        "Người dùng",
-                        "Hành động",
-                        "Đối tượng",
-                        "Chi tiết"
-                }, 0
-        ) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
+                new Object[]{"User", "Action", "Entity", "Time", "Detail"}, 0
+        );
 
         table = new JTable(model);
-        table.setRowHeight(30);
-        table.setShowHorizontalLines(false);
-        table.setShowVerticalLines(false);
-        table.setFillsViewportHeight(true);
+        styleTable();
 
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(Color.WHITE);
+
+        // Wrapper panel để bo góc thật
+        JPanel tableWrapper = new JPanel(new BorderLayout());
+        tableWrapper.setBackground(Color.WHITE);
+        tableWrapper.setBorder(new RoundedBorder(LIGHT_BLUE_BORDER, 16));
+        tableWrapper.add(scrollPane, BorderLayout.CENTER);
+
+        add(tableWrapper, BorderLayout.CENTER);
+
+        load(service);
     }
 
-    // ================= LOAD DATA =================
-    private void loadData() {
+    private void styleTable() {
+        table.setRowHeight(38);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setBackground(Color.WHITE);
+        table.setSelectionBackground(new Color(220, 235, 255));
+        table.setShowHorizontalLines(true);
+        table.setShowVerticalLines(false);
+        table.setGridColor(new Color(230, 230, 230));
+        table.setFillsViewportHeight(true);
+
+        JTableHeader header = table.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(MAIN_BLUE);
+        header.setForeground(Color.WHITE);
+        header.setPreferredSize(new Dimension(header.getWidth(), 36));
+        header.setReorderingAllowed(false);
+
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+    }
+
+    private void load(AuditLogService service) {
         try {
-            String keyword = txtKeyword.getText().trim();
-            String action = cbAction.getSelectedIndex() == 0
-                    ? null
-                    : cbAction.getSelectedItem().toString();
-
-            List<AuditLog> logs = auditLogDAO.search(keyword, action);
-
+            List<AuditLog> logs = service.getAll();
             model.setRowCount(0);
 
-            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
-            for (AuditLog log : logs) {
+            for (AuditLog a : logs) {
                 model.addRow(new Object[]{
-                        log.getCreatedAt().format(fmt),
-                        log.getUsername(),
-                        log.getAction(),
-                        log.getEntityName(),
-                        log.getDescription()
+                        a.getUsername(),
+                        a.getAction(),
+                        a.getEntityName(),
+                        a.getCreatedAt() != null ? a.getCreatedAt().format(fmt) : "",
+                        a.getDescription()
                 });
             }
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Không thể tải nhật ký hệ thống",
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Không thể tải audit log",
                     "Lỗi",
-                    JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
+    }
+
+    // ===== Rounded Border Class =====
+    private static class RoundedBorder extends AbstractBorder {
+        private final Color color;
+        private final int radius;
+
+        public RoundedBorder(Color color, int radius) {
+            this.color = color;
+            this.radius = radius;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(8, 8, 8, 8);
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.set(8, 8, 8, 8);
+            return insets;
         }
     }
 }

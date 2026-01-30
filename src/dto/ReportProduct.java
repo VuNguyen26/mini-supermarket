@@ -5,21 +5,21 @@ import java.math.BigDecimal;
 
 
 public class ReportProduct {
-    private int productId;
+    private String productId;
     private String productName;
     private long totalQuantity;
     private BigDecimal totalRevenue;
 
-    public ReportProduct(int productId, String productName, long totalQuantity, BigDecimal totalRevenue){
+    public ReportProduct(String productId, String productName, long totalQuantity, BigDecimal totalRevenue){
         this.productId = productId;
         this.productName = productName;
         this.totalQuantity = totalQuantity;
         this.totalRevenue = totalRevenue;
     }
-    public Integer getProductId(){
+    public String getProductId(){
         return productId;
     }
-    public void setProductId(Integer productId){
+    public void setProductId(String productId){
         this.productId = productId;
     }
 

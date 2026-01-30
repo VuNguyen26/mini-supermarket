@@ -14,6 +14,9 @@ import java.awt.event.MouseEvent;
 import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import bus.ReportService;
+import bus.AuditLogService;
+
 
 public class MainFrame extends JFrame {
     private final AuthUser currentUser;
@@ -578,6 +581,10 @@ public class MainFrame extends JFrame {
     }
 
     private void initCards() {
+
+        ReportService reportService = new ReportService();
+        AuditLogService auditLogService = new AuditLogService();
+
         contentPanel.add(wrapCard(makePlaceholder("TỔNG QUAN (DashboardPanel)")), "Tổng quan");
         contentPanel.add(wrapCard(makePlaceholder("BÁN HÀNG (PosSalesPanel)")), "Bán hàng");
         contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
@@ -592,10 +599,10 @@ public class MainFrame extends JFrame {
 
         contentPanel.add(wrapCard(makePlaceholder("KHUYẾN MÃI (PromotionPanel)")), "Khuyến mãi");
         contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
-        contentPanel.add(wrapCard(new presentation.panels.ReportPanel()), "Báo cáo");
+        contentPanel.add( wrapCard(new presentation.panels.ReportPanel( RolePermission.all() )), "Báo cáo" );
 
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
-        contentPanel.add(wrapCard(new presentation.panels.AuditLogPanel()), "Lịch sử");
+        contentPanel.add( wrapCard(new presentation.panels.AuditLogPanel(auditLogService)), "Lịch sử" );
         contentPanel.add(wrapCard(new presentation.panels.RolePermissionPanel()), "Phân quyền");
     }
 
