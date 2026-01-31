@@ -17,7 +17,7 @@ public class PermissionService {
 
     public Map<Integer, String> getAllRoles() {
         return roleDAO.findAllRoles();
-    }
+    } // Phan quyen
 
     public List<Permission> getAllPermissions() {
         return permissionDAO.findAll();
@@ -30,4 +30,9 @@ public class PermissionService {
     public void saveRolePermissions(int roleId, Set<Integer> permIds) {
         rolePermissionDAO.replaceRolePermissions(roleId, permIds);
     }
+    /* ==== tạo UI cho login*/
+    public Set<String> getPermCodesByUserId(int userId) {
+        return permissionDAO.findPermCodesByUserId(userId);
+    }
+
 }

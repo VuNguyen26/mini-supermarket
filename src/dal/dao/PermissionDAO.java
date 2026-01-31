@@ -19,6 +19,7 @@ public class PermissionDAO {
                         "JOIN permission p ON p.perm_id = rp.perm_id " +
                         "WHERE u.user_id = ?";
 
+        
         Set<String> perms = new HashSet<>();
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {

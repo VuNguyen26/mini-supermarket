@@ -10,13 +10,14 @@ import java.awt.*;
 
 public class Main {
     // DEBUG MODE for bypass login, quick view
-    private static final boolean DEBUG_MODE = true;
+    // Để FALSE mặc định để chạy đúng luồng đăng nhập
+    private static final boolean DEBUG_MODE = false;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
                 FlatLightLaf.setup();
-                
+
                 UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 13));
                 UIManager.put("Component.arc", 12);
                 UIManager.put("Button.arc", 12);
@@ -24,7 +25,6 @@ public class Main {
                 UIManager.put("Component.focusWidth", 0);
                 UIManager.put("Component.innerFocusWidth", 0);
                 UIManager.put("Button.boldText", false);
-                UIManager.put("TextComponent.arc", 12);
                 UIManager.put("TextField.margin", new Insets(8, 10, 8, 10));
                 UIManager.put("PasswordField.margin", new Insets(8, 10, 8, 10));
 

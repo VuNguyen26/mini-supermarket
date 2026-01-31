@@ -275,56 +275,64 @@ public class InventoryLotPanel extends JPanel {
 			else { to = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(); }
 		}
 	}
-// ================================
+    // ================================
 
-// The table renderer for IL table
-	private class InventoryLotRenderer extends DefaultTableCellRenderer {
-		@Override public Component getTableCellRendererComponent(
-			JTable table,
-			Object value,
-			boolean isSelected,
-			boolean hasFocus,
-			int row, int col
-		) {
-			Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
+    // The table renderer for IL table
+    private class InventoryLotRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row, int col
+        ) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
 
-		// Set hightlight color
-			InventoryLot lot = lotTableModel.getLotAt(row);
-			int threshold = (Integer) expiryWarnThresholdSp.getValue();
-			if (!isSelected) {
-				if (lot.getExpiry() != null && lot.getStatus() == InventoryLot.Status.AVAILABLE) {
-					long daysUntilExpiry = ChronoUnit.DAYS.between(LocalDate.now(), lot.getExpiry());
-					if (daysUntilExpiry < 0) {
-						c.setBackground(new Color(255, 235, 238));
-					} else if (daysUntilExpiry <= threshold) {
-						c.setBackground(new Color(255, 248, 225));
-					} else {
-						c.setBackground(Color.WHITE);
-					}
-				} else {
-						c.setBackground(Color.WHITE);
-				}
-			}
-		// ====================
+            // Set highlight color
+            InventoryLot lot = lotTableModel.getLotAt(row);
+            int threshold = (Integer) expiryWarnThresholdSp.getValue();
 
-		// Set badge color
-			if (col == 6) {
-				setHorizontalAlignment(JLabel.CENTER);
-				setFont(getFont().deriveFont(Font.BOLD));
-				switch (lot.getStatus()) {
-					case AVAILABLE -> setForeground(new Color(46, 125, 50));
-					case EXPIRED -> setForeground(Color.RED);
-					case DEPLETED -> setForeground(Color.GRAY);
-				}
-			} else {
-				setForeground(Color.BLACK);
-			}
-		// ===========
+            InventoryLot.Status st = (lot != null) ? lot.getStatusEnum() : null;
 
-			return c;
-		}
-	}
-// ===============================
+            if (!isSelected) {
+                if (lot != null && lot.getExpiry() != null && st == InventoryLot.Status.AVAILABLE) {
+                    long daysUntilExpiry = ChronoUnit.DAYS.between(LocalDate.now(), lot.getExpiry());
+                    if (daysUntilExpiry < 0) {
+                        c.setBackground(new Color(255, 235, 238));
+                    } else if (daysUntilExpiry <= threshold) {
+                        c.setBackground(new Color(255, 248, 225));
+                    } else {
+                        c.setBackground(Color.WHITE);
+                    }
+                } else {
+                    c.setBackground(Color.WHITE);
+                }
+            }
+            // ====================
+
+            // Set badge color
+            if (col == 6) {
+                setHorizontalAlignment(JLabel.CENTER);
+                setFont(getFont().deriveFont(Font.BOLD));
+
+                if (st == null) {
+                    setForeground(Color.BLACK);
+                } else {
+                    switch (st) {
+                        case AVAILABLE -> setForeground(new Color(46, 125, 50));
+                        case EXPIRED -> setForeground(Color.RED);
+                        case DEPLETED -> setForeground(Color.GRAY);
+                    }
+                }
+            } else {
+                setForeground(Color.BLACK);
+            }
+            // ===========
+
+            return c;
+        }
+    }
 
 // Use for column sorting
 	public enum InventoryLotSort {
