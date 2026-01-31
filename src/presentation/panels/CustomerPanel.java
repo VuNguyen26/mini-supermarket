@@ -94,6 +94,7 @@ public class CustomerPanel extends JPanel {
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         table.getTableHeader().setBackground(new Color(33, 150, 243));
         table.getTableHeader().setForeground(Color.WHITE);
+        table.getTableHeader().setReorderingAllowed(false);
 
         // Column widths
         table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
@@ -102,6 +103,12 @@ public class CustomerPanel extends JPanel {
         table.getColumnModel().getColumn(3).setPreferredWidth(300);  // Địa chỉ
         table.getColumnModel().getColumn(4).setPreferredWidth(100);  // Điểm
         table.getColumnModel().getColumn(5).setPreferredWidth(170);  // Thao tác (đủ chỗ cho 2 nút)
+        
+        // Khong cho keo (resize) cot
+        for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setMaxWidth(table.getColumnModel().getColumn(i).getPreferredWidth());
+            table.getColumnModel().getColumn(i).setMinWidth(table.getColumnModel().getColumn(i).getPreferredWidth());
+        }
 
         // Center align some columns
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
