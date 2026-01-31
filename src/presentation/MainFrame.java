@@ -6,7 +6,6 @@ import util.PermissionCodes;
 import util.RolePermission;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -582,7 +581,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
 
         contentPanel.add(wrapCard(new presentation.panels.ProductPanel()), "Sản phẩm");
-        contentPanel.add(wrapCard(makePlaceholder("NHẬP KHO (GoodsReceiptPanel)")), "Nhập kho");
+        contentPanel.add(wrapCard(new presentation.panels.GoodsReceiptPanel(currentUser)), "Nhập kho");
         contentPanel.add(wrapCard(makePlaceholder("KIỂM KHO / ĐIỀU CHỈNH (StockAdjustmentPanel)")), "Kiểm kho");
 
         contentPanel.add(wrapCard(new presentation.panels.CustomerPanel()), "Khách hàng");
