@@ -14,6 +14,8 @@ import java.util.List;
 
 public class AuditLogPanel extends JPanel {
 
+    private final AuditLogService service;
+
     private final DefaultTableModel model;
     private final JTable table;
 
@@ -21,6 +23,8 @@ public class AuditLogPanel extends JPanel {
     private static final Color LIGHT_BLUE_BORDER = new Color(180, 210, 245);
 
     public AuditLogPanel(AuditLogService service) {
+        this.service = service;
+
         setLayout(new BorderLayout(0, 12));
         setBackground(Color.WHITE);
         setBorder(new EmptyBorder(20, 24, 20, 24));
@@ -46,7 +50,11 @@ public class AuditLogPanel extends JPanel {
         // ===== TABLE =====
         model = new DefaultTableModel(
                 new Object[]{"User", "Action", "Entity", "Time", "Detail"}, 0
-        );
+        ) {
+            @Override public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
 
         table = new JTable(model);
         styleTable();
@@ -55,7 +63,6 @@ public class AuditLogPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
 
-        // Wrapper panel để bo góc thật
         JPanel tableWrapper = new JPanel(new BorderLayout());
         tableWrapper.setBackground(Color.WHITE);
         tableWrapper.setBorder(new RoundedBorder(LIGHT_BLUE_BORDER, 16));
@@ -63,7 +70,13 @@ public class AuditLogPanel extends JPanel {
 
         add(tableWrapper, BorderLayout.CENTER);
 
-        load(service);
+        // ❌ KHÔNG gọi load() ở đây nữa
+        // load();
+    }
+
+    /** ✅ Gọi hàm này khi user mở tab "Audit log" */
+    public void reload() {
+        load();
     }
 
     private void styleTable() {
@@ -91,7 +104,7 @@ public class AuditLogPanel extends JPanel {
         }
     }
 
-    private void load(AuditLogService service) {
+    private void load() {
         try {
             List<AuditLog> logs = service.getAll();
             model.setRowCount(0);
@@ -108,9 +121,12 @@ public class AuditLogPanel extends JPanel {
                 });
             }
         } catch (Exception e) {
+            // ✅ In lỗi thật ra console để biết thiếu bảng/cột/SQL/DB...
+            e.printStackTrace();
+
             JOptionPane.showMessageDialog(
                     this,
-                    "Không thể tải audit log",
+                    "Không thể tải audit log:\n" + e.getMessage(),
                     "Lỗi",
                     JOptionPane.ERROR_MESSAGE
             );

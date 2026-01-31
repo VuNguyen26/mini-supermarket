@@ -21,11 +21,10 @@ public class ReportPanel extends JPanel {
         tabs.setBackground(Color.WHITE);
         tabs.setOpaque(true);
 
-        // style cho tab
+        // FlatLaf 3.7: KHÔNG có tabAreaBackground
         tabs.putClientProperty("FlatLaf.style",
-                "background:white;" +
-                        "tabAreaBackground:white;" +
-                        "contentAreaColor:white"
+                "background:#FFFFFF;" +
+                        "contentAreaColor:#FFFFFF;"
         );
 
         if (permissions.contains("REPORT_VIEW")) {

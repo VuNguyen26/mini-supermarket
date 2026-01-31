@@ -93,8 +93,7 @@ public class RevenueReportPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.putClientProperty("FlatLaf.style",
                 "arc:12;" +
-                        "borderWidth:1;" +
-                        "borderColor:lighten($Component.accentColor,40%)"
+                        "borderWidth:1;"
         );
 
         panel.add(actionBar, BorderLayout.NORTH);

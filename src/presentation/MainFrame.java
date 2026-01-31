@@ -53,6 +53,8 @@ public class MainFrame extends JFrame {
     private static final int NAV_ITEM_HEIGHT = 48;
     private static final int NAV_GAP = 8;
 
+    private presentation.panels.AuditLogPanel auditLogPanel;
+
     public MainFrame(AuthUser user) {
         this.currentUser = user;
 
@@ -601,7 +603,10 @@ public class MainFrame extends JFrame {
         contentPanel.add( wrapCard(new presentation.panels.ReportPanel( RolePermission.all() )), "Báo cáo" );
 
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
-        contentPanel.add( wrapCard(new presentation.panels.AuditLogPanel(auditLogService)), "Lịch sử" );
+
+        auditLogPanel = new presentation.panels.AuditLogPanel(auditLogService);
+        contentPanel.add(wrapCard(auditLogPanel), "Lịch sử");
+
         contentPanel.add(wrapCard(new presentation.panels.RolePermissionPanel()), "Phân quyền");
     }
 

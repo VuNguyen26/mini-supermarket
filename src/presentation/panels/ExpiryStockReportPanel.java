@@ -69,8 +69,7 @@ public class ExpiryStockReportPanel extends JPanel {
         styleTable();
 
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.putClientProperty("FlatLaf.style",
-                "arc:12; borderColor:$Component.borderColor");
+        scrollPane.putClientProperty("FlatLaf.style", "arc:12");
 
         JPanel center = new JPanel(new BorderLayout(0, 12));
         center.setOpaque(false);
@@ -94,8 +93,7 @@ public class ExpiryStockReportPanel extends JPanel {
         header.putClientProperty("FlatLaf.style",
                 "font:bold 13;" +
                         "background:lighten($Component.accentColor,85%);" +
-                        "foreground:#0D47A1;" +
-                        "borderColor:lighten($Component.accentColor,70%)"
+                        "foreground:#0D47A1;"
         );
 
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
