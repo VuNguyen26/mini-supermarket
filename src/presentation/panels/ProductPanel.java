@@ -186,7 +186,7 @@ public class ProductPanel extends JPanel {
         table.getColumnModel().getColumn(1).setPreferredWidth(120); // Mã SP
         table.getColumnModel().getColumn(2).setPreferredWidth(80);  // Đơn vị
         table.getColumnModel().getColumn(3).setPreferredWidth(200); // Tên
-        table.getColumnModel().getColumn(4).setPreferredWidth(140); // Danh mục (✅ tăng nhẹ để đỡ cắt)
+        table.getColumnModel().getColumn(4).setPreferredWidth(140); // Danh mục
         table.getColumnModel().getColumn(5).setPreferredWidth(100); // Giá nhập
         table.getColumnModel().getColumn(6).setPreferredWidth(100); // Giá bán
         table.getColumnModel().getColumn(7).setPreferredWidth(80);  // Tồn kho
