@@ -12,7 +12,6 @@ public class DBConnection {
     private static final String DB_NAME = "mini_supermarket";
     private static final String USER = "root";
     private static final String PASS = "";
-    // =======================================
 
     private static final String URL =
             "jdbc:mysql://" + HOST + ":" + PORT + "/" + DB_NAME +

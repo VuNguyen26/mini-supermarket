@@ -8,31 +8,68 @@ import java.time.LocalDateTime;
  */
 public class Customer {
     private Integer customerId;
-    private String customerName;  // Tên field trong DB
+    private String customerName;
     private String phone;
     private String address;
-    private Integer points;  // Điểm tích lũy
+    private Integer points;
     private LocalDateTime createdAt;
 
     public Customer() {
         this.points = 0;
+        this.address = "";
     }
 
+    // Full constructor (HEAD)
     public Customer(Integer customerId, String customerName, String phone, String address, Integer points, LocalDateTime createdAt) {
         this.customerId = customerId;
         this.customerName = customerName;
         this.phone = phone;
-        this.address = address;
-        this.points = points;
+        this.address = address != null ? address : "";
+        this.points = points != null ? points : 0;
         this.createdAt = createdAt;
     }
 
-    // Getters and Setters
+    // Constructor compatible with origin/huynh: default customer / "Khách lẻ"
+    public Customer(int customerId, String customerName, String phone) {
+        this.customerId = customerId;
+        this.customerName = customerName;
+        this.phone = phone;
+        this.address = "";
+        this.points = 0;
+        this.createdAt = null;
+    }
+
+    // Constructor compatible with origin/huynh
+    public Customer(int customerId, String customerName, String phone, String address, int points) {
+        this.customerId = customerId;
+        this.customerName = customerName;
+        this.phone = phone;
+        this.address = address != null ? address : "";
+        this.points = points;
+        this.createdAt = null;
+    }
+
+    // Extra: 5-params Integer constructor (useful for DAO)
+    public Customer(Integer customerId, String customerName, String phone, String address, Integer points) {
+        this(customerId, customerName, phone, address, points, null);
+    }
+
+    // ========== Getters/Setters ==========
     public Integer getCustomerId() {
         return customerId;
     }
 
+    // Alias getter (safe int) for code that expects primitive
+    public int getCustomerIdValue() {
+        return customerId != null ? customerId : 0;
+    }
+
     public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
+    }
+
+    // Alias setter for primitive int
+    public void setCustomerId(int customerId) {
         this.customerId = customerId;
     }
 
@@ -57,14 +94,23 @@ public class Customer {
     }
 
     public void setAddress(String address) {
-        this.address = address;
+        this.address = address != null ? address : "";
     }
 
     public Integer getPoints() {
         return points;
     }
 
+    // Alias getter for primitive int
+    public int getPointsValue() {
+        return points != null ? points : 0;
+    }
+
     public void setPoints(Integer points) {
+        this.points = points != null ? points : 0;
+    }
+
+    public void setPoints(int points) {
         this.points = points;
     }
 
@@ -76,16 +122,11 @@ public class Customer {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
-        return null; // Placeholder if needed
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        // Placeholder if needed
-    }
-
     @Override
     public String toString() {
-        return customerName + " (" + phone + ") - " + points + " điểm";
+        // Keep behavior from huynh: id=0 shows "Khách lẻ"
+        if (getCustomerIdValue() == 0) return "Khách lẻ";
+        String p = (phone != null) ? phone : "";
+        return customerName + " - " + p;
     }
 }

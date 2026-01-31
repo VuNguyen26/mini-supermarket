@@ -44,9 +44,15 @@ public class Product {
         this.brandId = brandId;
     }
 
-    // Getters and Setters
+    // ====== Getters/Setters (full) ======
+
     public Integer getProductId() {
         return productId;
+    }
+
+    // Compatible setter for primitive int (origin/huynh)
+    public void setProductId(int productId) {
+        this.productId = productId;
     }
 
     public void setProductId(Integer productId) {
@@ -114,7 +120,7 @@ public class Product {
     }
 
     public void setImportPrice(BigDecimal importPrice) {
-        this.importPrice = importPrice;
+        this.importPrice = (importPrice != null) ? importPrice : BigDecimal.ZERO;
     }
 
     public BigDecimal getSalePrice() {
@@ -122,7 +128,12 @@ public class Product {
     }
 
     public void setSalePrice(BigDecimal salePrice) {
-        this.salePrice = salePrice;
+        this.salePrice = (salePrice != null) ? salePrice : BigDecimal.ZERO;
+    }
+
+    // Compatible setter for double (origin/huynh)
+    public void setSalePrice(double salePrice) {
+        this.salePrice = BigDecimal.valueOf(salePrice);
     }
 
     public Integer getStockQty() {
@@ -130,6 +141,11 @@ public class Product {
     }
 
     public void setStockQty(Integer stockQty) {
+        this.stockQty = (stockQty != null) ? stockQty : 0;
+    }
+
+    // Compatible setter for int (origin/huynh)
+    public void setStockQty(int stockQty) {
         this.stockQty = stockQty;
     }
 
@@ -138,7 +154,7 @@ public class Product {
     }
 
     public void setMinStock(Integer minStock) {
-        this.minStock = minStock;
+        this.minStock = (minStock != null) ? minStock : 0;
     }
 
     public String getStatus() {
@@ -146,7 +162,7 @@ public class Product {
     }
 
     public void setStatus(String status) {
-        this.status = status;
+        this.status = (status != null) ? status : "ACTIVE";
     }
 
     public LocalDateTime getCreatedAt() {
