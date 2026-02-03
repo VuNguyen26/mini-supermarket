@@ -54,6 +54,8 @@ public class PosSalesPanel extends JPanel {
     // Money formatter
     private DecimalFormat df = new DecimalFormat("#,###");
 
+    private static final Color PRODUCT_LINK_BLUE = new Color(33, 150, 243);
+
     public PosSalesPanel() {
         initComponent();
         loadDataToTable();
@@ -122,6 +124,16 @@ public class PosSalesPanel extends JPanel {
         }
     }
 
+    public void refreshProducts() {
+        loadDataToTable();
+        if (txtSearch != null) {
+            String keyword = txtSearch.getText();
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                filterProduct(keyword);
+            }
+        }
+    }
+
     private void loadCustomers() {
         cboCustomers.removeAllItems();
         List<Customer> customers = customerDAO.searchCustomer("");
@@ -173,6 +185,26 @@ public class PosSalesPanel extends JPanel {
         tableProducts = new JTable(modelProducts);
         tableProducts.setRowHeight(30);
         tableProducts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tableProducts.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tableProducts.getTableHeader().setBackground(new Color(33, 150, 243));
+        tableProducts.getTableHeader().setForeground(Color.WHITE);
+        tableProducts.getTableHeader().setOpaque(true);
+        tableProducts.getTableHeader().setReorderingAllowed(false);
+        tableProducts.getTableHeader().setResizingAllowed(false);
+        DefaultTableCellRenderer blackTextRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    c.setForeground(Color.BLACK);
+                }
+                return c;
+            }
+        };
+        tableProducts.getColumnModel().getColumn(0).setCellRenderer(blackTextRenderer);
+        tableProducts.getColumnModel().getColumn(1).setCellRenderer(blackTextRenderer);
+        tableProducts.getColumnModel().getColumn(2).setCellRenderer(blackTextRenderer);
         tableProducts.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -252,12 +284,52 @@ public class PosSalesPanel extends JPanel {
             public boolean isCellEditable(int row, int col) {
                 return col == 2;
             }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                switch(columnIndex) {
+                    case 0: return Integer.class;
+                    case 1: return String.class;
+                    case 2: return Integer.class;
+                    case 3: return Double.class;
+                    case 4: return Double.class;
+                    default: return Object.class;
+                }
+            }
         };
         tableCart = new JTable(modelCart);
         tableCart.setRowHeight(30);
+        tableCart.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tableCart.getTableHeader().setBackground(new Color(33, 150, 243));
+        tableCart.getTableHeader().setForeground(Color.WHITE);
+        tableCart.getTableHeader().setOpaque(true);
+        tableCart.getTableHeader().setReorderingAllowed(false);
+        tableCart.getTableHeader().setResizingAllowed(false);
         modelCart.addTableModelListener(e -> {
             if (e.getColumn() == 2)
                 updateTotalMoney();
+        });
+
+        tableCart.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                if (value instanceof Number) {
+                    value = df.format(value);
+                }
+                return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            }
+        });
+
+        tableCart.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                if (value instanceof Number) {
+                    value = df.format(value);
+                }
+                return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            }
         });
 
         tableCart.addMouseListener(new MouseAdapter() {
@@ -319,7 +391,11 @@ public class PosSalesPanel extends JPanel {
         modelProducts.setRowCount(0);
         String key = keyword.toLowerCase();
         for (Product p : productList) {
-            if (p.getProductName().toLowerCase().contains(key) || p.getBarcode().toLowerCase().contains(key)) {
+            boolean matches = p.getProductName().toLowerCase().contains(key);
+            if (!matches && p.getBarcode() != null) {
+                matches = p.getBarcode().toLowerCase().contains(key);
+            }
+            if (matches) {
                 Object[] row = {
                         p.getProductId(),
                         p.getProductName(),
@@ -339,7 +415,7 @@ public class PosSalesPanel extends JPanel {
 
         int productId = (int) modelProducts.getValueAt(selectedRow, 0);
         String name = (String) modelProducts.getValueAt(selectedRow, 1);
-        double price = (double) modelProducts.getValueAt(selectedRow, 3);
+        double price = toDouble(modelProducts.getValueAt(selectedRow, 3));
         int stock = (int) modelProducts.getValueAt(selectedRow, 4);
 
         if (stock <= 0) {
@@ -378,11 +454,10 @@ public class PosSalesPanel extends JPanel {
     private void updateTotalMoney() {
         double subTotal = 0;
         for (int i = 0; i < modelCart.getRowCount(); i++) {
-            int qty = Integer.parseInt(modelCart.getValueAt(i, 2).toString());
-            double price = Double.parseDouble(modelCart.getValueAt(i, 3).toString());
+            int qty = toInteger(modelCart.getValueAt(i, 2));
+            double price = toDouble(modelCart.getValueAt(i, 3));
             double lineTotal = qty * price;
             modelCart.setValueAt(lineTotal, i, 4);
-
             subTotal += lineTotal;
         }
 
@@ -529,6 +604,30 @@ public class PosSalesPanel extends JPanel {
             if (text == null)
                 return 0;
             return Double.parseDouble(text.replace(",", "").replace(" đ", "").replace(" đồng", "").trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private double toDouble(Object obj) {
+        if (obj == null) return 0;
+        if (obj instanceof Double) return (Double) obj;
+        if (obj instanceof Integer) return ((Integer) obj).doubleValue();
+        if (obj instanceof java.math.BigDecimal) return ((java.math.BigDecimal) obj).doubleValue();
+        try {
+            return Double.parseDouble(obj.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private int toInteger(Object obj) {
+        if (obj == null) return 0;
+        if (obj instanceof Integer) return (Integer) obj;
+        if (obj instanceof Double) return ((Double) obj).intValue();
+        if (obj instanceof java.math.BigDecimal) return ((java.math.BigDecimal) obj).intValue();
+        try {
+            return Integer.parseInt(obj.toString());
         } catch (NumberFormatException e) {
             return 0;
         }

@@ -22,6 +22,7 @@ public class GoodsReceiptPanel extends JPanel {
 
 	private final GoodsReceiptService grService = new GoodsReceiptService();
 	private final SupplierService supplierService = new SupplierService();
+	private final Runnable inventoryUpdatedCallback;
 
 	private AuthUser currentUser;
 
@@ -34,8 +35,9 @@ public class GoodsReceiptPanel extends JPanel {
 	private JTextField dateFilterTxt;
 
 
-	public GoodsReceiptPanel(AuthUser currentUser) {
+	public GoodsReceiptPanel(AuthUser currentUser, Runnable inventoryUpdatedCallback) {
 		this.currentUser = currentUser;
+		this.inventoryUpdatedCallback = inventoryUpdatedCallback;
 		setOpaque(false);
 		setLayout(new BorderLayout(12, 12));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -46,7 +48,7 @@ public class GoodsReceiptPanel extends JPanel {
 // Open the dialog for GR detail or create new GR
 	private void openViewDetailDialog(GoodsReceipt receipt) {
 		Window owner = SwingUtilities.getWindowAncestor(this);
-		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, receipt);
+		ReceiptDialog dialog = new ReceiptDialog(owner, currentUser, receipt, inventoryUpdatedCallback);
 		dialog.setVisible(true);
 	}
 // ==============================================

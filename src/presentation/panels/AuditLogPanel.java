@@ -49,7 +49,7 @@ public class AuditLogPanel extends JPanel {
 
         // ===== TABLE =====
         model = new DefaultTableModel(
-                new Object[]{"User", "Action", "Entity", "Time", "Detail"}, 0
+                new Object[]{"Người dùng", "Hành động", "Loại", "ID", "Chi tiết", "Thời gian"}, 0
         ) {
             @Override public boolean isCellEditable(int row, int column) {
                 return false;
@@ -116,8 +116,9 @@ public class AuditLogPanel extends JPanel {
                         a.getUsername(),
                         a.getAction(),
                         a.getEntityName(),
-                        a.getCreatedAt() != null ? a.getCreatedAt().format(fmt) : "",
-                        a.getDescription()
+                        a.getEntityId() != null ? a.getEntityId() : "-",
+                        a.getDescription(),
+                        a.getCreatedAt() != null ? a.getCreatedAt().format(fmt) : ""
                 });
             }
         } catch (Exception e) {

@@ -54,6 +54,9 @@ public class MainFrame extends JFrame {
     private static final int NAV_GAP = 8;
 
     private presentation.panels.AuditLogPanel auditLogPanel;
+    private presentation.panels.PosSalesPanel posSalesPanel;
+    private presentation.panels.ProductPanel productPanel;
+    private presentation.panels.GoodsReceiptPanel goodsReceiptPanel;
 
     public MainFrame(AuthUser user) {
         this.currentUser = user;
@@ -587,11 +590,17 @@ public class MainFrame extends JFrame {
         AuditLogService auditLogService = new AuditLogService();
 
         contentPanel.add(wrapCard(makePlaceholder("TỔNG QUAN (DashboardPanel)")), "Tổng quan");
-        contentPanel.add(wrapCard(new presentation.panels.PosSalesPanel()), "Bán hàng");
+        posSalesPanel = new presentation.panels.PosSalesPanel();
+        contentPanel.add(wrapCard(posSalesPanel), "Bán hàng");
         contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
 
-        contentPanel.add(wrapCard(new presentation.panels.ProductPanel()), "Sản phẩm");
-        contentPanel.add(wrapCard(new presentation.panels.GoodsReceiptPanel(currentUser)), "Nhập kho");
+        productPanel = new presentation.panels.ProductPanel();
+        contentPanel.add(wrapCard(productPanel), "Sản phẩm");
+        goodsReceiptPanel = new presentation.panels.GoodsReceiptPanel(currentUser, () -> {
+            posSalesPanel.refreshProducts();
+            productPanel.refreshProducts();
+        });
+        contentPanel.add(wrapCard(goodsReceiptPanel), "Nhập kho");
         contentPanel.add(wrapCard(makePlaceholder("KIỂM KHO / ĐIỀU CHỈNH (StockAdjustmentPanel)")), "Kiểm kho");
 
         contentPanel.add(wrapCard(new presentation.panels.CustomerPanel()), "Khách hàng");
@@ -654,6 +663,11 @@ public class MainFrame extends JFrame {
         if (pageTitleLabel != null) pageTitleLabel.setText(name);
         cardLayout.show(contentPanel, name);
         setTitle("Mini Supermarket • " + name);
+
+        // Reload audit log khi mở tab "Lịch sử"
+        if ("Lịch sử".equals(name) && auditLogPanel != null) {
+            auditLogPanel.reload();
+        }
     }
 
     private void applyRoleVisibility() {

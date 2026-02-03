@@ -194,12 +194,7 @@ public class ProductPanel extends JPanel {
         table.getColumnModel().getColumn(8).setPreferredWidth(100); // Trạng thái
         table.getColumnModel().getColumn(9).setPreferredWidth(170); // Thao tác (đủ chỗ cho 2 nút)
 
-        // Không cho kéo (resize) cột
-        for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
-            int w = table.getColumnModel().getColumn(i).getPreferredWidth();
-            table.getColumnModel().getColumn(i).setMinWidth(w);
-            table.getColumnModel().getColumn(i).setMaxWidth(w);
-        }
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
 
         // Double click to edit
         table.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -280,6 +275,11 @@ public class ProductPanel extends JPanel {
         } catch (Exception e) {
             DialogUtils.showError(this, "Lỗi tải dữ liệu: " + e.getMessage());
         }
+    }
+
+    public void refreshProducts() {
+        // Reload data từ database
+        loadData();
     }
 
     private void searchProducts() {

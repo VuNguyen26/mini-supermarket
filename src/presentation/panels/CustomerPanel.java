@@ -104,11 +104,7 @@ public class CustomerPanel extends JPanel {
         table.getColumnModel().getColumn(4).setPreferredWidth(100);  // Điểm
         table.getColumnModel().getColumn(5).setPreferredWidth(170);  // Thao tác (đủ chỗ cho 2 nút)
         
-        // Khong cho keo (resize) cot
-        for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setMaxWidth(table.getColumnModel().getColumn(i).getPreferredWidth());
-            table.getColumnModel().getColumn(i).setMinWidth(table.getColumnModel().getColumn(i).getPreferredWidth());
-        }
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
 
         // Center align some columns
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();

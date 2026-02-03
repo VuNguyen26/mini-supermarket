@@ -66,6 +66,8 @@ public class PaymentPanel extends JPanel {
             new MethodOption("TRANSFER", "Ngân hàng (QR)")
     });
 
+        private final JTextField txtPromotion = new JTextField();
+
     private final JTextField txtCustomerPay = new JTextField();
     private final JLabel lblDiffTitle = new JLabel("Tiền thừa");
     private final JLabel lblDiffValue = new JLabel("---");
@@ -182,6 +184,12 @@ public class PaymentPanel extends JPanel {
         tblInvoice.setModel(modelInvoice);
         tblInvoice.setRowHeight(28);
         tblInvoice.setFillsViewportHeight(true);
+        tblInvoice.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tblInvoice.getTableHeader().setBackground(new Color(33, 150, 243));
+        tblInvoice.getTableHeader().setForeground(Color.WHITE);
+        tblInvoice.getTableHeader().setOpaque(true);
+        tblInvoice.getTableHeader().setReorderingAllowed(false);
+        tblInvoice.getTableHeader().setResizingAllowed(false);
 
         // Render money columns
         DefaultTableCellRenderer rightMoney = new DefaultTableCellRenderer() {
@@ -307,6 +315,20 @@ public class PaymentPanel extends JPanel {
         cboMethod.setPreferredSize(new Dimension(220, 34));
         card.add(cboMethod, gbc);
 
+        // Promotion
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        card.add(new JLabel("Khuyến mãi"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        txtPromotion.setPreferredSize(new Dimension(220, 34));
+        txtPromotion.putClientProperty("JTextField.placeholderText", "Nhập mã khuyến mãi...");
+        card.add(txtPromotion, gbc);
+
         // Customer pay
         gbc.gridy++;
         gbc.gridx = 0;
@@ -394,6 +416,11 @@ public class PaymentPanel extends JPanel {
 
         btnConfirm.setPreferredSize(new Dimension(160, 36));
         btnConfirm.setFont(btnConfirm.getFont().deriveFont(Font.BOLD));
+        btnConfirm.setBackground(new Color(76, 175, 80));
+        btnConfirm.setForeground(Color.WHITE);
+        btnConfirm.setFocusPainted(false);
+        btnConfirm.setBorderPainted(false);
+        btnConfirm.setOpaque(true);
 
         footer.add(btnConfirm);
         return footer;

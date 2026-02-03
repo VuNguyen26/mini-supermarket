@@ -20,6 +20,7 @@ public class ReceiptDialog extends JDialog {
 	private ProductService productService = new ProductService();
 	private SupplierService supplierService = new SupplierService();
 	private GoodsReceiptService grService = new GoodsReceiptService();
+	private final Runnable inventoryUpdatedCallback;
 
 	private AuthUser currentUser;
 
@@ -36,13 +37,14 @@ public class ReceiptDialog extends JDialog {
 	private JButton createBtn, addProductBtn;
 	private JTextField txtTotalAmount, txtNote;
 
-	public ReceiptDialog(Window owner, AuthUser currentUser, GoodsReceipt receiptToShow) {
+	public ReceiptDialog(Window owner, AuthUser currentUser, GoodsReceipt receiptToShow, Runnable inventoryUpdatedCallback) {
 		super(owner,
 			receiptToShow == null ? "Tạo phiếu nhập" : "Chi tiết phiếu nhập",
 			ModalityType.APPLICATION_MODAL
 		);
 		this.currentUser = currentUser;
 		this.receiptToShow = receiptToShow;
+		this.inventoryUpdatedCallback = inventoryUpdatedCallback;
 		allProducts = productService.getAll();
 		allSuppliers = supplierService.getAll();
 		initUI();
@@ -443,6 +445,9 @@ public class ReceiptDialog extends JDialog {
 			JOptionPane.showMessageDialog(this,
 				"Tạo phiếu nhập hàng thành công!",
 				"Thông báo", JOptionPane.INFORMATION_MESSAGE);
+			if (inventoryUpdatedCallback != null) {
+				inventoryUpdatedCallback.run();
+			}
 			dispose();
 		} else {
 			JOptionPane.showMessageDialog(this,
