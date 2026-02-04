@@ -596,20 +596,22 @@ public class MainFrame extends JFrame {
 
         productPanel = new presentation.panels.ProductPanel();
         contentPanel.add(wrapCard(productPanel), "Sản phẩm");
+
         goodsReceiptPanel = new presentation.panels.GoodsReceiptPanel(currentUser, () -> {
             posSalesPanel.refreshProducts();
             productPanel.refreshProducts();
         });
         contentPanel.add(wrapCard(goodsReceiptPanel), "Nhập kho");
-        contentPanel.add(wrapCard(makePlaceholder("KIỂM KHO / ĐIỀU CHỈNH (StockAdjustmentPanel)")), "Kiểm kho");
+
+        contentPanel.add(wrapCard(new presentation.panels.StockAdjustmentPanel(currentUser)), "Kiểm kho");
 
         contentPanel.add(wrapCard(new presentation.panels.CustomerPanel()), "Khách hàng");
         contentPanel.add(wrapCard(new presentation.panels.SupplierPanel()), "Nhà cung cấp");
         contentPanel.add(wrapCard(new presentation.panels.CategoryPanel()), "Danh mục");
 
-        contentPanel.add(wrapCard(makePlaceholder("KHUYẾN MÃI (PromotionPanel)")), "Khuyến mãi");
+        contentPanel.add(wrapCard(new presentation.panels.PromotionPanel(currentUser)), "Khuyến mãi");
         contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
-        contentPanel.add( wrapCard(new presentation.panels.ReportPanel( RolePermission.all() )), "Báo cáo" );
+        contentPanel.add(wrapCard(new presentation.panels.ReportPanel(RolePermission.all())), "Báo cáo");
 
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
 
