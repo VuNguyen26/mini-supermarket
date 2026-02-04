@@ -26,11 +26,11 @@ public class ReportDAO {
 
         String sql =
                 "SELECT DATE(si.created_at) AS report_date, " +
-                        "       SUM(sid.total_price) AS revenue, " +
-                        "       SUM(sid.quantity * p.import_price) AS cost, " +
-                        "       SUM(sid.total_price) - SUM(sid.quantity * p.import_price) AS profit " +
+                        "       SUM(sid.line_total) AS revenue, " +
+                        "       SUM(sid.qty * p.import_price) AS cost, " +
+                        "       SUM(sid.line_total) - SUM(sid.qty * p.import_price) AS profit " +
                         "FROM sales_invoice si " +
-                        "JOIN sales_invoice_detail sid ON si.invoice_id = sid.invoice_id " +
+                        "JOIN sales_invoice_detail sid ON si.inv_id = sid.inv_id " +
                         "JOIN product p ON sid.product_id = p.product_id " +
                         "WHERE si.status = 'COMPLETED' " +
                         "  AND si.created_at >= ? AND si.created_at < ? " +
@@ -66,10 +66,10 @@ public class ReportDAO {
 
         String sql =
                 "SELECT p.barcode AS product_code, p.product_name, " +
-                        "       SUM(sid.quantity) AS total_qty, " +
-                        "       SUM(sid.total_price) AS total_revenue " +
+                        "       SUM(sid.qty) AS total_qty, " +
+                        "       SUM(sid.line_total) AS total_revenue " +
                         "FROM sales_invoice_detail sid " +
-                        "JOIN sales_invoice si ON sid.invoice_id = si.invoice_id " +
+                        "JOIN sales_invoice si ON sid.inv_id = si.inv_id " +
                         "JOIN product p ON sid.product_id = p.product_id " +
                         "WHERE si.status = 'COMPLETED' " +
                         "  AND si.created_at >= ? AND si.created_at < ? " +
