@@ -9,8 +9,6 @@ import javax.swing.*;
 import java.awt.*;
 
 public class Main {
-    // DEBUG MODE for bypass login, quick view
-    // Để FALSE mặc định để chạy đúng luồng đăng nhập
     private static final boolean DEBUG_MODE = false;
 
     public static void main(String[] args) {

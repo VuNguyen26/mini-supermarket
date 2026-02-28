@@ -26,14 +26,13 @@ public class ReportDAO {
 
         String sql =
                 "SELECT DATE(si.created_at) AS report_date, " +
-                        "       SUM(sid.line_total) AS revenue, " +
+                        "       SUM(si.grand_total) AS revenue, " +
                         "       SUM(sid.qty * p.import_price) AS cost, " +
-                        "       SUM(sid.line_total) - SUM(sid.qty * p.import_price) AS profit " +
+                        "       SUM(si.grand_total) - SUM(sid.qty * p.import_price) AS profit " +
                         "FROM sales_invoice si " +
                         "JOIN sales_invoice_detail sid ON si.inv_id = sid.inv_id " +
                         "JOIN product p ON sid.product_id = p.product_id " +
-                        "WHERE si.status = 'COMPLETED' " +
-                        "  AND si.created_at >= ? AND si.created_at < ? " +
+                        "WHERE si.created_at >= ? AND si.created_at < ? " +
                         "GROUP BY DATE(si.created_at) " +
                         "ORDER BY report_date";
 
@@ -71,8 +70,7 @@ public class ReportDAO {
                         "FROM sales_invoice_detail sid " +
                         "JOIN sales_invoice si ON sid.inv_id = si.inv_id " +
                         "JOIN product p ON sid.product_id = p.product_id " +
-                        "WHERE si.status = 'COMPLETED' " +
-                        "  AND si.created_at >= ? AND si.created_at < ? " +
+                        "WHERE si.created_at >= ? AND si.created_at < ? " +
                         "GROUP BY p.product_id, p.barcode, p.product_name " +
                         "ORDER BY total_revenue DESC " +
                         "LIMIT ?";

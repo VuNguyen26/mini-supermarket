@@ -589,7 +589,7 @@ public class MainFrame extends JFrame {
         ReportService reportService = new ReportService();
         AuditLogService auditLogService = new AuditLogService();
 
-        contentPanel.add(wrapCard(makePlaceholder("TỔNG QUAN (DashboardPanel)")), "Tổng quan");
+        contentPanel.add(wrapCard(new presentation.panels.DashboardPanel()), "Tổng quan");
         posSalesPanel = new presentation.panels.PosSalesPanel();
         contentPanel.add(wrapCard(posSalesPanel), "Bán hàng");
         contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
