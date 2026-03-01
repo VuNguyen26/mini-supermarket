@@ -57,6 +57,8 @@ public class MainFrame extends JFrame {
     private presentation.panels.PosSalesPanel posSalesPanel;
     private presentation.panels.ProductPanel productPanel;
     private presentation.panels.GoodsReceiptPanel goodsReceiptPanel;
+    
+    private presentation.panels.SalesInvoicePanel salesInvoicePanel;
 
     public MainFrame(AuthUser user) {
         this.currentUser = user;
@@ -499,8 +501,6 @@ public class MainFrame extends JFrame {
             repaint();
         }
 
-        // setText removed - never used
-
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
@@ -531,12 +531,10 @@ public class MainFrame extends JFrame {
 
     private static class CircleImageAvatar extends JComponent {
         private Image image;
-        // private final int size; // removed - never used
         private Color borderColor = BORDER;
 
         public CircleImageAvatar(Image image, int size) {
             this.image = image;
-            // this.size = size; // removed - never used
             setPreferredSize(new Dimension(size, size));
             setMinimumSize(new Dimension(size, size));
             setMaximumSize(new Dimension(size, size));
@@ -592,7 +590,9 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(new presentation.panels.DashboardPanel()), "Tổng quan");
         posSalesPanel = new presentation.panels.PosSalesPanel();
         contentPanel.add(wrapCard(posSalesPanel), "Bán hàng");
-        contentPanel.add(wrapCard(makePlaceholder("HÓA ĐƠN (SalesInvoicePanel)")), "Hóa đơn");
+        
+        salesInvoicePanel = new presentation.panels.SalesInvoicePanel();
+        contentPanel.add(wrapCard(salesInvoicePanel), "Hóa đơn");
 
         productPanel = new presentation.panels.ProductPanel();
         contentPanel.add(wrapCard(productPanel), "Sản phẩm");
@@ -670,11 +670,13 @@ public class MainFrame extends JFrame {
         if ("Lịch sử".equals(name) && auditLogPanel != null) {
             auditLogPanel.reload();
         }
+
+        if ("Hóa đơn".equals(name) && salesInvoicePanel != null) {
+            salesInvoicePanel.refreshData();
+        }
     }
 
     private void applyRoleVisibility() {
-        // KHÔNG hardcode DEBUG_MODE = true ở đây.
-        // Nếu muốn debug quyền, hãy set từ Main.java (bypass login) hoặc tạo flag riêng ở 1 chỗ.
         boolean debug = false;
 
         setNavVisible("Tổng quan", debug || RolePermission.has(PermissionCodes.DASHBOARD_VIEW));
@@ -812,8 +814,6 @@ public class MainFrame extends JFrame {
             super.paintComponent(g);
         }
     }
-    // RoundedBorder removed - never used
-    // (Class was causing issues and not being used anywhere)
 
     private static class RoundedPanel extends JPanel {
         private final int arc;
@@ -837,20 +837,6 @@ public class MainFrame extends JFrame {
             this.borderThickness = Math.max(1, thickness);
             repaint();
         }
-
-        // setShadow removed - never used
-        // public void setShadow(boolean enabled) {
-        //     this.shadowEnabled = enabled;
-        //     repaint();
-        // }
-
-        // setShadowStyle removed - never used
-        // public void setShadowStyle(int size, int offsetY, Color color) {
-        //     this.shadowSize = Math.max(0, size);
-        //     this.shadowOffsetY = offsetY;
-        //     this.shadowColor = (color != null) ? color : new Color(0, 0, 0, 25);
-        //     repaint();
-        // }
 
         @Override
         protected void paintComponent(Graphics g) {

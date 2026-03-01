@@ -4,10 +4,10 @@ import dal.DBConnection;
 import dal.dao.InventoryLotDAO;
 import dal.dao.SalesInvoiceDAO;
 import dal.dao.SalesInvoiceDetailDAO;
+import dal.dao.PaymentDAO;
 import dto.InventoryLot;
 import dto.SalesInvoice;
 import dto.SalesInvoiceDetail;
-import dal.dao.PaymentDAO;
 import dto.Payment;
 
 import java.sql.Connection;
@@ -20,6 +20,32 @@ public class SalesService {
     private final SalesInvoiceDetailDAO detailDAO = new SalesInvoiceDetailDAO();
     private final InventoryLotDAO lotDAO = new InventoryLotDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
+
+    // -------------------------------------------------------------------------
+    // CÁC HÀM MỚI THÊM CHO QUẢN LÝ HÓA ĐƠN
+    // -------------------------------------------------------------------------
+
+    public List<SalesInvoice> getAllInvoices() throws SQLException {
+        try (Connection conn = DBConnection.getConnection()) {
+            return invoiceDAO.getAllInvoices(conn);
+        }
+    }
+
+    public SalesInvoice getInvoiceById(int invId) throws SQLException {
+        try (Connection conn = DBConnection.getConnection()) {
+            return invoiceDAO.getInvoiceById(invId, conn);
+        }
+    }
+
+    public List<SalesInvoiceDetail> getInvoiceDetailsByInvId(int invId) throws SQLException {
+        try (Connection conn = DBConnection.getConnection()) {
+            return detailDAO.getDetailsByInvoiceId(invId, conn);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // HÀM XỬ LÝ THANH TOÁN (GIỮ NGUYÊN)
+    // -------------------------------------------------------------------------
 
     public boolean processSale(SalesInvoice invoice, List<SalesInvoiceDetail> requestDetails, Payment payment) throws SQLException {
         Connection conn = DBConnection.getConnection();

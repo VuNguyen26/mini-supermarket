@@ -11,6 +11,8 @@ public class SalesInvoice {
     private double discount;
     private double grandTotal;
     private String paymentMethod;
+    private String customerName;
+    private String createdByName;
 
     public SalesInvoice() {
     }
@@ -87,5 +89,21 @@ public class SalesInvoice {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public String getCreatedByName() {
+        return createdByName;
+    }
+
+    public void setCreatedByName(String createdByName) {
+        this.createdByName = createdByName;
     }
 }
