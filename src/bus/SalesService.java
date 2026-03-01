@@ -11,23 +11,26 @@ import dto.SalesInvoiceDetail;
 import dto.Payment;
 
 import java.sql.Connection;
+import java.sql.Timestamp;
 import java.sql.SQLException;
 import java.util.List;
 
 public class SalesService {
-
     private final SalesInvoiceDAO invoiceDAO = new SalesInvoiceDAO();
     private final SalesInvoiceDetailDAO detailDAO = new SalesInvoiceDetailDAO();
     private final InventoryLotDAO lotDAO = new InventoryLotDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
-
-    // -------------------------------------------------------------------------
-    // CÁC HÀM MỚI THÊM CHO QUẢN LÝ HÓA ĐƠN
-    // -------------------------------------------------------------------------
-
+    
     public List<SalesInvoice> getAllInvoices() throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
             return invoiceDAO.getAllInvoices(conn);
+        }
+    }
+
+    public List<SalesInvoice> searchInvoices(Integer invId, String customerName,
+                                            Timestamp fromCreated, Timestamp toCreated) throws SQLException {
+        try (Connection conn = DBConnection.getConnection()) {
+            return invoiceDAO.searchInvoices(invId, customerName, fromCreated, toCreated, conn);
         }
     }
 
@@ -42,10 +45,6 @@ public class SalesService {
             return detailDAO.getDetailsByInvoiceId(invId, conn);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // HÀM XỬ LÝ THANH TOÁN (GIỮ NGUYÊN)
-    // -------------------------------------------------------------------------
 
     public boolean processSale(SalesInvoice invoice, List<SalesInvoiceDetail> requestDetails, Payment payment) throws SQLException {
         Connection conn = DBConnection.getConnection();
