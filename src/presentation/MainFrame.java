@@ -613,7 +613,7 @@ public class MainFrame extends JFrame {
 
         contentPanel.add(wrapCard(new presentation.panels.ReportPanel(RolePermission.all())), "Báo cáo");
 
-        contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
+        contentPanel.add(wrapCard(new presentation.panels.UserPanel()), "Nhân viên");
 
         auditLogPanel = new presentation.panels.AuditLogPanel(auditLogService);
         contentPanel.add(wrapCard(auditLogPanel), "Lịch sử");
