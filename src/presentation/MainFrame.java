@@ -246,7 +246,7 @@ public class MainFrame extends JFrame {
         addNavItem(nav, "Danh mục", "🧩");
 
         addNavItem(nav, "Khuyến mãi", "🏷️");
-        addNavItem(nav, "Thanh toán", "💳");
+
         addNavItem(nav, "Báo cáo", "📊");
 
         addNavItem(nav, "Nhân viên", "🛡️");
@@ -610,7 +610,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(wrapCard(new presentation.panels.CategoryPanel()), "Danh mục");
 
         contentPanel.add(wrapCard(new presentation.panels.PromotionPanel(currentUser)), "Khuyến mãi");
-        contentPanel.add(wrapCard(makePlaceholder("THANH TOÁN (PaymentPanel)")), "Thanh toán");
+
         contentPanel.add(wrapCard(new presentation.panels.ReportPanel(RolePermission.all())), "Báo cáo");
 
         contentPanel.add(wrapCard(makePlaceholder("NHÂN VIÊN (UserPanel)")), "Nhân viên");
@@ -703,7 +703,7 @@ public class MainFrame extends JFrame {
         setNavVisible("Danh mục", debug || RolePermission.has(PermissionCodes.CATEGORY_VIEW));
 
         setNavVisible("Khuyến mãi", debug || RolePermission.has(PermissionCodes.PROMOTION_MANAGE));
-        setNavVisible("Thanh toán", debug || RolePermission.has(PermissionCodes.PAYMENT_VIEW));
+
         setNavVisible("Báo cáo",    debug || RolePermission.has(PermissionCodes.REPORT_VIEW));
 
         setNavVisible("Nhân viên",  debug || RolePermission.has(PermissionCodes.USER_MANAGE));
