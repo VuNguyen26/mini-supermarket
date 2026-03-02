@@ -483,8 +483,9 @@ public class PosSalesPanel extends JPanel {
         PaymentPanel paymentPanel = new PaymentPanel(detailsSnapshot, subTotal, discount, grandTotal,
                 new PaymentPanel.PaymentListener() {
                     @Override
-                    public void onConfirm(String method, double customerPay, double change) {
-                        startProcessTransaction(method, customerPay, change, detailsSnapshot);
+                    public void onConfirm(String method, double customerPay, double change, double discount,
+                            double grandTotal) {
+                        startProcessTransaction(method, customerPay, change, detailsSnapshot, discount, grandTotal);
                     }
 
                     @Override
@@ -511,8 +512,8 @@ public class PosSalesPanel extends JPanel {
         return details;
     }
 
-    private void startProcessTransaction(String method, double given, double change,
-            List<SalesInvoiceDetail> detailsSnapshot) {
+        private void startProcessTransaction(String method, double given, double change,
+            List<SalesInvoiceDetail> detailsSnapshot, double finalDiscount, double finalGrandTotal) {
         Object selectedObj = cboCustomers.getSelectedItem();
         final Customer customerForPrint = (selectedObj instanceof Customer)
                 ? (Customer) selectedObj
@@ -523,12 +524,10 @@ public class PosSalesPanel extends JPanel {
                 : 0;
 
         final double subTotal = parseMoney(lblSubTotalValue.getText());
-        final double discount = parseMoney(lblDiscountValue.getText());
-        double grandTotal = parseMoney(lblTotalValue.getText());
-        if (grandTotal <= 0) {
-            grandTotal = Math.max(0, subTotal - discount);
-        }
-        final double finalGrandTotal = grandTotal;
+        final double discount = Math.max(0, finalDiscount);
+        final double checkedGrandTotal = finalGrandTotal > 0
+            ? finalGrandTotal
+            : Math.max(0, subTotal - discount);
 
         final SalesInvoice invoice = new SalesInvoice();
         invoice.setCustomerId(cusId);
@@ -536,9 +535,9 @@ public class PosSalesPanel extends JPanel {
         invoice.setPaymentMethod(method);
         invoice.setSubTotal(subTotal);
         invoice.setDiscount(discount);
-        invoice.setGrandTotal(finalGrandTotal);
+        invoice.setGrandTotal(checkedGrandTotal);
 
-        final Payment payment = new Payment(0, method, finalGrandTotal, "Thanh toán POS");
+        final Payment payment = new Payment(0, method, checkedGrandTotal, "Thanh toán POS");
         final SalesService service = new SalesService();
 
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -572,7 +571,7 @@ public class PosSalesPanel extends JPanel {
                     JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(PosSalesPanel.this);
 
                     // Dialogs
-                    new presentation.dialogs.PaymentDialog(parent, finalGrandTotal, change, invoice.getInvId())
+                        new presentation.dialogs.PaymentDialog(parent, checkedGrandTotal, change, invoice.getInvId())
                             .setVisible(true);
                     new presentation.dialogs.InvoicePrintPreviewDialog(parent, invoice, detailsSnapshot,
                             customerForPrint, given, change).setVisible(true);
