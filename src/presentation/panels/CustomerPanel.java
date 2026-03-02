@@ -144,6 +144,10 @@ public class CustomerPanel extends JPanel {
         }
     }
 
+    public void refreshData() {
+        loadData();
+    }
+
     private void searchCustomers() {
         try {
             String keyword = txtSearch.getText().trim();

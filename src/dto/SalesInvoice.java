@@ -13,6 +13,9 @@ public class SalesInvoice {
     private String paymentMethod;
     private String customerName;
     private String createdByName;
+    private int pointsEarned;
+    private int pointsRedeemed;
+    private double pointsValue;
 
     public SalesInvoice() {
     }
@@ -105,5 +108,29 @@ public class SalesInvoice {
 
     public void setCreatedByName(String createdByName) {
         this.createdByName = createdByName;
+    }
+
+    public int getPointsEarned() {
+        return pointsEarned;
+    }
+
+    public void setPointsEarned(int pointsEarned) {
+        this.pointsEarned = pointsEarned;
+    }
+
+    public int getPointsRedeemed() {
+        return pointsRedeemed;
+    }
+
+    public void setPointsRedeemed(int pointsRedeemed) {
+        this.pointsRedeemed = pointsRedeemed;
+    }
+
+    public double getPointsValue() {
+        return pointsValue;
+    }
+
+    public void setPointsValue(double pointsValue) {
+        this.pointsValue = pointsValue;
     }
 }

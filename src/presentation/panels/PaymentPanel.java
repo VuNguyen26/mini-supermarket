@@ -32,7 +32,8 @@ import java.util.List;
 public class PaymentPanel extends JPanel {
 
     public interface PaymentListener {
-        void onConfirm(String method, double customerPay, double change, double discount, double grandTotal);
+        void onConfirm(String method, double customerPay, double change, double discount, double grandTotal,
+                       int redeemedPoints, double pointDiscount);
         void onBack();
     }
 
@@ -70,13 +71,16 @@ public class PaymentPanel extends JPanel {
     private final double subTotal;
     private final double baseDiscount;
     private final double baseGrandTotal;
+    private final int customerAvailablePoints;
     private final PaymentListener listener;
     private final PromotionService promotionService = new PromotionService();
     private final PromotionService.PromotionChangeListener promotionChangeListener = this::reloadPromotions;
 
     private double promotionDiscount;
+    private double pointDiscount;
     private double totalDiscount;
     private double finalGrandTotal;
+    private int redeemedPointsApplied;
     private final List<Integer> cartProductIds;
 
     private final DecimalFormat moneyFmt = new DecimalFormat("#,###");
@@ -96,6 +100,8 @@ public class PaymentPanel extends JPanel {
     });
 
     private final JComboBox<PromotionOption> cboPromotion = new JComboBox<>();
+    private final JTextField txtRedeemPoints = new JTextField();
+    private final JLabel lblRedeemHint = new JLabel();
 
     private final JTextField txtCustomerPay = new JTextField();
     private final JLabel lblDiffTitle = new JLabel("Tiền thừa");
@@ -115,11 +121,13 @@ public class PaymentPanel extends JPanel {
                         double subTotal,
                         double discount,
                         double grandTotal,
+                        int customerAvailablePoints,
                         PaymentListener listener) {
         this.details = details;
         this.subTotal = subTotal;
         this.baseDiscount = discount;
         this.baseGrandTotal = grandTotal;
+        this.customerAvailablePoints = Math.max(0, customerAvailablePoints);
         this.totalDiscount = discount;
         this.finalGrandTotal = grandTotal;
         this.listener = listener;
@@ -369,6 +377,30 @@ public class PaymentPanel extends JPanel {
         cboPromotion.setPreferredSize(new Dimension(220, 34));
         card.add(cboPromotion, gbc);
 
+        // Redeem points
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        card.add(new JLabel("Đổi điểm"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        txtRedeemPoints.setPreferredSize(new Dimension(220, 34));
+        txtRedeemPoints.setHorizontalAlignment(SwingConstants.RIGHT);
+        txtRedeemPoints.setText("0");
+        txtRedeemPoints.setEnabled(customerAvailablePoints > 0);
+        card.add(txtRedeemPoints, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        lblRedeemHint.setFont(lblRedeemHint.getFont().deriveFont(Font.PLAIN, 12f));
+        lblRedeemHint.setForeground(new Color(80, 80, 80));
+        card.add(lblRedeemHint, gbc);
+
         // Customer pay
         gbc.gridy++;
         gbc.gridx = 0;
@@ -525,6 +557,12 @@ public class PaymentPanel extends JPanel {
 
         cboPromotion.addActionListener(e -> applySelectedPromotion());
 
+        txtRedeemPoints.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { applySelectedPromotion(); }
+            @Override public void removeUpdate(DocumentEvent e) { applySelectedPromotion(); }
+            @Override public void changedUpdate(DocumentEvent e) { applySelectedPromotion(); }
+        });
+
         txtCustomerPay.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { updateComputed(); }
             @Override public void removeUpdate(DocumentEvent e) { updateComputed(); }
@@ -624,11 +662,17 @@ public class PaymentPanel extends JPanel {
             }
 
             double change = given - finalGrandTotal;
-            if (listener != null) listener.onConfirm(method, given, change, totalDiscount, finalGrandTotal);
+            if (listener != null) {
+                listener.onConfirm(method, given, change, totalDiscount, finalGrandTotal, redeemedPointsApplied,
+                        pointDiscount);
+            }
             return;
         }
 
-        if (listener != null) listener.onConfirm(method, finalGrandTotal, 0, totalDiscount, finalGrandTotal);
+        if (listener != null) {
+            listener.onConfirm(method, finalGrandTotal, 0, totalDiscount, finalGrandTotal, redeemedPointsApplied,
+                    pointDiscount);
+        }
     }
 
     private void reloadPromotions() {
@@ -673,8 +717,22 @@ public class PaymentPanel extends JPanel {
         Promotion promotion = selected != null ? selected.promotion : null;
 
         promotionDiscount = calculatePromotionDiscount(promotion, baseGrandTotal);
-        totalDiscount = Math.max(0, baseDiscount + promotionDiscount);
+        int requestedPoints = (int) parseMoneyToLong(txtRedeemPoints.getText());
+        redeemedPointsApplied = normalizeRedeemPoints(requestedPoints);
+
+        double amountAfterPromotion = Math.max(0, subTotal - (baseDiscount + promotionDiscount));
+        pointDiscount = calculatePointDiscount(redeemedPointsApplied, amountAfterPromotion);
+        totalDiscount = Math.max(0, baseDiscount + promotionDiscount + pointDiscount);
         finalGrandTotal = Math.max(0, subTotal - totalDiscount);
+
+        int pointPercent = (redeemedPointsApplied / 10) * 5;
+        String rawDigits = String.valueOf(redeemedPointsApplied);
+        if (!txtRedeemPoints.getText().replaceAll("[^0-9]", "").equals(rawDigits)) {
+            txtRedeemPoints.setText(rawDigits);
+        }
+        lblRedeemHint.setText("Điểm hiện có: " + customerAvailablePoints
+                + " • Đang dùng: " + redeemedPointsApplied
+                + " điểm (" + pointPercent + "%)");
 
         lblSubTotalValue.setText(formatMoney(subTotal));
         lblDiscountValue.setText(formatMoney(totalDiscount));
@@ -687,6 +745,25 @@ public class PaymentPanel extends JPanel {
 
         applyMethodUI();
         updateComputed();
+    }
+
+    private int normalizeRedeemPoints(int requestedPoints) {
+        if (customerAvailablePoints <= 0 || requestedPoints <= 0) {
+            return 0;
+        }
+        int capped = Math.min(requestedPoints, customerAvailablePoints);
+        return (capped / 10) * 10;
+    }
+
+    private double calculatePointDiscount(int redeemedPoints, double amount) {
+        if (redeemedPoints <= 0 || amount <= 0) {
+            return 0;
+        }
+        int percent = (redeemedPoints / 10) * 5;
+        if (percent > 100) {
+            percent = 100;
+        }
+        return amount * (percent / 100.0);
     }
 
     private double calculatePromotionDiscount(Promotion promotion, double amount) {

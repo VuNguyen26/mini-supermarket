@@ -57,6 +57,7 @@ public class MainFrame extends JFrame {
     private presentation.panels.PosSalesPanel posSalesPanel;
     private presentation.panels.ProductPanel productPanel;
     private presentation.panels.GoodsReceiptPanel goodsReceiptPanel;
+    private presentation.panels.CustomerPanel customerPanel;
     
     private presentation.panels.SalesInvoicePanel salesInvoicePanel;
 
@@ -605,7 +606,8 @@ public class MainFrame extends JFrame {
 
         contentPanel.add(wrapCard(new presentation.panels.StockAdjustmentPanel(currentUser)), "Kiểm kho");
 
-        contentPanel.add(wrapCard(new presentation.panels.CustomerPanel()), "Khách hàng");
+        customerPanel = new presentation.panels.CustomerPanel();
+        contentPanel.add(wrapCard(customerPanel), "Khách hàng");
         contentPanel.add(wrapCard(new presentation.panels.SupplierPanel()), "Nhà cung cấp");
         contentPanel.add(wrapCard(new presentation.panels.CategoryPanel()), "Danh mục");
 
@@ -673,6 +675,10 @@ public class MainFrame extends JFrame {
 
         if ("Hóa đơn".equals(name) && salesInvoicePanel != null) {
             salesInvoicePanel.refreshData();
+        }
+
+        if ("Khách hàng".equals(name) && customerPanel != null) {
+            customerPanel.refreshData();
         }
     }
 

@@ -136,13 +136,10 @@ public class PosSalesPanel extends JPanel {
 
     private void loadCustomers() {
         cboCustomers.removeAllItems();
-        List<Customer> customers = customerDAO.searchCustomer("");
-        if (customers.isEmpty()) {
-            cboCustomers.addItem(new Customer(0, "Khách lẻ", ""));
-        } else {
-            for (Customer c : customers) {
-                cboCustomers.addItem(c);
-            }
+        cboCustomers.addItem(new Customer(0, "Khách lẻ", ""));
+        List<Customer> customers = customerDAO.findAll();
+        for (Customer c : customers) {
+            cboCustomers.addItem(c);
         }
     }
 
@@ -480,12 +477,20 @@ public class PosSalesPanel extends JPanel {
             grandTotal = Math.max(0, subTotal - discount);
         }
 
-        PaymentPanel paymentPanel = new PaymentPanel(detailsSnapshot, subTotal, discount, grandTotal,
+        Customer selectedCustomer = resolveSelectedCustomer();
+        int customerPoints = 0;
+        if (selectedCustomer != null) {
+            Integer points = selectedCustomer.getPoints();
+            customerPoints = points != null ? points : 0;
+        }
+
+        PaymentPanel paymentPanel = new PaymentPanel(detailsSnapshot, subTotal, discount, grandTotal, customerPoints,
                 new PaymentPanel.PaymentListener() {
                     @Override
                     public void onConfirm(String method, double customerPay, double change, double discount,
-                            double grandTotal) {
-                        startProcessTransaction(method, customerPay, change, detailsSnapshot, discount, grandTotal);
+                            double grandTotal, int redeemedPoints, double pointDiscount) {
+                        startProcessTransaction(method, customerPay, change, detailsSnapshot, discount, grandTotal,
+                                redeemedPoints, pointDiscount);
                     }
 
                     @Override
@@ -513,15 +518,11 @@ public class PosSalesPanel extends JPanel {
     }
 
         private void startProcessTransaction(String method, double given, double change,
-            List<SalesInvoiceDetail> detailsSnapshot, double finalDiscount, double finalGrandTotal) {
-        Object selectedObj = cboCustomers.getSelectedItem();
-        final Customer customerForPrint = (selectedObj instanceof Customer)
-                ? (Customer) selectedObj
-                : new Customer(0, "Khách lẻ", "");
-
-        final int cusId = (selectedObj instanceof Customer)
-                ? ((Customer) selectedObj).getCustomerId()
-                : 0;
+            List<SalesInvoiceDetail> detailsSnapshot, double finalDiscount, double finalGrandTotal,
+            int redeemedPoints, double pointDiscount) {
+            final Customer selectedCustomer = resolveSelectedCustomer();
+            final Customer customerForPrint = selectedCustomer != null ? selectedCustomer : new Customer(0, "Khách lẻ", "");
+            final int cusId = customerForPrint.getCustomerIdValue();
 
         final double subTotal = parseMoney(lblSubTotalValue.getText());
         final double discount = Math.max(0, finalDiscount);
@@ -548,7 +549,7 @@ public class PosSalesPanel extends JPanel {
             @Override
             protected Boolean doInBackground() {
                 try {
-                    return service.processSale(invoice, detailsSnapshot, payment);
+                    return service.processSale(invoice, detailsSnapshot, payment, redeemedPoints, pointDiscount);
                 } catch (Exception ex) {
                     error = ex;
                     return false;
@@ -580,6 +581,7 @@ public class PosSalesPanel extends JPanel {
                     modelCart.setRowCount(0);
                     updateTotalMoney();
                     loadDataToTable();
+                    loadCustomers();
 
                     showPosCard();
                     return;
@@ -596,6 +598,55 @@ public class PosSalesPanel extends JPanel {
         };
 
         worker.execute();
+    }
+
+    private Customer resolveSelectedCustomer() {
+        Object selectedObj = cboCustomers.getSelectedItem();
+        if (selectedObj instanceof Customer) {
+            return (Customer) selectedObj;
+        }
+
+        String keyword = "";
+        Component editor = cboCustomers.getEditor().getEditorComponent();
+        if (editor instanceof JTextField) {
+            keyword = ((JTextField) editor).getText();
+        }
+
+        if (keyword == null) {
+            return new Customer(0, "Khách lẻ", "");
+        }
+
+        keyword = keyword.trim();
+        if (keyword.isEmpty() || "Khách lẻ".equalsIgnoreCase(keyword)) {
+            return new Customer(0, "Khách lẻ", "");
+        }
+
+        String phoneCandidate = keyword;
+        if (keyword.contains("-")) {
+            String[] parts = keyword.split("-");
+            phoneCandidate = parts[parts.length - 1].trim();
+        }
+        String phoneDigits = phoneCandidate.replaceAll("[^0-9]", "");
+        if (!phoneDigits.isEmpty()) {
+            Customer byPhone = customerDAO.findByPhone(phoneDigits);
+            if (byPhone != null) {
+                return byPhone;
+            }
+        }
+
+        List<Customer> matches = customerDAO.search(keyword);
+        for (Customer customer : matches) {
+            if (keyword.equalsIgnoreCase(customer.getCustomerName())
+                    || keyword.equalsIgnoreCase(customer.toString())) {
+                return customer;
+            }
+        }
+
+        if (matches.size() == 1) {
+            return matches.get(0);
+        }
+
+        return new Customer(0, "Khách lẻ", "");
     }
 
     private double parseMoney(String text) {
