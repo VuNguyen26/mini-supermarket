@@ -115,9 +115,6 @@ public class SalesService {
             if (customerId != 0) {
                 int normalizedRedeemedPoints = Math.max(0, redeemedPoints);
                 if (normalizedRedeemedPoints > 0) {
-                    if (normalizedRedeemedPoints % 10 != 0) {
-                        throw new SQLException("Điểm đổi phải là bội số của 10.");
-                    }
                     boolean consumed = customerDAO.consumeLoyaltyPointsInTransaction(customerId,
                             normalizedRedeemedPoints, conn);
                     if (!consumed) {
@@ -142,9 +139,9 @@ public class SalesService {
                     redeemTxn.setMoneyAmount(Math.max(0, pointsValue));
                     redeemTxn.setEarnRateMoney(0);
                     redeemTxn.setEarnRatePoints(0);
-                    redeemTxn.setRedeemRatePoints(10);
-                    redeemTxn.setRedeemRateMoney(0);
-                    redeemTxn.setNote("Đổi điểm giảm giá (10 điểm = 5%)");
+                    redeemTxn.setRedeemRatePoints(1);
+                    redeemTxn.setRedeemRateMoney(0.5);
+                    redeemTxn.setNote("Đổi điểm giảm giá (1 điểm = 0.5%)");
                     loyaltyPointTxnDAO.createTxn(redeemTxn, conn);
                 }
 

@@ -14,6 +14,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -391,6 +395,7 @@ public class PaymentPanel extends JPanel {
         txtRedeemPoints.setHorizontalAlignment(SwingConstants.RIGHT);
         txtRedeemPoints.setText("0");
         txtRedeemPoints.setEnabled(customerAvailablePoints > 0);
+        applyDigitsOnly(txtRedeemPoints);
         card.add(txtRedeemPoints, gbc);
 
         gbc.gridy++;
@@ -725,14 +730,13 @@ public class PaymentPanel extends JPanel {
         totalDiscount = Math.max(0, baseDiscount + promotionDiscount + pointDiscount);
         finalGrandTotal = Math.max(0, subTotal - totalDiscount);
 
-        int pointPercent = (redeemedPointsApplied / 10) * 5;
-        String rawDigits = String.valueOf(redeemedPointsApplied);
-        if (!txtRedeemPoints.getText().replaceAll("[^0-9]", "").equals(rawDigits)) {
-            txtRedeemPoints.setText(rawDigits);
-        }
+        double pointPercent = redeemedPointsApplied * 0.5;
+        String requestedText = txtRedeemPoints.getText() == null ? "" : txtRedeemPoints.getText().trim();
+        boolean capped = requestedPoints > redeemedPointsApplied;
         lblRedeemHint.setText("Điểm hiện có: " + customerAvailablePoints
                 + " • Đang dùng: " + redeemedPointsApplied
-                + " điểm (" + pointPercent + "%)");
+                + " điểm (" + trimPercent(pointPercent) + "%)"
+                + (capped ? " • Đã giới hạn theo điểm hiện có" : ""));
 
         lblSubTotalValue.setText(formatMoney(subTotal));
         lblDiscountValue.setText(formatMoney(totalDiscount));
@@ -751,19 +755,57 @@ public class PaymentPanel extends JPanel {
         if (customerAvailablePoints <= 0 || requestedPoints <= 0) {
             return 0;
         }
-        int capped = Math.min(requestedPoints, customerAvailablePoints);
-        return (capped / 10) * 10;
+        return Math.min(requestedPoints, customerAvailablePoints);
     }
 
     private double calculatePointDiscount(int redeemedPoints, double amount) {
         if (redeemedPoints <= 0 || amount <= 0) {
             return 0;
         }
-        int percent = (redeemedPoints / 10) * 5;
+        double percent = redeemedPoints * 0.5;
         if (percent > 100) {
             percent = 100;
         }
         return amount * (percent / 100.0);
+    }
+
+    private String trimPercent(double value) {
+        if (Math.abs(value - Math.rint(value)) < 1e-9) {
+            return String.valueOf((int) Math.rint(value));
+        }
+        return String.format(java.util.Locale.US, "%.1f", value);
+    }
+
+    private void applyDigitsOnly(JTextField textField) {
+        if (!(textField.getDocument() instanceof AbstractDocument)) {
+            return;
+        }
+
+        AbstractDocument document = (AbstractDocument) textField.getDocument();
+        document.setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
+                    throws BadLocationException {
+                if (string == null) {
+                    return;
+                }
+                String digits = string.replaceAll("\\D", "");
+                if (!digits.isEmpty()) {
+                    super.insertString(fb, offset, digits, attr);
+                }
+            }
+
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
+                    throws BadLocationException {
+                if (text == null) {
+                    super.replace(fb, offset, length, null, attrs);
+                    return;
+                }
+                String digits = text.replaceAll("\\D", "");
+                super.replace(fb, offset, length, digits, attrs);
+            }
+        });
     }
 
     private double calculatePromotionDiscount(Promotion promotion, double amount) {

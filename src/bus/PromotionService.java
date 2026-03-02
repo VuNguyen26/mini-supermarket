@@ -85,7 +85,9 @@ public class PromotionService {
             }
 
             BigDecimal minOrderAmount = promotion.getMinOrderAmount();
-            if (minOrderAmount != null && amount.compareTo(minOrderAmount) < 0) {
+            // Với POS lọc theo sản phẩm (productIds có dữ liệu), ưu tiên rule theo sản phẩm.
+            // Không chặn bởi min_order_amount để mã theo sản phẩm vẫn áp được.
+            if (minOrderAmount != null && amount.compareTo(minOrderAmount) < 0 && productIdSet.isEmpty()) {
                 continue;
             }
 
@@ -97,9 +99,16 @@ public class PromotionService {
                         promotionProductIds.add(promotionProduct.getProductId());
                     }
                 }
-                
-                // Tất cả sản phẩm trong giỏ phải nằm trong danh sách khuyến mãi
-                if (!promotionProductIds.containsAll(productIdSet)) {
+
+                // Chỉ cần giỏ có ít nhất 1 sản phẩm thuộc danh sách khuyến mãi
+                boolean hasAnyMatchedProduct = false;
+                for (Integer productId : productIdSet) {
+                    if (promotionProductIds.contains(productId)) {
+                        hasAnyMatchedProduct = true;
+                        break;
+                    }
+                }
+                if (!hasAnyMatchedProduct) {
                     continue;
                 }
             }
