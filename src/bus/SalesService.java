@@ -5,13 +5,10 @@ import dal.dao.InventoryLotDAO;
 import dal.dao.SalesInvoiceDAO;
 import dal.dao.SalesInvoiceDetailDAO;
 import dal.dao.PaymentDAO;
-import dal.dao.CustomerDAO;
-import dal.dao.LoyaltyPointTxnDAO;
 import dto.InventoryLot;
 import dto.SalesInvoice;
 import dto.SalesInvoiceDetail;
 import dto.Payment;
-import dto.LoyaltyPointTxn;
 
 import java.sql.Connection;
 import java.sql.Timestamp;
@@ -23,8 +20,7 @@ public class SalesService {
     private final SalesInvoiceDetailDAO detailDAO = new SalesInvoiceDetailDAO();
     private final InventoryLotDAO lotDAO = new InventoryLotDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
-    private final CustomerDAO customerDAO = new CustomerDAO();
-    private final LoyaltyPointTxnDAO loyaltyPointTxnDAO = new LoyaltyPointTxnDAO();
+    private final LoyaltyService loyaltyService = new LoyaltyService();
     
     public List<SalesInvoice> getAllInvoices() throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
@@ -109,61 +105,16 @@ public class SalesService {
             payment.setInvId(newInvoiceId);
             paymentDAO.createPayment(payment, conn);
             
-            // Trừ điểm đã đổi và cộng điểm thưởng trong cùng transaction
-            int customerId = invoice.getCustomerId();
-            int loyaltyPoints = (int) (invoice.getSubTotal() / 10000);
-            if (customerId != 0) {
-                int normalizedRedeemedPoints = Math.max(0, redeemedPoints);
-                if (normalizedRedeemedPoints > 0) {
-                    boolean consumed = customerDAO.consumeLoyaltyPointsInTransaction(customerId,
-                            normalizedRedeemedPoints, conn);
-                    if (!consumed) {
-                        throw new SQLException("Điểm tích lũy không đủ để đổi khuyến mãi.");
-                    }
-                }
-
-                if (loyaltyPoints > 0) {
-                    boolean added = customerDAO.addLoyaltyPointsInTransaction(customerId, loyaltyPoints, conn);
-                    if (!added) {
-                        throw new SQLException("Không thể cộng điểm tích lũy cho khách hàng.");
-                    }
-                }
-
-                if (normalizedRedeemedPoints > 0) {
-                    LoyaltyPointTxn redeemTxn = new LoyaltyPointTxn();
-                    redeemTxn.setCustomerId(customerId);
-                    redeemTxn.setInvId(newInvoiceId);
-                    redeemTxn.setCreatedBy(invoice.getCreatedBy());
-                    redeemTxn.setType("REDEEM");
-                    redeemTxn.setPoints(-normalizedRedeemedPoints);
-                    redeemTxn.setMoneyAmount(Math.max(0, pointsValue));
-                    redeemTxn.setEarnRateMoney(0);
-                    redeemTxn.setEarnRatePoints(0);
-                    redeemTxn.setRedeemRatePoints(1);
-                    redeemTxn.setRedeemRateMoney(0.5);
-                    redeemTxn.setNote("Đổi điểm giảm giá (1 điểm = 0.5%)");
-                    loyaltyPointTxnDAO.createTxn(redeemTxn, conn);
-                }
-
-                if (loyaltyPoints > 0) {
-                    LoyaltyPointTxn earnTxn = new LoyaltyPointTxn();
-                    earnTxn.setCustomerId(customerId);
-                    earnTxn.setInvId(newInvoiceId);
-                    earnTxn.setCreatedBy(invoice.getCreatedBy());
-                    earnTxn.setType("EARN");
-                    earnTxn.setPoints(loyaltyPoints);
-                    earnTxn.setMoneyAmount(invoice.getSubTotal());
-                    earnTxn.setEarnRateMoney(10000);
-                    earnTxn.setEarnRatePoints(1);
-                    earnTxn.setRedeemRatePoints(0);
-                    earnTxn.setRedeemRateMoney(0);
-                    earnTxn.setNote("Tích điểm theo hóa đơn");
-                    loyaltyPointTxnDAO.createTxn(earnTxn, conn);
-                }
-            }
-
-            invoiceDAO.updateLoyaltySummary(newInvoiceId, loyaltyPoints, Math.max(0, redeemedPoints),
-                    Math.max(0, pointsValue), conn);
+            // Xử lý điểm thưởng khách hàng qua LoyaltyService
+            loyaltyService.processLoyaltyForSale(
+                invoice.getCustomerId(),
+                newInvoiceId,
+                invoice.getSubTotal(),
+                redeemedPoints,
+                pointsValue,
+                invoice.getCreatedBy(),
+                conn
+            );
             
             conn.commit(); 
             // System.out.println("COMMIT TRANSACTION | SAVED TO DATABASE");
