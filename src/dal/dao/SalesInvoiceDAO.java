@@ -66,6 +66,9 @@ public class SalesInvoiceDAO {
                     invoice.setGrandTotal(rs.getDouble("grand_total"));
                     invoice.setPaymentMethod(rs.getString("payment_method"));
                     invoice.setCreatedAt(rs.getTimestamp("created_at"));
+                    invoice.setPointsEarned(rs.getInt("points_earned"));
+                    invoice.setPointsRedeemed(rs.getInt("points_redeemed"));
+                    invoice.setPointsValue(rs.getDouble("points_value"));
 
                     invoice.setCustomerName(
                             rs.getString("customer_name") != null ? rs.getString("customer_name") : "Khách lẻ");
@@ -124,6 +127,9 @@ public class SalesInvoiceDAO {
                     invoice.setGrandTotal(rs.getDouble("grand_total"));
                     invoice.setPaymentMethod(rs.getString("payment_method"));
                     invoice.setCreatedAt(rs.getTimestamp("created_at"));
+                    invoice.setPointsEarned(rs.getInt("points_earned"));
+                    invoice.setPointsRedeemed(rs.getInt("points_redeemed"));
+                    invoice.setPointsValue(rs.getDouble("points_value"));
                     return invoice;
                 }
             }
@@ -152,6 +158,9 @@ public class SalesInvoiceDAO {
                 invoice.setGrandTotal(rs.getDouble("grand_total"));
                 invoice.setPaymentMethod(rs.getString("payment_method"));
                 invoice.setCreatedAt(rs.getTimestamp("created_at"));
+                invoice.setPointsEarned(rs.getInt("points_earned"));
+                invoice.setPointsRedeemed(rs.getInt("points_redeemed"));
+                invoice.setPointsValue(rs.getDouble("points_value"));
 
                 invoice.setCustomerName(
                         rs.getString("customer_name") != null ? rs.getString("customer_name") : "Khách lẻ");
@@ -161,5 +170,17 @@ public class SalesInvoiceDAO {
             }
         }
         return list;
+    }
+
+    public boolean updateLoyaltySummary(int invId, int pointsEarned, int pointsRedeemed, double pointsValue,
+                                        Connection conn) throws SQLException {
+        String sql = "UPDATE sales_invoice SET points_earned = ?, points_redeemed = ?, points_value = ? WHERE inv_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, Math.max(0, pointsEarned));
+            ps.setInt(2, Math.max(0, pointsRedeemed));
+            ps.setDouble(3, Math.max(0, pointsValue));
+            ps.setInt(4, invId);
+            return ps.executeUpdate() > 0;
+        }
     }
 }

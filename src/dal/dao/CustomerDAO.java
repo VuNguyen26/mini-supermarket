@@ -146,6 +146,29 @@ public class CustomerDAO {
         }
     }
 
+    public boolean addLoyaltyPointsInTransaction(int customerId, int pointsToAdd, Connection conn) {
+        String sql = "UPDATE customer SET points = points + ? WHERE customer_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, pointsToAdd);
+            ps.setInt(2, customerId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("CustomerDAO.addLoyaltyPointsInTransaction error: " + e.getMessage(), e);
+        }
+    }
+
+    public boolean consumeLoyaltyPointsInTransaction(int customerId, int pointsToUse, Connection conn) {
+        String sql = "UPDATE customer SET points = points - ? WHERE customer_id = ? AND points >= ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, pointsToUse);
+            ps.setInt(2, customerId);
+            ps.setInt(3, pointsToUse);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("CustomerDAO.consumeLoyaltyPointsInTransaction error: " + e.getMessage(), e);
+        }
+    }
+
     private Customer mapResultSet(ResultSet rs) throws SQLException {
         Customer c = new Customer();
         c.setCustomerId(rs.getInt("customer_id"));

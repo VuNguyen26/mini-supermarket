@@ -1,7 +1,10 @@
 package presentation.panels;
 
+import bus.PromotionService;
 import dal.dao.BankConfigDAO;
 import dto.BankConfig;
+import dto.Promotion;
+import dto.PromotionType;
 import dto.SalesInvoiceDetail;
 
 import javax.imageio.ImageIO;
@@ -11,22 +14,30 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 public class PaymentPanel extends JPanel {
 
     public interface PaymentListener {
-        void onConfirm(String method, double customerPay, double change);
+        void onConfirm(String method, double customerPay, double change, double discount, double grandTotal,
+                       int redeemedPoints, double pointDiscount);
         void onBack();
     }
 
@@ -45,17 +56,43 @@ public class PaymentPanel extends JPanel {
         }
     }
 
+    private static final class PromotionOption {
+        final Promotion promotion;
+        final String label;
+
+        PromotionOption(Promotion promotion, String label) {
+            this.promotion = promotion;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
     private final List<SalesInvoiceDetail> details;
     private final double subTotal;
-    private final double discount;
-    private final double grandTotal;
+    private final double baseDiscount;
+    private final double baseGrandTotal;
+    private final int customerAvailablePoints;
     private final PaymentListener listener;
+    private final PromotionService promotionService = new PromotionService();
+    private final PromotionService.PromotionChangeListener promotionChangeListener = this::reloadPromotions;
+
+    private double promotionDiscount;
+    private double pointDiscount;
+    private double totalDiscount;
+    private double finalGrandTotal;
+    private int redeemedPointsApplied;
+    private final List<Integer> cartProductIds;
 
     private final DecimalFormat moneyFmt = new DecimalFormat("#,###");
 
     private final JTable tblInvoice = new JTable();
     private DefaultTableModel modelInvoice;
 
+    private final JLabel lblHeaderTotal = new JLabel();
     private final JLabel lblSubTotalValue = new JLabel();
     private final JLabel lblDiscountValue = new JLabel();
     private final JLabel lblGrandTotalValue = new JLabel();
@@ -66,7 +103,9 @@ public class PaymentPanel extends JPanel {
             new MethodOption("TRANSFER", "Ngân hàng (QR)")
     });
 
-        private final JTextField txtPromotion = new JTextField();
+    private final JComboBox<PromotionOption> cboPromotion = new JComboBox<>();
+    private final JTextField txtRedeemPoints = new JTextField();
+    private final JLabel lblRedeemHint = new JLabel();
 
     private final JTextField txtCustomerPay = new JTextField();
     private final JLabel lblDiffTitle = new JLabel("Tiền thừa");
@@ -86,17 +125,30 @@ public class PaymentPanel extends JPanel {
                         double subTotal,
                         double discount,
                         double grandTotal,
+                        int customerAvailablePoints,
                         PaymentListener listener) {
         this.details = details;
         this.subTotal = subTotal;
-        this.discount = discount;
-        this.grandTotal = grandTotal;
+        this.baseDiscount = discount;
+        this.baseGrandTotal = grandTotal;
+        this.customerAvailablePoints = Math.max(0, customerAvailablePoints);
+        this.totalDiscount = discount;
+        this.finalGrandTotal = grandTotal;
         this.listener = listener;
+        this.cartProductIds = extractCartProductIds(details);
 
         initUI();
+        reloadPromotions();
         bindEvents();
         applyMethodUI();   
         updateComputed();  
+
+        PromotionService.addPromotionChangeListener(promotionChangeListener);
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) != 0 && !isDisplayable()) {
+                PromotionService.removePromotionChangeListener(promotionChangeListener);
+            }
+        });
     }
 
     private void initUI() {
@@ -135,12 +187,13 @@ public class PaymentPanel extends JPanel {
         JLabel lblTitle = new JLabel("THANH TOÁN", SwingConstants.CENTER);
         lblTitle.setFont(lblTitle.getFont().deriveFont(Font.BOLD, 18f));
 
-        JLabel lblTotal = new JLabel(formatMoney(grandTotal), SwingConstants.RIGHT);
-        lblTotal.setFont(lblTotal.getFont().deriveFont(Font.BOLD, 20f));
+        lblHeaderTotal.setHorizontalAlignment(SwingConstants.RIGHT);
+        lblHeaderTotal.setFont(lblHeaderTotal.getFont().deriveFont(Font.BOLD, 20f));
+        lblHeaderTotal.setText(formatMoney(finalGrandTotal));
 
         header.add(btnBack, BorderLayout.WEST);
         header.add(lblTitle, BorderLayout.CENTER);
-        header.add(lblTotal, BorderLayout.EAST);
+        header.add(lblHeaderTotal, BorderLayout.EAST);
 
         return header;
     }
@@ -231,8 +284,8 @@ public class PaymentPanel extends JPanel {
         lblGrandTotalValue.setHorizontalAlignment(SwingConstants.RIGHT);
 
         lblSubTotalValue.setText(formatMoney(subTotal));
-        lblDiscountValue.setText(formatMoney(discount));
-        lblGrandTotalValue.setText(formatMoney(grandTotal));
+        lblDiscountValue.setText(formatMoney(totalDiscount));
+        lblGrandTotalValue.setText(formatMoney(finalGrandTotal));
 
         lblGrandTotalValue.setFont(lblGrandTotalValue.getFont().deriveFont(Font.BOLD, 18f));
         lblGrandTotalValue.setForeground(Color.RED);
@@ -325,9 +378,33 @@ public class PaymentPanel extends JPanel {
         gbc.gridx = 1;
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        txtPromotion.setPreferredSize(new Dimension(220, 34));
-        txtPromotion.putClientProperty("JTextField.placeholderText", "Nhập mã khuyến mãi...");
-        card.add(txtPromotion, gbc);
+        cboPromotion.setPreferredSize(new Dimension(220, 34));
+        card.add(cboPromotion, gbc);
+
+        // Redeem points
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        card.add(new JLabel("Đổi điểm"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        txtRedeemPoints.setPreferredSize(new Dimension(220, 34));
+        txtRedeemPoints.setHorizontalAlignment(SwingConstants.RIGHT);
+        txtRedeemPoints.setText("0");
+        txtRedeemPoints.setEnabled(customerAvailablePoints > 0);
+        applyDigitsOnly(txtRedeemPoints);
+        card.add(txtRedeemPoints, gbc);
+
+        gbc.gridy++;
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        lblRedeemHint.setFont(lblRedeemHint.getFont().deriveFont(Font.PLAIN, 12f));
+        lblRedeemHint.setForeground(new Color(80, 80, 80));
+        card.add(lblRedeemHint, gbc);
 
         // Customer pay
         gbc.gridy++;
@@ -342,7 +419,7 @@ public class PaymentPanel extends JPanel {
         txtCustomerPay.setPreferredSize(new Dimension(220, 34));
         txtCustomerPay.setHorizontalAlignment(SwingConstants.RIGHT);
         txtCustomerPay.setFont(txtCustomerPay.getFont().deriveFont(15f));
-        txtCustomerPay.setText(moneyFmt.format(Math.round(grandTotal)));
+        txtCustomerPay.setText(moneyFmt.format(Math.round(finalGrandTotal)));
         card.add(txtCustomerPay, gbc);
 
         // Diff 
@@ -483,6 +560,14 @@ public class PaymentPanel extends JPanel {
             updateComputed();
         });
 
+        cboPromotion.addActionListener(e -> applySelectedPromotion());
+
+        txtRedeemPoints.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { applySelectedPromotion(); }
+            @Override public void removeUpdate(DocumentEvent e) { applySelectedPromotion(); }
+            @Override public void changedUpdate(DocumentEvent e) { applySelectedPromotion(); }
+        });
+
         txtCustomerPay.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { updateComputed(); }
             @Override public void removeUpdate(DocumentEvent e) { updateComputed(); }
@@ -522,7 +607,7 @@ public class PaymentPanel extends JPanel {
         pnlQuickAdd.setVisible(isCash);
 
         if (!isCash) {
-            txtCustomerPay.setText(moneyFmt.format(Math.round(grandTotal)));
+            txtCustomerPay.setText(moneyFmt.format(Math.round(finalGrandTotal)));
         }
 
         pnlQrCard.setVisible(isTransfer);
@@ -541,8 +626,8 @@ public class PaymentPanel extends JPanel {
     private void updateComputed() {
         String method = getSelectedMethodCode();
 
-        double pay = "CASH".equals(method) ? parseMoneyToLong(txtCustomerPay.getText()) : grandTotal;
-        double diff = pay - grandTotal;
+        double pay = "CASH".equals(method) ? parseMoneyToLong(txtCustomerPay.getText()) : finalGrandTotal;
+        double diff = pay - finalGrandTotal;
 
         if (diff >= 0) {
             lblDiffTitle.setText("Tiền thừa");
@@ -574,19 +659,210 @@ public class PaymentPanel extends JPanel {
                 return;
             }
 
-            if (given < grandTotal) {
-                long thiếu = (long) Math.ceil(grandTotal - given);
+            if (given < finalGrandTotal) {
+                long thiếu = (long) Math.ceil(finalGrandTotal - given);
                 JOptionPane.showMessageDialog(this, "Khách đưa chưa đủ. Còn thiếu " + moneyFmt.format(thiếu) + " đ");
                 txtCustomerPay.requestFocusInWindow();
                 return;
             }
 
-            double change = given - grandTotal;
-            if (listener != null) listener.onConfirm(method, given, change);
+            double change = given - finalGrandTotal;
+            if (listener != null) {
+                listener.onConfirm(method, given, change, totalDiscount, finalGrandTotal, redeemedPointsApplied,
+                        pointDiscount);
+            }
             return;
         }
 
-        if (listener != null) listener.onConfirm(method, grandTotal, 0);
+        if (listener != null) {
+            listener.onConfirm(method, finalGrandTotal, 0, totalDiscount, finalGrandTotal, redeemedPointsApplied,
+                    pointDiscount);
+        }
+    }
+
+    private void reloadPromotions() {
+        Runnable action = () -> {
+            PromotionOption previous = (PromotionOption) cboPromotion.getSelectedItem();
+            Integer previousId = previous != null && previous.promotion != null ? previous.promotion.getPromoId() : null;
+
+            cboPromotion.removeAllItems();
+            cboPromotion.addItem(new PromotionOption(null, "Không áp dụng"));
+
+            List<Promotion> promotions = promotionService.getApplicablePromotions(baseGrandTotal, cartProductIds);
+            for (Promotion promotion : promotions) {
+                cboPromotion.addItem(new PromotionOption(promotion, formatPromotionLabel(promotion)));
+            }
+
+            if (previousId != null) {
+                for (int i = 0; i < cboPromotion.getItemCount(); i++) {
+                    PromotionOption option = cboPromotion.getItemAt(i);
+                    if (option != null && option.promotion != null && option.promotion.getPromoId() == previousId) {
+                        cboPromotion.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+
+            if (cboPromotion.getSelectedItem() == null && cboPromotion.getItemCount() > 0) {
+                cboPromotion.setSelectedIndex(0);
+            }
+
+            applySelectedPromotion();
+        };
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            action.run();
+        } else {
+            SwingUtilities.invokeLater(action);
+        }
+    }
+
+    private void applySelectedPromotion() {
+        PromotionOption selected = (PromotionOption) cboPromotion.getSelectedItem();
+        Promotion promotion = selected != null ? selected.promotion : null;
+
+        promotionDiscount = calculatePromotionDiscount(promotion, baseGrandTotal);
+        int requestedPoints = (int) parseMoneyToLong(txtRedeemPoints.getText());
+        redeemedPointsApplied = normalizeRedeemPoints(requestedPoints);
+
+        double amountAfterPromotion = Math.max(0, subTotal - (baseDiscount + promotionDiscount));
+        pointDiscount = calculatePointDiscount(redeemedPointsApplied, amountAfterPromotion);
+        totalDiscount = Math.max(0, baseDiscount + promotionDiscount + pointDiscount);
+        finalGrandTotal = Math.max(0, subTotal - totalDiscount);
+
+        double pointPercent = redeemedPointsApplied * 0.5;
+        String requestedText = txtRedeemPoints.getText() == null ? "" : txtRedeemPoints.getText().trim();
+        boolean capped = requestedPoints > redeemedPointsApplied;
+        lblRedeemHint.setText("Điểm hiện có: " + customerAvailablePoints
+                + " • Đang dùng: " + redeemedPointsApplied
+                + " điểm (" + trimPercent(pointPercent) + "%)"
+                + (capped ? " • Đã giới hạn theo điểm hiện có" : ""));
+
+        lblSubTotalValue.setText(formatMoney(subTotal));
+        lblDiscountValue.setText(formatMoney(totalDiscount));
+        lblGrandTotalValue.setText(formatMoney(finalGrandTotal));
+        lblHeaderTotal.setText(formatMoney(finalGrandTotal));
+
+        if (!"CASH".equals(getSelectedMethodCode())) {
+            txtCustomerPay.setText(moneyFmt.format(Math.round(finalGrandTotal)));
+        }
+
+        applyMethodUI();
+        updateComputed();
+    }
+
+    private int normalizeRedeemPoints(int requestedPoints) {
+        if (customerAvailablePoints <= 0 || requestedPoints <= 0) {
+            return 0;
+        }
+        return Math.min(requestedPoints, customerAvailablePoints);
+    }
+
+    private double calculatePointDiscount(int redeemedPoints, double amount) {
+        if (redeemedPoints <= 0 || amount <= 0) {
+            return 0;
+        }
+        double percent = redeemedPoints * 0.5;
+        if (percent > 100) {
+            percent = 100;
+        }
+        return amount * (percent / 100.0);
+    }
+
+    private String trimPercent(double value) {
+        if (Math.abs(value - Math.rint(value)) < 1e-9) {
+            return String.valueOf((int) Math.rint(value));
+        }
+        return String.format(java.util.Locale.US, "%.1f", value);
+    }
+
+    private void applyDigitsOnly(JTextField textField) {
+        if (!(textField.getDocument() instanceof AbstractDocument)) {
+            return;
+        }
+
+        AbstractDocument document = (AbstractDocument) textField.getDocument();
+        document.setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
+                    throws BadLocationException {
+                if (string == null) {
+                    return;
+                }
+                String digits = string.replaceAll("\\D", "");
+                if (!digits.isEmpty()) {
+                    super.insertString(fb, offset, digits, attr);
+                }
+            }
+
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
+                    throws BadLocationException {
+                if (text == null) {
+                    super.replace(fb, offset, length, null, attrs);
+                    return;
+                }
+                String digits = text.replaceAll("\\D", "");
+                super.replace(fb, offset, length, digits, attrs);
+            }
+        });
+    }
+
+    private double calculatePromotionDiscount(Promotion promotion, double amount) {
+        if (promotion == null || promotion.getType() == null || promotion.getValue() == null) {
+            return 0;
+        }
+
+        double rawDiscount;
+        if (promotion.getType() == PromotionType.PERCENT) {
+            rawDiscount = amount * (promotion.getValue().doubleValue() / 100.0);
+        } else {
+            rawDiscount = promotion.getValue().doubleValue();
+        }
+
+        if (rawDiscount < 0) {
+            rawDiscount = 0;
+        }
+
+        return Math.min(rawDiscount, Math.max(0, amount));
+    }
+
+    private String formatPromotionLabel(Promotion promotion) {
+        if (promotion == null) {
+            return "Không áp dụng";
+        }
+
+        String code = safe(promotion.getPromoCode());
+        String name = safe(promotion.getPromoName());
+
+        String valueText;
+        if (promotion.getType() == PromotionType.PERCENT) {
+            valueText = trimBigDecimal(promotion.getValue()) + "%";
+        } else {
+            valueText = moneyFmt.format(promotion.getValue() != null ? promotion.getValue().doubleValue() : 0) + " đ";
+        }
+
+        return code + " - " + name + " (" + valueText + ")";
+    }
+
+    private String trimBigDecimal(BigDecimal value) {
+        if (value == null) {
+            return "0";
+        }
+        return value.stripTrailingZeros().toPlainString();
+    }
+
+    private List<Integer> extractCartProductIds(List<SalesInvoiceDetail> invoiceDetails) {
+        List<Integer> ids = new ArrayList<>();
+        if (invoiceDetails == null) {
+            return ids;
+        }
+        for (SalesInvoiceDetail detail : invoiceDetails) {
+            if (detail != null && detail.getProductId() > 0) {
+                ids.add(detail.getProductId());
+            }
+        }
+        return ids;
     }
 
     private String getSelectedMethodCode() {
@@ -598,7 +874,7 @@ public class PaymentPanel extends JPanel {
     }
 
     private void loadQrCodeAsync() {
-        final long amount = Math.max(0, Math.round(grandTotal));
+        final long amount = Math.max(0, Math.round(finalGrandTotal));
         final String key = "amount=" + amount;
         // Cache
         if (key.equals(qrCacheKey) && qrCacheIcon != null) {
