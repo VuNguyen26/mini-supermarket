@@ -1,7 +1,7 @@
 package presentation.panels;
 
 import dto.User;
-import services.UserService;
+import bus.UserService;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;

@@ -449,7 +449,7 @@ public class DashboardPanel extends JPanel {
             this.threshold = threshold;
 
             if (qty <= 0) this.level = StockLevel.OUT;
-            else if (qty <= threshold) this.level = StockLevel.LOW;
+            else if (qty <= 20) this.level = StockLevel.LOW;
             else this.level = StockLevel.OK;
         }
 
