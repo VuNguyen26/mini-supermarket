@@ -108,7 +108,7 @@ public class DashboardPanel extends JPanel {
         row3.setOpaque(false);
         row3.add(kpiCardBottom("Tổng số phiếu nhập", lbImportReceipts));
         row3.add(kpiCardBottom("Tổng giá trị hàng", lbInventoryValue));
-        row3.add(kpiCardBottom("Trung bình giá trị đơn hôm nay", lbAvgCartValue));
+        row3.add(kpiCardBottom("Tổng doanh thu trong ngày", lbAvgCartValue));
 
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.weighty = 0;

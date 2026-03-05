@@ -147,16 +147,9 @@ public class MainFrame extends JFrame {
         JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setOpaque(false);
 
-        JPanel header = buildHeader();
-        header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
-                new EmptyBorder(10, 16, 10, 16)
-        ));
-
         contentPanel.setBackground(BG_APP);
         contentPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
 
-        mainContent.add(header, BorderLayout.NORTH);
         mainContent.add(contentPanel, BorderLayout.CENTER);
 
         // ===== Main wrapper (BO GÓC) =====
@@ -343,124 +336,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    private JPanel buildHeader() {
-        JPanel header = new JPanel();
-        header.setBackground(CARD_BG);
-        header.setPreferredSize(new Dimension(0, 60));
-        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
-        header.setOpaque(true);
 
-        // Cho phép header nhận focus để "giành focus" từ search
-        header.setFocusable(true);
-
-        pageTitleLabel = new JLabel("Dashboard");
-        pageTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        pageTitleLabel.setForeground(TEXT_MAIN);
-        pageTitleLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        // ===== Search (rectangle bo góc, KHÔNG oval) =====
-        int searchArc = 16; // 14/16/18 tùy bạn
-        RoundedTextField search = new RoundedTextField(searchArc);
-        search.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        search.setMinimumSize(new Dimension(260, 44));
-        search.setPreferredSize(new Dimension(520, 44));
-        search.setMaximumSize(new Dimension(9999, 44));
-
-        search.setFill(hex("#F8FAFF"));
-        search.setStroke(BORDER);
-        search.setStrokeWidth(1);
-
-        search.setForeground(TEXT_MAIN);
-        search.setCaretColor(TEXT_MAIN);
-
-        search.putClientProperty("JComponent.outline", "none");
-
-        final String placeholder = "Tìm theo mã sản phẩm";
-        search.setText(placeholder);
-        search.setForeground(hex("#94A3B8"));
-
-        search.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override public void focusGained(java.awt.event.FocusEvent e) {
-                search.setStroke(hex("#2563EB")); // focus xanh
-                if (placeholder.equals(search.getText())) {
-                    search.setText("");
-                    search.setForeground(TEXT_MAIN);
-                }
-                search.repaint();
-            }
-
-            @Override public void focusLost(java.awt.event.FocusEvent e) {
-                search.setStroke(BORDER); // về xám
-                if (search.getText().trim().isEmpty()) {
-                    search.setText(placeholder);
-                    search.setForeground(hex("#94A3B8"));
-                }
-                search.repaint();
-            }
-        });
-
-        // ===== Right user info =====
-        JPanel right = new JPanel();
-        right.setOpaque(false);
-        right.setLayout(new BoxLayout(right, BoxLayout.X_AXIS));
-        right.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        String name = (currentUser != null && currentUser.fullName != null) ? currentUser.fullName : "User";
-        String role = (currentUser != null && currentUser.roleName != null) ? currentUser.roleName : "";
-
-        JLabel userName = new JLabel(name);
-        userName.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        userName.setForeground(TEXT_MAIN);
-
-        JLabel userRole = new JLabel(role);
-        userRole.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        userRole.setForeground(TEXT_MUTED);
-
-        JPanel info = new JPanel();
-        info.setOpaque(false);
-        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
-        info.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        userName.setAlignmentX(Component.RIGHT_ALIGNMENT);
-        userRole.setAlignmentX(Component.RIGHT_ALIGNMENT);
-
-        info.add(userName);
-        info.add(Box.createVerticalStrut(2));
-        info.add(userRole);
-
-        String initials = getInitials(name);
-        CircleAvatar avatar = new CircleAvatar(initials, 36);
-        avatar.setColors(hex("#EFF6FF"), hex("#2563EB"), BORDER_STRONG);
-        avatar.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        right.add(info);
-        right.add(Box.createHorizontalStrut(10));
-        right.add(avatar);
-
-        // ===== CLICK RA NGOÀI -> MẤT FOCUS SEARCH (caret biến mất) =====
-        MouseAdapter blur = new MouseAdapter() {
-            @Override public void mousePressed(MouseEvent e) {
-                header.requestFocusInWindow();
-            }
-        };
-        header.addMouseListener(blur);
-        pageTitleLabel.addMouseListener(blur);
-        right.addMouseListener(blur);
-        info.addMouseListener(blur);
-        userName.addMouseListener(blur);
-        userRole.addMouseListener(blur);
-        avatar.addMouseListener(blur);
-
-        // ===== Layout =====
-        header.add(pageTitleLabel);
-        header.add(Box.createHorizontalStrut(16));
-        header.add(search);
-        header.add(Box.createHorizontalGlue());
-        header.add(right);
-
-        return header;
-    }
 
 
 
