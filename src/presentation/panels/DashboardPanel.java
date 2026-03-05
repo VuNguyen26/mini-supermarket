@@ -21,7 +21,7 @@ import java.util.List;
 
 public class DashboardPanel extends JPanel {
 
-    private static final int LOW_THRESHOLD = 5;
+    private static final int LOW_THRESHOLD = 20;
     private static final int RECENT_LIMIT = 10;
 
     private final ReportDAO reportDAO = new ReportDAO();
@@ -60,6 +60,10 @@ public class DashboardPanel extends JPanel {
         reload();
     }
 
+    public void refreshData() {
+        reload();
+    }
+
     // =========================
     // UI
     // =========================
@@ -86,7 +90,7 @@ public class DashboardPanel extends JPanel {
 
         JPanel row1 = new JPanel(new GridLayout(1, 4, 12, 12));
         row1.setOpaque(false);
-        row1.add(kpiCardSmall("Tổng doanh thu", lbTotalRevenue, new Color(34, 197, 94)));
+        row1.add(kpiCardSmall("Doanh thu hôm nay", lbTotalRevenue, new Color(34, 197, 94)));
         row1.add(kpiCardSmall("Đơn hàng hôm nay", lbOrdersToday, new Color(59, 130, 246)));
         row1.add(kpiCardSmall("Tổng sản phẩm", lbTotalProducts, new Color(124, 58, 237)));
         row1.add(kpiCardSmall("Khách hàng", lbCustomers, new Color(245, 158, 11)));
@@ -108,7 +112,7 @@ public class DashboardPanel extends JPanel {
         row3.setOpaque(false);
         row3.add(kpiCardBottom("Tổng số phiếu nhập", lbImportReceipts));
         row3.add(kpiCardBottom("Tổng giá trị hàng", lbInventoryValue));
-        row3.add(kpiCardBottom("Trung bình giá trị đơn hôm nay", lbAvgCartValue));
+        row3.add(kpiCardBottom("Doanh thu hôm nay", lbAvgCartValue));
 
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.weighty = 0;
@@ -291,7 +295,7 @@ public class DashboardPanel extends JPanel {
 
                     lbImportReceipts.setText(String.valueOf(d.importReceipts));
                     lbInventoryValue.setText(fmt(d.inventoryValue));
-                    lbAvgCartValue.setText(fmt(d.avgOrderValueToday));
+                    lbAvgCartValue.setText(fmt(d.totalRevenueToday));
 
                 } catch (Exception ex) {
                     recentOrderModel.setRowCount(0);
@@ -484,10 +488,9 @@ public class DashboardPanel extends JPanel {
 
     private List<StockAlertItem> getStockAlerts() throws SQLException {
         String sql =
-                "SELECT p.barcode AS product_code, p.product_name, COALESCE(SUM(il.qty_remaining), 0) AS qty " +
+            "SELECT p.barcode AS product_code, p.product_name, COALESCE(p.stock_qty, 0) AS qty " +
                         "FROM product p " +
-                        "LEFT JOIN inventory_lot il ON il.product_id = p.product_id " +
-                        "GROUP BY p.product_id, p.barcode, p.product_name";
+                "ORDER BY p.product_name ASC";
 
         List<StockAlertItem> items = new ArrayList<>();
 

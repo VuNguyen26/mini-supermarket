@@ -58,6 +58,7 @@ public class MainFrame extends JFrame {
     private presentation.panels.ProductPanel productPanel;
     private presentation.panels.GoodsReceiptPanel goodsReceiptPanel;
     private presentation.panels.CustomerPanel customerPanel;
+    private presentation.panels.DashboardPanel dashboardPanel;
     
     private presentation.panels.SalesInvoicePanel salesInvoicePanel;
 
@@ -350,55 +351,10 @@ public class MainFrame extends JFrame {
         header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
         header.setOpaque(true);
 
-        // Cho phép header nhận focus để "giành focus" từ search
-        header.setFocusable(true);
-
         pageTitleLabel = new JLabel("Dashboard");
         pageTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         pageTitleLabel.setForeground(TEXT_MAIN);
         pageTitleLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        // ===== Search (rectangle bo góc, KHÔNG oval) =====
-        int searchArc = 16; // 14/16/18 tùy bạn
-        RoundedTextField search = new RoundedTextField(searchArc);
-        search.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        search.setMinimumSize(new Dimension(260, 44));
-        search.setPreferredSize(new Dimension(520, 44));
-        search.setMaximumSize(new Dimension(9999, 44));
-
-        search.setFill(hex("#F8FAFF"));
-        search.setStroke(BORDER);
-        search.setStrokeWidth(1);
-
-        search.setForeground(TEXT_MAIN);
-        search.setCaretColor(TEXT_MAIN);
-
-        search.putClientProperty("JComponent.outline", "none");
-
-        final String placeholder = "Tìm theo mã sản phẩm";
-        search.setText(placeholder);
-        search.setForeground(hex("#94A3B8"));
-
-        search.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override public void focusGained(java.awt.event.FocusEvent e) {
-                search.setStroke(hex("#2563EB")); // focus xanh
-                if (placeholder.equals(search.getText())) {
-                    search.setText("");
-                    search.setForeground(TEXT_MAIN);
-                }
-                search.repaint();
-            }
-
-            @Override public void focusLost(java.awt.event.FocusEvent e) {
-                search.setStroke(BORDER); // về xám
-                if (search.getText().trim().isEmpty()) {
-                    search.setText(placeholder);
-                    search.setForeground(hex("#94A3B8"));
-                }
-                search.repaint();
-            }
-        });
 
         // ===== Right user info =====
         JPanel right = new JPanel();
@@ -438,24 +394,8 @@ public class MainFrame extends JFrame {
         right.add(Box.createHorizontalStrut(10));
         right.add(avatar);
 
-        // ===== CLICK RA NGOÀI -> MẤT FOCUS SEARCH (caret biến mất) =====
-        MouseAdapter blur = new MouseAdapter() {
-            @Override public void mousePressed(MouseEvent e) {
-                header.requestFocusInWindow();
-            }
-        };
-        header.addMouseListener(blur);
-        pageTitleLabel.addMouseListener(blur);
-        right.addMouseListener(blur);
-        info.addMouseListener(blur);
-        userName.addMouseListener(blur);
-        userRole.addMouseListener(blur);
-        avatar.addMouseListener(blur);
-
         // ===== Layout =====
         header.add(pageTitleLabel);
-        header.add(Box.createHorizontalStrut(16));
-        header.add(search);
         header.add(Box.createHorizontalGlue());
         header.add(right);
 
@@ -588,7 +528,8 @@ public class MainFrame extends JFrame {
         ReportService reportService = new ReportService();
         AuditLogService auditLogService = new AuditLogService();
 
-        contentPanel.add(wrapCard(new presentation.panels.DashboardPanel()), "Tổng quan");
+        dashboardPanel = new presentation.panels.DashboardPanel();
+        contentPanel.add(wrapCard(dashboardPanel), "Tổng quan");
         posSalesPanel = new presentation.panels.PosSalesPanel();
         contentPanel.add(wrapCard(posSalesPanel), "Bán hàng");
         
@@ -601,6 +542,7 @@ public class MainFrame extends JFrame {
         goodsReceiptPanel = new presentation.panels.GoodsReceiptPanel(currentUser, () -> {
             posSalesPanel.refreshProducts();
             productPanel.refreshProducts();
+            refreshDashboard();
         });
         contentPanel.add(wrapCard(goodsReceiptPanel), "Nhập kho");
 
@@ -679,6 +621,16 @@ public class MainFrame extends JFrame {
 
         if ("Khách hàng".equals(name) && customerPanel != null) {
             customerPanel.refreshData();
+        }
+
+        if ("Tổng quan".equals(name)) {
+            refreshDashboard();
+        }
+    }
+
+    public void refreshDashboard() {
+        if (dashboardPanel != null) {
+            dashboardPanel.refreshData();
         }
     }
 

@@ -733,10 +733,11 @@ public class PaymentPanel extends JPanel {
         double pointPercent = redeemedPointsApplied * 0.5;
         String requestedText = txtRedeemPoints.getText() == null ? "" : txtRedeemPoints.getText().trim();
         boolean capped = requestedPoints > redeemedPointsApplied;
-        lblRedeemHint.setText("Điểm hiện có: " + customerAvailablePoints
+        String redeemHint = "Điểm hiện có: " + customerAvailablePoints
                 + " • Đang dùng: " + redeemedPointsApplied
                 + " điểm (" + trimPercent(pointPercent) + "%)"
-                + (capped ? " • Đã giới hạn theo điểm hiện có" : ""));
+                + (capped ? " • Đã giới hạn theo điểm hiện có" : "");
+        lblRedeemHint.setText("<html><div style='width:260px;'>" + redeemHint + "</div></html>");
 
         lblSubTotalValue.setText(formatMoney(subTotal));
         lblDiscountValue.setText(formatMoney(totalDiscount));

@@ -49,6 +49,13 @@ public class StockAdjustmentPanel extends JPanel {
         loadAdjustments((!txtSearch.getText().isEmpty() ? txtSearch.getText() : ""));
     }
 
+    private void refreshDashboard() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        if (owner instanceof presentation.MainFrame) {
+            ((presentation.MainFrame) owner).refreshDashboard();
+        }
+    }
+
     private void initUI() {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -114,6 +121,7 @@ public class StockAdjustmentPanel extends JPanel {
             if (dialog.isSaved()) {
                 txtSearch.setText("");
                 loadAdjustments(txtSearch.getText());
+                refreshDashboard();
             }
         });
         btnView.addActionListener(e -> {
@@ -357,6 +365,7 @@ public class StockAdjustmentPanel extends JPanel {
 
             if (dialog.isSaved()) {
                 loadDetails(selectedAdjustment);
+                refreshDashboard();
             }
         });
 
@@ -385,6 +394,7 @@ public class StockAdjustmentPanel extends JPanel {
 
             if (dialog.isSaved()) {
                 loadDetails(selectedAdjustment);
+                refreshDashboard();
             }
         });
 
@@ -410,6 +420,7 @@ public class StockAdjustmentPanel extends JPanel {
             if (confirm == JOptionPane.YES_OPTION) {
                 saService.deleteDetail(sadId);
                 loadDetails(selectedAdjustment);
+                refreshDashboard();
             }
         });
 
@@ -551,6 +562,7 @@ public class StockAdjustmentPanel extends JPanel {
                     loadAdjustments(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                     tblAdjustment.revalidate();
                     tblAdjustment.repaint();
+                    refreshDashboard();
                 }
 
             });
@@ -578,6 +590,7 @@ public class StockAdjustmentPanel extends JPanel {
                 loadAdjustments(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                 tblAdjustment.revalidate();
                 tblAdjustment.repaint();
+                refreshDashboard();
             }
         }
 

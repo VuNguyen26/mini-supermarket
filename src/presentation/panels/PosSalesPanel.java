@@ -62,6 +62,13 @@ public class PosSalesPanel extends JPanel {
         loadCustomers();
     }
 
+    private void refreshDashboard() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        if (owner instanceof presentation.MainFrame) {
+            ((presentation.MainFrame) owner).refreshDashboard();
+        }
+    }
+
     private void initComponent() {
         setOpaque(false);
         setLayout(new BorderLayout());
@@ -582,6 +589,7 @@ public class PosSalesPanel extends JPanel {
                     updateTotalMoney();
                     loadDataToTable();
                     loadCustomers();
+                    refreshDashboard();
 
                     showPosCard();
                     return;

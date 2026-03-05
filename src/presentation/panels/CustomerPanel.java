@@ -30,6 +30,13 @@ public class CustomerPanel extends JPanel {
         applyPermissions();
     }
 
+    private void refreshDashboard() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        if (owner instanceof presentation.MainFrame) {
+            ((presentation.MainFrame) owner).refreshDashboard();
+        }
+    }
+
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -167,6 +174,7 @@ public class CustomerPanel extends JPanel {
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             loadData();
+            refreshDashboard();
         }
     }
 
@@ -182,6 +190,7 @@ public class CustomerPanel extends JPanel {
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             loadData();
+            refreshDashboard();
         }
     }
 
@@ -199,6 +208,7 @@ public class CustomerPanel extends JPanel {
                 customerService.delete(customer.getCustomerId());
                 DialogUtils.showInfo(this, "Xóa khách hàng thành công!");
                 loadData();
+                refreshDashboard();
             } catch (Exception e) {
                 DialogUtils.showError(this, "Lỗi xóa khách hàng: " + e.getMessage());
             }

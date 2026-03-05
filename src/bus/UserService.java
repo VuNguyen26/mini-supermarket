@@ -1,4 +1,4 @@
-package services;
+package bus;
 
 import dal.dao.UserDAO;
 import dto.User;
