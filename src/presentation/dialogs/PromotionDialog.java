@@ -9,8 +9,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
+import com.toedter.calendar.JDateChooser;
 public class PromotionDialog extends JDialog {
 
     private final PromotionService service = new PromotionService();
@@ -24,8 +23,8 @@ public class PromotionDialog extends JDialog {
     private JTextField txtMinOrder;
     private JComboBox<PromotionType> cbType;
     private JComboBox<String> cbStatus;
-    private JTextField txtStartAt;
-    private JTextField txtEndAt;
+    private JDateChooser dcStartAt;
+    private JDateChooser dcEndAt;
 
     private Promotion promo;
 
@@ -91,8 +90,17 @@ public class PromotionDialog extends JDialog {
         txtName = new JTextField();
         txtValue = new JTextField();
         txtMinOrder = new JTextField();
-        txtStartAt = new JTextField();
-        txtEndAt = new JTextField();
+        dcStartAt = new JDateChooser();
+        dcEndAt = new JDateChooser();
+
+        dcStartAt.setDateFormatString("yyyy-MM-dd");
+        dcEndAt.setDateFormatString("yyyy-MM-dd");
+
+        JTextField startField = (JTextField) dcStartAt.getDateEditor().getUiComponent();
+        JTextField endField = (JTextField) dcEndAt.getDateEditor().getUiComponent();
+
+        startField.setEditable(false);
+        endField.setEditable(false);
 
         cbType = new JComboBox<>(PromotionType.values());
         cbStatus = new JComboBox<>(new String[]{"ACTIVE", "INACTIVE"});
@@ -103,8 +111,8 @@ public class PromotionDialog extends JDialog {
         addRow(panel, gbc, row++, "Loại", cbType);
         addRow(panel, gbc, row++, "Giá trị", txtValue);
         addRow(panel, gbc, row++, "Đơn tối thiểu", txtMinOrder);
-        addRow(panel, gbc, row++, "Bắt đầu (yyyy-MM-dd HH:mm)", txtStartAt);
-        addRow(panel, gbc, row++, "Kết thúc (yyyy-MM-dd HH:mm)", txtEndAt);
+        addRow(panel, gbc, row++, "Bắt đầu", wrap(dcStartAt));
+        addRow(panel, gbc, row++, "Kết thúc", wrap(dcEndAt));
         addRow(panel, gbc, row++, "Trạng thái", cbStatus);
 
         return panel;
@@ -158,10 +166,16 @@ public class PromotionDialog extends JDialog {
         cbType.setSelectedItem(promo.getType());
         cbStatus.setSelectedItem(promo.getStatus());
 
-        if (promo.getStartAt() != null)
-            txtStartAt.setText(promo.getStartAt().toString().replace("T", " "));
-        if (promo.getEndAt() != null)
-            txtEndAt.setText(promo.getEndAt().toString().replace("T", " "));
+        if (promo.getStartAt() != null){
+            dcStartAt.setDate(
+                java.sql.Timestamp.valueOf(promo.getStartAt())
+            );
+        }
+        if (promo.getEndAt() != null){
+            dcEndAt.setDate(
+                java.sql.Timestamp.valueOf(promo.getEndAt())
+            );
+        }
     }
 
     private void lockViewMode() {
@@ -171,9 +185,7 @@ public class PromotionDialog extends JDialog {
             txtCode,
             txtName,
             txtValue,
-            txtMinOrder,
-            txtStartAt,
-            txtEndAt
+            txtMinOrder
         };
 
         for (JTextField tf : textFields) {
@@ -192,6 +204,10 @@ public class PromotionDialog extends JDialog {
             cb.setEnabled(false);
             cb.setBackground(new Color(245, 245, 245));
         }
+
+        dcStartAt.setEnabled(false);
+        dcEndAt.setEnabled(false);
+
     }
 
     /* ================= SAVE ================= */
@@ -208,11 +224,21 @@ public class PromotionDialog extends JDialog {
             p.setStatus((String) cbStatus.getSelectedItem());
             p.setCreatedBy(currentUser.userId);
 
-            if (!txtStartAt.getText().isBlank())
-                p.setStartAt(LocalDateTime.parse(txtStartAt.getText().replace(" ", "T")));
+            if (dcStartAt.getDate() != null) {
+                p.setStartAt(
+                    dcStartAt.getDate().toInstant()
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime()
+                );
+            }
 
-            if (!txtEndAt.getText().isBlank())
-                p.setEndAt(LocalDateTime.parse(txtEndAt.getText().replace(" ", "T")));
+            if (dcEndAt.getDate() != null) {
+                p.setEndAt(
+                    dcEndAt.getDate().toInstant()
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime()
+                );
+            }
 
             if (this.Mode.compareTo("EDIT") == 0) {
                 service.update(p);
@@ -243,4 +269,11 @@ public class PromotionDialog extends JDialog {
     public boolean isSaved() {
         return saved;
     }
+
+    private JPanel wrap(JComponent comp) {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        p.add(comp);
+        return p;
+    }
+
 }
