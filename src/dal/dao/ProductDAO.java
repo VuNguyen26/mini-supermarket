@@ -233,12 +233,53 @@ public class ProductDAO {
     }
 
     public void delete(int productId) {
-        String sql = "DELETE FROM product WHERE product_id=?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection()) {
+            conn.setAutoCommit(false);
 
-            ps.setInt(1, productId);
-            ps.executeUpdate();
+            try {
+                // 1) Delete from sales_invoice_detail (has FK to both inventory_lot and product)
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM sales_invoice_detail WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 2) Delete from inventory_lot (has FK to product)
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM inventory_lot WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 3) Delete from goods_receipt_detail
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM goods_receipt_detail WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 4) Delete from promotion_product
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM promotion_product WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 5) Delete from product_image
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM product_image WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 6) Finally delete from product
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM product WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         } catch (Exception e) {
             throw new RuntimeException("ProductDAO.delete error: " + e.getMessage(), e);
         }
