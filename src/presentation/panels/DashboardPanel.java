@@ -21,22 +21,25 @@ import java.util.List;
 
 public class DashboardPanel extends JPanel {
 
-    private static final int LOW_THRESHOLD = 5;
+    private static final int LOW_THRESHOLD = 20;
     private static final int RECENT_LIMIT = 10;
 
     private final ReportDAO reportDAO = new ReportDAO();
 
     // ===== TOP KPI (4 cards) =====
     private final JLabel lbTotalRevenue = new JLabel("0 đ");
-    private final JLabel lbOrdersToday  = new JLabel("0");
-    private final JLabel lbTotalProducts= new JLabel("0");
-    private final JLabel lbCustomers    = new JLabel("0");
+    private final JLabel lbOrdersToday = new JLabel("0");
+    private final JLabel lbTotalProducts = new JLabel("0");
+    private final JLabel lbCustomers = new JLabel("0");
 
     // ===== MIDDLE LEFT: Recent Orders =====
     private final DefaultTableModel recentOrderModel = new DefaultTableModel(
             new String[]{"Mã", "Giờ", "Ngày", "Thanh toán", "Tổng"}, 0
     ) {
-        @Override public boolean isCellEditable(int r, int c) { return false; }
+        @Override
+        public boolean isCellEditable(int r, int c) {
+            return false;
+        }
     };
     private final JTable tblRecentOrders = new JTable(recentOrderModel);
 
@@ -47,7 +50,7 @@ public class DashboardPanel extends JPanel {
     // ===== BOTTOM KPI (3 cards) =====
     private final JLabel lbImportReceipts = new JLabel("0");
     private final JLabel lbInventoryValue = new JLabel("0 đ");
-    private final JLabel lbAvgCartValue   = new JLabel("0 đ");
+    private final JLabel lbAvgCartValue = new JLabel("0 đ");
 
     public DashboardPanel() {
         setOpaque(false);
@@ -57,6 +60,10 @@ public class DashboardPanel extends JPanel {
         add(buildHeader(), BorderLayout.NORTH);
         add(buildGrid(), BorderLayout.CENTER);
 
+        reload();
+    }
+
+    public void refreshData() {
         reload();
     }
 
@@ -86,12 +93,13 @@ public class DashboardPanel extends JPanel {
 
         JPanel row1 = new JPanel(new GridLayout(1, 4, 12, 12));
         row1.setOpaque(false);
-        row1.add(kpiCardSmall("Tổng doanh thu", lbTotalRevenue, new Color(34, 197, 94)));
+        row1.add(kpiCardSmall("Doanh thu hôm nay", lbTotalRevenue, new Color(34, 197, 94)));
         row1.add(kpiCardSmall("Đơn hàng hôm nay", lbOrdersToday, new Color(59, 130, 246)));
         row1.add(kpiCardSmall("Tổng sản phẩm", lbTotalProducts, new Color(124, 58, 237)));
         row1.add(kpiCardSmall("Khách hàng", lbCustomers, new Color(245, 158, 11)));
 
-        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
         gbc.weighty = 0;
         root.add(row1, gbc);
 
@@ -100,7 +108,8 @@ public class DashboardPanel extends JPanel {
         row2.add(buildRecentOrdersCard());
         row2.add(buildStockAlertCard());
 
-        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.gridy = 1;
         gbc.weighty = 1;
         root.add(row2, gbc);
 
@@ -108,9 +117,10 @@ public class DashboardPanel extends JPanel {
         row3.setOpaque(false);
         row3.add(kpiCardBottom("Tổng số phiếu nhập", lbImportReceipts));
         row3.add(kpiCardBottom("Tổng giá trị hàng", lbInventoryValue));
-        row3.add(kpiCardBottom("Tổng doanh thu trong ngày", lbAvgCartValue));
+        row3.add(kpiCardBottom("Giá trị đơn TB hôm nay", lbAvgCartValue));
 
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.gridy = 2;
         gbc.weighty = 0;
         root.add(row3, gbc);
 
@@ -316,7 +326,8 @@ public class DashboardPanel extends JPanel {
             Method m = row.getClass().getMethod("getRevenue");
             Object v = m.invoke(row);
             if (v instanceof BigDecimal bd) return bd;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // 2) try public field "revenue"
         try {
@@ -324,7 +335,8 @@ public class DashboardPanel extends JPanel {
             f.setAccessible(true);
             Object v = f.get(row);
             if (v instanceof BigDecimal bd) return bd;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         return BigDecimal.ZERO;
     }
@@ -431,8 +443,12 @@ public class DashboardPanel extends JPanel {
     // =========================
     private enum StockLevel {
         OUT(0), LOW(1), OK(2);
+
         final int rank;
-        StockLevel(int rank) { this.rank = rank; }
+
+        StockLevel(int rank) {
+            this.rank = rank;
+        }
     }
 
     private static class StockAlertItem {
@@ -449,7 +465,7 @@ public class DashboardPanel extends JPanel {
             this.threshold = threshold;
 
             if (qty <= 0) this.level = StockLevel.OUT;
-            else if (qty <= 20) this.level = StockLevel.LOW;
+            else if (qty <= threshold) this.level = StockLevel.LOW;
             else this.level = StockLevel.OK;
         }
 
@@ -472,9 +488,18 @@ public class DashboardPanel extends JPanel {
 
                 if (!isSelected) {
                     switch (item.level) {
-                        case OUT -> { lb.setBackground(new Color(254, 226, 226)); lb.setForeground(new Color(185, 28, 28)); }
-                        case LOW -> { lb.setBackground(new Color(254, 249, 195)); lb.setForeground(new Color(161, 98, 7)); }
-                        case OK  -> { lb.setBackground(new Color(220, 252, 231)); lb.setForeground(new Color(22, 101, 52)); }
+                        case OUT -> {
+                            lb.setBackground(new Color(254, 226, 226));
+                            lb.setForeground(new Color(185, 28, 28));
+                        }
+                        case LOW -> {
+                            lb.setBackground(new Color(254, 249, 195));
+                            lb.setForeground(new Color(161, 98, 7));
+                        }
+                        case OK -> {
+                            lb.setBackground(new Color(220, 252, 231));
+                            lb.setForeground(new Color(22, 101, 52));
+                        }
                     }
                 }
             }
@@ -484,10 +509,9 @@ public class DashboardPanel extends JPanel {
 
     private List<StockAlertItem> getStockAlerts() throws SQLException {
         String sql =
-                "SELECT p.barcode AS product_code, p.product_name, COALESCE(SUM(il.qty_remaining), 0) AS qty " +
+                "SELECT p.barcode AS product_code, p.product_name, COALESCE(p.stock_qty, 0) AS qty " +
                         "FROM product p " +
-                        "LEFT JOIN inventory_lot il ON il.product_id = p.product_id " +
-                        "GROUP BY p.product_id, p.barcode, p.product_name";
+                        "ORDER BY p.product_name ASC";
 
         List<StockAlertItem> items = new ArrayList<>();
 
@@ -536,7 +560,8 @@ public class DashboardPanel extends JPanel {
         for (String sql : candidates) {
             try {
                 return scalarLong(sql);
-            } catch (SQLException ignored) {}
+            } catch (SQLException ignored) {
+            }
         }
         return fallback;
     }
@@ -557,7 +582,8 @@ public class DashboardPanel extends JPanel {
         for (String sql : candidates) {
             try {
                 return scalarBD(sql);
-            } catch (SQLException ignored) {}
+            } catch (SQLException ignored) {
+            }
         }
         return fallback;
     }

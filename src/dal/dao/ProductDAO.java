@@ -13,15 +13,11 @@ public class ProductDAO {
 
     public List<Product> findAll() {
         String sql = "SELECT p.product_id, p.barcode, p.product_name, p.unit, p.import_price, p.sale_price, " +
-                "COALESCE(SUM(l.qty_remaining), 0) AS stock_qty, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, " +
-                "c.category_name, b.brand_name " +
-                "FROM product p " +
-                "LEFT JOIN category c ON p.category_id = c.category_id " +
-                "LEFT JOIN brand b ON p.brand_id = b.brand_id " +
-                "LEFT JOIN inventory_lot l ON p.product_id = l.product_id " +
-                "  AND l.status = 'AVAILABLE' " +
-                "  AND l.qty_remaining > 0 " +
-                "GROUP BY p.product_id, p.barcode, p.product_name, p.unit, p.import_price, p.sale_price, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, c.category_name, b.brand_name " +
+            "p.stock_qty, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, " +
+            "c.category_name, b.brand_name " +
+            "FROM product p " +
+            "LEFT JOIN category c ON p.category_id = c.category_id " +
+            "LEFT JOIN brand b ON p.brand_id = b.brand_id " +
                 "ORDER BY p.product_name ASC";
         List<Product> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
@@ -39,16 +35,12 @@ public class ProductDAO {
 
     public List<Product> search(String keyword) {
         String sql = "SELECT p.product_id, p.barcode, p.product_name, p.unit, p.import_price, p.sale_price, " +
-                "COALESCE(SUM(l.qty_remaining), 0) AS stock_qty, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, " +
-                "c.category_name, b.brand_name " +
-                "FROM product p " +
-                "LEFT JOIN category c ON p.category_id = c.category_id " +
-                "LEFT JOIN brand b ON p.brand_id = b.brand_id " +
-                "LEFT JOIN inventory_lot l ON p.product_id = l.product_id " +
-                "  AND l.status = 'AVAILABLE' " +
-                "  AND l.qty_remaining > 0 " +
-                "WHERE p.barcode LIKE ? OR p.product_name LIKE ? " +
-                "GROUP BY p.product_id, p.barcode, p.product_name, p.unit, p.import_price, p.sale_price, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, c.category_name, b.brand_name " +
+            "p.stock_qty, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, " +
+            "c.category_name, b.brand_name " +
+            "FROM product p " +
+            "LEFT JOIN category c ON p.category_id = c.category_id " +
+            "LEFT JOIN brand b ON p.brand_id = b.brand_id " +
+            "WHERE p.barcode LIKE ? OR p.product_name LIKE ? " +
                 "ORDER BY p.product_name ASC";
         List<Product> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
@@ -72,20 +64,16 @@ public class ProductDAO {
     public List<Product> filter(Integer categoryId, Integer brandId, String status) {
         StringBuilder sql = new StringBuilder(
                 "SELECT p.product_id, p.barcode, p.product_name, p.unit, p.import_price, p.sale_price, " +
-                "COALESCE(SUM(l.qty_remaining), 0) AS stock_qty, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, " +
+            "p.stock_qty, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, " +
                         "c.category_name, b.brand_name " +
                         "FROM product p " +
                         "LEFT JOIN category c ON p.category_id = c.category_id " +
                         "LEFT JOIN brand b ON p.brand_id = b.brand_id " +
-                        "LEFT JOIN inventory_lot l ON p.product_id = l.product_id " +
-                        "  AND l.status = 'AVAILABLE' " +
-                "  AND l.qty_remaining > 0 " +
                         "WHERE 1=1"
         );
         if (categoryId != null) sql.append(" AND p.category_id = ?");
         if (brandId != null) sql.append(" AND p.brand_id = ?");
         if (status != null) sql.append(" AND p.status = ?");
-        sql.append(" GROUP BY p.product_id, p.barcode, p.product_name, p.unit, p.import_price, p.sale_price, p.min_stock, p.category_id, p.brand_id, p.status, p.created_at, p.updated_at, c.category_name, b.brand_name");
         sql.append(" ORDER BY p.product_name ASC");
 
         List<Product> list = new ArrayList<>();
@@ -245,12 +233,53 @@ public class ProductDAO {
     }
 
     public void delete(int productId) {
-        String sql = "DELETE FROM product WHERE product_id=?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection()) {
+            conn.setAutoCommit(false);
 
-            ps.setInt(1, productId);
-            ps.executeUpdate();
+            try {
+                // 1) Delete from sales_invoice_detail (has FK to both inventory_lot and product)
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM sales_invoice_detail WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 2) Delete from inventory_lot (has FK to product)
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM inventory_lot WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 3) Delete from goods_receipt_detail
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM goods_receipt_detail WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 4) Delete from promotion_product
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM promotion_product WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 5) Delete from product_image
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM product_image WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                // 6) Finally delete from product
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM product WHERE product_id=?")) {
+                    ps.setInt(1, productId);
+                    ps.executeUpdate();
+                }
+
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         } catch (Exception e) {
             throw new RuntimeException("ProductDAO.delete error: " + e.getMessage(), e);
         }

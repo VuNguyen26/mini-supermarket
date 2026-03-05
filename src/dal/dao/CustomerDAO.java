@@ -122,12 +122,28 @@ public class CustomerDAO {
     }
 
     public boolean delete(int customerId) {
-        String sql = "DELETE FROM customer WHERE customer_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        String deleteLoyaltyTxnSql = "DELETE FROM loyalty_point_txn WHERE customer_id = ?";
+        String deleteCustomerSql = "DELETE FROM customer WHERE customer_id = ?";
+        try (Connection conn = DBConnection.getConnection()) {
+            boolean oldAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try (PreparedStatement deleteTxnPs = conn.prepareStatement(deleteLoyaltyTxnSql);
+                 PreparedStatement deleteCustomerPs = conn.prepareStatement(deleteCustomerSql)) {
 
-            ps.setInt(1, customerId);
-            return ps.executeUpdate() > 0;
+                deleteTxnPs.setInt(1, customerId);
+                deleteTxnPs.executeUpdate();
+
+                deleteCustomerPs.setInt(1, customerId);
+                boolean deleted = deleteCustomerPs.executeUpdate() > 0;
+
+                conn.commit();
+                conn.setAutoCommit(oldAutoCommit);
+                return deleted;
+            } catch (Exception ex) {
+                conn.rollback();
+                conn.setAutoCommit(oldAutoCommit);
+                throw ex;
+            }
         } catch (Exception e) {
             throw new RuntimeException("CustomerDAO.delete error: " + e.getMessage(), e);
         }

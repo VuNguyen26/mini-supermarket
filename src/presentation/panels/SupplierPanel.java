@@ -31,6 +31,13 @@ public class SupplierPanel extends JPanel {
         applyPermissions();
     }
 
+    private void refreshDashboard() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        if (owner instanceof presentation.MainFrame) {
+            ((presentation.MainFrame) owner).refreshDashboard();
+        }
+    }
+
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -164,6 +171,7 @@ public class SupplierPanel extends JPanel {
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             loadData();
+            refreshDashboard();
         }
     }
 
@@ -179,6 +187,7 @@ public class SupplierPanel extends JPanel {
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             loadData();
+            refreshDashboard();
         }
     }
 
@@ -196,6 +205,7 @@ public class SupplierPanel extends JPanel {
                 supplierService.delete(supplier.getSupplierId());
                 DialogUtils.showInfo(this, "Xóa nhà cung cấp thành công!");
                 loadData();
+                refreshDashboard();
             } catch (Exception e) {
                 DialogUtils.showError(this, "Lỗi xóa nhà cung cấp: " + e.getMessage());
             }

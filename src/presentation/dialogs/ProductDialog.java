@@ -550,7 +550,8 @@ public class ProductDialog extends JDialog {
 
             // Save
             if (product.getProductId() == null || product.getProductId() == 0) {
-                productService.create(product);
+                int newProductId = productService.create(product);
+                product.setProductId(newProductId);
                 JOptionPane.showMessageDialog(this, "Tạo sản phẩm thành công", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 
                 // Save images if exist (after product created)

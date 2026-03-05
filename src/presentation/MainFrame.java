@@ -16,7 +16,6 @@ import java.util.Map;
 import bus.ReportService;
 import bus.AuditLogService;
 
-
 public class MainFrame extends JFrame {
     private final AuthUser currentUser;
 
@@ -58,7 +57,7 @@ public class MainFrame extends JFrame {
     private presentation.panels.ProductPanel productPanel;
     private presentation.panels.GoodsReceiptPanel goodsReceiptPanel;
     private presentation.panels.CustomerPanel customerPanel;
-    
+    private presentation.panels.DashboardPanel dashboardPanel;
     private presentation.panels.SalesInvoicePanel salesInvoicePanel;
 
     public MainFrame(AuthUser user) {
@@ -147,9 +146,12 @@ public class MainFrame extends JFrame {
         JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setOpaque(false);
 
-        contentPanel.setBackground(BG_APP);
-        contentPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
+        JPanel header = buildHeader();
 
+        contentPanel.setBackground(BG_APP);
+        contentPanel.setBorder(new EmptyBorder(0, 16, 16, 16));
+
+        mainContent.add(header, BorderLayout.NORTH);
         mainContent.add(contentPanel, BorderLayout.CENTER);
 
         // ===== Main wrapper (BO GÓC) =====
@@ -271,9 +273,11 @@ public class MainFrame extends JFrame {
     }
 
     private JScrollPane wrapNavScroll(JPanel nav) {
-        JScrollPane sp = new JScrollPane(nav,
+        JScrollPane sp = new JScrollPane(
+                nav,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        );
 
         sp.setBorder(null);
         sp.getViewport().setOpaque(false);
@@ -298,17 +302,76 @@ public class MainFrame extends JFrame {
         });
 
         btnLogout.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) {
+            @Override
+            public void mouseEntered(MouseEvent e) {
                 btnLogout.setBackground(hex("#f44336"));
                 btnLogout.repaint();
             }
-            @Override public void mouseExited(MouseEvent e) {
+
+            @Override
+            public void mouseExited(MouseEvent e) {
                 btnLogout.setBackground(SIDEBAR_ACTIVE);
                 btnLogout.repaint();
             }
         });
 
         return btnLogout;
+    }
+
+    private JPanel buildHeader() {
+        JPanel header = new JPanel();
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(8, 8, 16, 8));
+        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
+
+        pageTitleLabel = new JLabel("Dashboard");
+        pageTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        pageTitleLabel.setForeground(TEXT_MAIN);
+        pageTitleLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
+
+        // ===== Right user info =====
+        JPanel right = new JPanel();
+        right.setOpaque(false);
+        right.setLayout(new BoxLayout(right, BoxLayout.X_AXIS));
+        right.setAlignmentY(Component.CENTER_ALIGNMENT);
+
+        String name = (currentUser != null && currentUser.fullName != null) ? currentUser.fullName : "User";
+        String role = (currentUser != null && currentUser.roleName != null) ? currentUser.roleName : "";
+
+        JLabel userName = new JLabel(name);
+        userName.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        userName.setForeground(TEXT_MAIN);
+
+        JLabel userRole = new JLabel(role);
+        userRole.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        userRole.setForeground(TEXT_MUTED);
+
+        JPanel info = new JPanel();
+        info.setOpaque(false);
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+        info.setAlignmentY(Component.CENTER_ALIGNMENT);
+
+        userName.setAlignmentX(Component.RIGHT_ALIGNMENT);
+        userRole.setAlignmentX(Component.RIGHT_ALIGNMENT);
+
+        info.add(userName);
+        info.add(Box.createVerticalStrut(2));
+        info.add(userRole);
+
+        String initials = getInitials(name);
+        CircleAvatar avatar = new CircleAvatar(initials, 36);
+        avatar.setColors(hex("#EFF6FF"), hex("#2563EB"), BORDER_STRONG);
+        avatar.setAlignmentY(Component.CENTER_ALIGNMENT);
+
+        right.add(info);
+        right.add(Box.createHorizontalStrut(10));
+        right.add(avatar);
+
+        header.add(pageTitleLabel);
+        header.add(Box.createHorizontalGlue());
+        header.add(right);
+
+        return header;
     }
 
     private static class RoundedButton extends JButton {
@@ -335,10 +398,6 @@ public class MainFrame extends JFrame {
             super.paintComponent(g);
         }
     }
-
-
-
-
 
     private String getInitials(String fullName) {
         if (fullName == null) return "U";
@@ -460,14 +519,15 @@ public class MainFrame extends JFrame {
     }
 
     private void initCards() {
-
         ReportService reportService = new ReportService();
         AuditLogService auditLogService = new AuditLogService();
 
-        contentPanel.add(wrapCard(new presentation.panels.DashboardPanel()), "Tổng quan");
+        dashboardPanel = new presentation.panels.DashboardPanel();
+        contentPanel.add(wrapCard(dashboardPanel), "Tổng quan");
+
         posSalesPanel = new presentation.panels.PosSalesPanel();
         contentPanel.add(wrapCard(posSalesPanel), "Bán hàng");
-        
+
         salesInvoicePanel = new presentation.panels.SalesInvoicePanel();
         contentPanel.add(wrapCard(salesInvoicePanel), "Hóa đơn");
 
@@ -477,6 +537,7 @@ public class MainFrame extends JFrame {
         goodsReceiptPanel = new presentation.panels.GoodsReceiptPanel(currentUser, () -> {
             posSalesPanel.refreshProducts();
             productPanel.refreshProducts();
+            refreshDashboard();
         });
         contentPanel.add(wrapCard(goodsReceiptPanel), "Nhập kho");
 
@@ -526,7 +587,8 @@ public class MainFrame extends JFrame {
             String key = e.getKey();
             NavItem item = e.getValue();
             item.addMouseListener(new MouseAdapter() {
-                @Override public void mouseClicked(MouseEvent ev) {
+                @Override
+                public void mouseClicked(MouseEvent ev) {
                     JPanel row = navRows.get(key);
                     if (row != null && !row.isVisible()) return;
                     showCard(key);
@@ -555,6 +617,16 @@ public class MainFrame extends JFrame {
 
         if ("Khách hàng".equals(name) && customerPanel != null) {
             customerPanel.refreshData();
+        }
+
+        if ("Tổng quan".equals(name)) {
+            refreshDashboard();
+        }
+    }
+
+    public void refreshDashboard() {
+        if (dashboardPanel != null) {
+            dashboardPanel.refreshData();
         }
     }
 
@@ -586,10 +658,10 @@ public class MainFrame extends JFrame {
 
         setNavVisible("Khuyến mãi", debug || RolePermission.has(PermissionCodes.PROMOTION_MANAGE));
 
-        setNavVisible("Báo cáo",    debug || RolePermission.has(PermissionCodes.REPORT_VIEW));
+        setNavVisible("Báo cáo", debug || RolePermission.has(PermissionCodes.REPORT_VIEW));
 
-        setNavVisible("Nhân viên",  debug || RolePermission.has(PermissionCodes.USER_MANAGE));
-        setNavVisible("Lịch sử",    debug || RolePermission.has(PermissionCodes.AUDIT_VIEW));
+        setNavVisible("Nhân viên", debug || RolePermission.has(PermissionCodes.USER_MANAGE));
+        setNavVisible("Lịch sử", debug || RolePermission.has(PermissionCodes.AUDIT_VIEW));
         setNavVisible("Phân quyền", debug || RolePermission.has(PermissionCodes.ROLE_PERMISSION_MANAGE));
 
         if (navPanel != null) {
@@ -657,11 +729,14 @@ public class MainFrame extends JFrame {
             add(left, BorderLayout.CENTER);
 
             addMouseListener(new MouseAdapter() {
-                @Override public void mouseEntered(MouseEvent e) {
+                @Override
+                public void mouseEntered(MouseEvent e) {
                     hover = true;
                     repaint();
                 }
-                @Override public void mouseExited(MouseEvent e) {
+
+                @Override
+                public void mouseExited(MouseEvent e) {
                     hover = false;
                     repaint();
                 }
@@ -808,9 +883,20 @@ public class MainFrame extends JFrame {
             putClientProperty("JComponent.outline", "none");
         }
 
-        public void setFill(Color c) { this.fill = c; repaint(); }
-        public void setStroke(Color c) { this.stroke = c; repaint(); }
-        public void setStrokeWidth(int w) { this.strokeWidth = Math.max(1, w); repaint(); }
+        public void setFill(Color c) {
+            this.fill = c;
+            repaint();
+        }
+
+        public void setStroke(Color c) {
+            this.stroke = c;
+            repaint();
+        }
+
+        public void setStrokeWidth(int w) {
+            this.strokeWidth = Math.max(1, w);
+            repaint();
+        }
 
         @Override
         protected void paintComponent(Graphics g) {
