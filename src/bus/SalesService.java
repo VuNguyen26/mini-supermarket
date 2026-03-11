@@ -21,7 +21,8 @@ public class SalesService {
     private final InventoryLotDAO lotDAO = new InventoryLotDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
     private final LoyaltyService loyaltyService = new LoyaltyService();
-    
+    private final AuditLogService auditLogService = new AuditLogService();
+
     public List<SalesInvoice> getAllInvoices() throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
             return invoiceDAO.getAllInvoices(conn);
@@ -29,7 +30,7 @@ public class SalesService {
     }
 
     public List<SalesInvoice> searchInvoices(Integer invId, String customerName,
-                                            Timestamp fromCreated, Timestamp toCreated) throws SQLException {
+                                             Timestamp fromCreated, Timestamp toCreated) throws SQLException {
         try (Connection conn = DBConnection.getConnection()) {
             return invoiceDAO.searchInvoices(invId, customerName, fromCreated, toCreated, conn);
         }
@@ -50,18 +51,17 @@ public class SalesService {
     public boolean processSale(SalesInvoice invoice, List<SalesInvoiceDetail> requestDetails, Payment payment,
                                int redeemedPoints, double pointsValue) throws SQLException {
         Connection conn = DBConnection.getConnection();
-        
+
         if (conn == null) {
-            // System.out.println("Cant connect to Database!");
             return false;
         }
 
         try {
             conn.setAutoCommit(false);
-            // System.out.println("START TRANSACTION");
+
             int newInvoiceId = invoiceDAO.createInvoice(invoice, conn);
-            // System.out.println("Created new Sales Invoice with ID" + newInvoiceId);
             invoice.setInvId(newInvoiceId);
+
             if (newInvoiceId == -1) {
                 throw new SQLException("Cant create new Sales Invoice record!");
             }
@@ -70,65 +70,83 @@ public class SalesService {
                 int productId = itemReq.getProductId();
                 int qtyNeeded = itemReq.getQty();
                 double unitPrice = itemReq.getUnitPrice();
-                // System.out.println("Proccessing Product ID" + productId + " | Needed: " + qtyNeeded);
-                List<InventoryLot> availableLots = lotDAO.getAvailableLotsByProductForUpdate(productId, conn);
-                // System.out.println("Found " + availableLots.size() + " available lots for Product ID " + productId);
 
-                int qtyCollected = 0; 
+                List<InventoryLot> availableLots = lotDAO.getAvailableLotsByProductForUpdate(productId, conn);
+
+                int qtyCollected = 0;
 
                 for (InventoryLot lot : availableLots) {
-                    if (qtyCollected >= qtyNeeded) break; 
+                    if (qtyCollected >= qtyNeeded) break;
+
                     int qtyInLot = lot.getQtyRemaining();
-                    int qtyToTake = Math.min(qtyInLot, qtyNeeded - qtyCollected); 
-                    // System.out.println(" Take " + qtyToTake + " from lotId " + lot.getLotId());
+                    int qtyToTake = Math.min(qtyInLot, qtyNeeded - qtyCollected);
+
                     boolean ok = lotDAO.decreaseQtyRemaining(lot.getLotId(), qtyToTake, conn);
                     if (!ok) {
                         throw new SQLException("Concurrent update detected for lotId=" + lot.getLotId() + ". Please retry.");
                     }
+
                     SalesInvoiceDetail dbDetail = new SalesInvoiceDetail();
                     dbDetail.setInvId(newInvoiceId);
                     dbDetail.setProductId(productId);
-                    dbDetail.setLotId(lot.getLotId()); 
+                    dbDetail.setLotId(lot.getLotId());
                     dbDetail.setQty(qtyToTake);
                     dbDetail.setUnitPrice(unitPrice);
                     dbDetail.setLineTotal(qtyToTake * unitPrice);
                     detailDAO.createDetail(dbDetail, conn);
+
                     qtyCollected += qtyToTake;
                 }
 
                 if (qtyCollected < qtyNeeded) {
-                    // System.out.println("Error: Not enough inventory for Product ID " + productId + ". Needed: " + qtyNeeded + " but only have " + qtyCollected);
                     throw new SQLException("Product ID" + productId + " out of stock. Required " + qtyNeeded + ", Available: " + qtyCollected + ")");
                 }
             }
 
             payment.setInvId(newInvoiceId);
             paymentDAO.createPayment(payment, conn);
-            
-            // Xử lý điểm thưởng khách hàng qua LoyaltyService
+
             loyaltyService.processLoyaltyForSale(
-                invoice.getCustomerId(),
-                newInvoiceId,
-                invoice.getSubTotal(),
-                redeemedPoints,
-                pointsValue,
-                invoice.getCreatedBy(),
-                conn
+                    invoice.getCustomerId(),
+                    newInvoiceId,
+                    invoice.getSubTotal(),
+                    redeemedPoints,
+                    pointsValue,
+                    invoice.getCreatedBy(),
+                    conn
             );
-            
-            conn.commit(); 
-            // System.out.println("COMMIT TRANSACTION | SAVED TO DATABASE");
+
+            conn.commit();
+
+            auditLogService.log(
+                    invoice.getCreatedBy(),
+                    "CREATE",
+                    "sales_invoice",
+                    (long) newInvoiceId,
+                    "Tạo hóa đơn bán hàng ID " + newInvoiceId
+                            + " | Customer ID: " + invoice.getCustomerId()
+                            + " | Tổng tiền: " + invoice.getSubTotal()
+                            + " | Số dòng hàng: " + requestDetails.size()
+            );
+
+            auditLogService.log(
+                    invoice.getCreatedBy(),
+                    "CREATE",
+                    "payment",
+                    null,
+                    "Tạo thanh toán cho hóa đơn ID " + newInvoiceId
+            );
+
             return true;
 
         } catch (SQLException e) {
             try {
-                conn.rollback(); 
-                // System.err.println("TRANSACTION FAILED -> ROLLED BACK");
+                conn.rollback();
                 System.err.println("Error reason: " + e.getMessage());
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
-            e.printStackTrace(); 
+            e.printStackTrace();
             return false;
         } finally {
             try {

@@ -14,6 +14,7 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryDAO dao = new CategoryDAO();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     public List<Category> getAll() {
         return dao.findAll();
@@ -36,7 +37,6 @@ public class CategoryService {
     public List<String> validate(Category category, boolean isUpdate) {
         List<String> errors = new ArrayList<>();
 
-        // Validate category name
         if (Validator.isNullOrEmpty(category.getCategoryName())) {
             errors.add(Validator.requiredFieldMessage("Tên danh mục"));
         } else if (!Validator.hasMinLength(category.getCategoryName(), 2)) {
@@ -44,7 +44,6 @@ public class CategoryService {
         } else if (!Validator.hasMaxLength(category.getCategoryName(), 120)) {
             errors.add(Validator.maxLengthMessage("Tên danh mục", 120));
         } else {
-            // Check for duplicate name
             Category existing = dao.findByName(category.getCategoryName());
             if (existing != null) {
                 if (!isUpdate || !existing.getCategoryId().equals(category.getCategoryId())) {
@@ -66,6 +65,15 @@ public class CategoryService {
         if (id <= 0) {
             throw new Exception("Không thể tạo danh mục");
         }
+
+        auditLogService.log(
+                null,
+                "CREATE",
+                "category",
+                (long) id,
+                "Tạo danh mục: " + category.getCategoryName()
+        );
+
         return id;
     }
 
@@ -78,6 +86,14 @@ public class CategoryService {
         if (!dao.update(category)) {
             throw new Exception("Không thể cập nhật danh mục");
         }
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "category",
+                category.getCategoryId() != null ? category.getCategoryId().longValue() : null,
+                "Cập nhật danh mục: " + category.getCategoryName()
+        );
     }
 
     public void delete(int categoryId) throws Exception {
@@ -86,11 +102,16 @@ public class CategoryService {
             throw new Exception("Không tìm thấy danh mục");
         }
 
-        // Check if category is used by products
-        // TODO: Add check from ProductDAO if needed
-
         if (!dao.delete(categoryId)) {
             throw new Exception("Không thể xóa danh mục");
         }
+
+        auditLogService.log(
+                null,
+                "DELETE",
+                "category",
+                (long) categoryId,
+                "Xóa danh mục: " + category.getCategoryName()
+        );
     }
 }

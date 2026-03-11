@@ -69,12 +69,8 @@ public class AuditLogPanel extends JPanel {
         tableWrapper.add(scrollPane, BorderLayout.CENTER);
 
         add(tableWrapper, BorderLayout.CENTER);
-
-        // ❌ KHÔNG gọi load() ở đây nữa
-        // load();
     }
 
-    /** ✅ Gọi hàm này khi user mở tab "Audit log" */
     public void reload() {
         load();
     }
@@ -83,7 +79,7 @@ public class AuditLogPanel extends JPanel {
         table.setRowHeight(38);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setBackground(Color.WHITE);
-        table.setSelectionBackground(new Color(220, 235, 255));
+        table.setSelectionBackground(new Color(52, 117, 178));
         table.setShowHorizontalLines(true);
         table.setShowVerticalLines(false);
         table.setGridColor(new Color(230, 230, 230));
@@ -122,7 +118,6 @@ public class AuditLogPanel extends JPanel {
                 });
             }
         } catch (Exception e) {
-            // ✅ In lỗi thật ra console để biết thiếu bảng/cột/SQL/DB...
             e.printStackTrace();
 
             JOptionPane.showMessageDialog(

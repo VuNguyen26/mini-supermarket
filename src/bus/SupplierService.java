@@ -10,6 +10,7 @@ import java.util.List;
 public class SupplierService {
 
     private final SupplierDAO dao = new SupplierDAO();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     public List<Supplier> getAll() {
         return dao.findAll();
@@ -29,7 +30,6 @@ public class SupplierService {
     public List<String> validate(Supplier supplier, boolean isUpdate) {
         List<String> errors = new ArrayList<>();
 
-        // Validate supplier name
         if (Validator.isNullOrEmpty(supplier.getSupplierName())) {
             errors.add(Validator.requiredFieldMessage("Tên nhà cung cấp"));
         } else if (!Validator.hasMinLength(supplier.getSupplierName(), 2)) {
@@ -37,21 +37,18 @@ public class SupplierService {
         } else if (!Validator.hasMaxLength(supplier.getSupplierName(), 150)) {
             errors.add(Validator.maxLengthMessage("Tên nhà cung cấp", 150));
         } else if (!isUpdate) {
-            // Check duplicate name only when creating new supplier
             Supplier existing = dao.findByName(supplier.getSupplierName());
             if (existing != null) {
                 errors.add(Validator.duplicateMessage("Tên nhà cung cấp"));
             }
         }
 
-        // Validate phone
         if (Validator.isNullOrEmpty(supplier.getPhone())) {
             errors.add(Validator.requiredFieldMessage("Số điện thoại"));
         } else if (!Validator.isValidPhone(supplier.getPhone())) {
             errors.add(Validator.invalidFormatMessage("Số điện thoại"));
         }
 
-        // Validate email (optional)
         if (Validator.isNotEmpty(supplier.getEmail()) && !Validator.isValidEmail(supplier.getEmail())) {
             errors.add(Validator.invalidFormatMessage("Email"));
         }
@@ -73,6 +70,16 @@ public class SupplierService {
         if (id <= 0) {
             throw new Exception("Không thể tạo nhà cung cấp");
         }
+
+        auditLogService.log(
+                null,
+                "CREATE",
+                "supplier",
+                (long) id,
+                "Tạo nhà cung cấp: " + supplier.getSupplierName()
+                        + (supplier.getPhone() != null ? " - " + supplier.getPhone() : "")
+        );
+
         return id;
     }
 
@@ -85,6 +92,15 @@ public class SupplierService {
         if (!dao.update(supplier)) {
             throw new Exception("Không thể cập nhật nhà cung cấp");
         }
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "supplier",
+                supplier.getSupplierId() != null ? supplier.getSupplierId().longValue() : null,
+                "Cập nhật nhà cung cấp: " + supplier.getSupplierName()
+                        + (supplier.getPhone() != null ? " - " + supplier.getPhone() : "")
+        );
     }
 
     public void delete(int supplierId) throws Exception {
@@ -96,5 +112,14 @@ public class SupplierService {
         if (!dao.delete(supplierId)) {
             throw new Exception("Không thể xóa nhà cung cấp");
         }
+
+        auditLogService.log(
+                null,
+                "DELETE",
+                "supplier",
+                (long) supplierId,
+                "Xóa nhà cung cấp: " + supplier.getSupplierName()
+                        + (supplier.getPhone() != null ? " - " + supplier.getPhone() : "")
+        );
     }
 }

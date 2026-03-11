@@ -8,6 +8,7 @@ import java.util.List;
 
 public class UserService {
     private final UserDAO dao = new UserDAO();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     public List<User> getAll() throws Exception {
         return dao.findAll();
@@ -34,7 +35,17 @@ public class UserService {
         u.setRoleId(roleId);
         u.setStatus(status == null || status.isBlank() ? "ACTIVE" : status);
 
-        return dao.insert(u);
+        int newUserId = dao.insert(u);
+
+        auditLogService.log(
+                null,
+                "CREATE",
+                "user",
+                (long) newUserId,
+                "Tạo nhân viên: " + username
+        );
+
+        return newUserId;
     }
 
     public boolean update(int userId, String fullName, String phone, int roleId, String status, String rawPasswordOrEmpty) throws Exception {
@@ -50,20 +61,59 @@ public class UserService {
         u.setRoleId(roleId);
         u.setStatus(status);
 
+        boolean updated;
+        boolean changedPassword = false;
+
         if (rawPasswordOrEmpty != null && !rawPasswordOrEmpty.isBlank()) {
             if (rawPasswordOrEmpty.trim().length() < 4) throw new IllegalArgumentException("Mật khẩu tối thiểu 4 ký tự");
             u.setPasswordHash(BCrypt.hashpw(rawPasswordOrEmpty, BCrypt.gensalt(10)));
-            return dao.updateWithPassword(u);
+            updated = dao.updateWithPassword(u);
+            changedPassword = updated;
+        } else {
+            updated = dao.updateInfo(u);
         }
-        return dao.updateInfo(u);
+
+        if (updated) {
+            auditLogService.log(
+                    null,
+                    "UPDATE",
+                    "user",
+                    (long) userId,
+                    changedPassword
+                            ? "Cập nhật nhân viên ID " + userId + " và đổi mật khẩu"
+                            : "Cập nhật nhân viên ID " + userId
+            );
+        }
+
+        return updated;
     }
 
     public boolean lock(int userId) throws Exception {
-        return dao.setStatus(userId, "INACTIVE");
+        boolean ok = dao.setStatus(userId, "INACTIVE");
+        if (ok) {
+            auditLogService.log(
+                    null,
+                    "LOCK",
+                    "user",
+                    (long) userId,
+                    "Khóa tài khoản nhân viên ID " + userId
+            );
+        }
+        return ok;
     }
 
     public boolean unlock(int userId) throws Exception {
-        return dao.setStatus(userId, "ACTIVE");
+        boolean ok = dao.setStatus(userId, "ACTIVE");
+        if (ok) {
+            auditLogService.log(
+                    null,
+                    "UNLOCK",
+                    "user",
+                    (long) userId,
+                    "Mở khóa tài khoản nhân viên ID " + userId
+            );
+        }
+        return ok;
     }
 
     private String safe(String s) {

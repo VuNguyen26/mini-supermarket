@@ -17,6 +17,7 @@ public class ProductService {
 
     private final ProductDAO productDAO = new ProductDAO();
     private final CategoryDAO categoryDAO = new CategoryDAO();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     public List<Product> getAll() {
         return productDAO.findAll();
@@ -59,7 +60,6 @@ public class ProductService {
     public List<String> validate(Product product, boolean isUpdate) {
         List<String> errors = new ArrayList<>();
 
-        // Validate barcode
         if (Validator.isNullOrEmpty(product.getBarcode())) {
             errors.add("Mã sản phẩm không được trống");
         } else {
@@ -71,7 +71,6 @@ public class ProductService {
             }
         }
 
-        // Validate product name
         if (Validator.isNullOrEmpty(product.getProductName())) {
             errors.add("Tên sản phẩm không được trống");
         } else if (!Validator.hasMinLength(product.getProductName(), 2)) {
@@ -80,27 +79,22 @@ public class ProductService {
             errors.add("Tên sản phẩm không được quá 200 ký tự");
         }
 
-        // Validate unit
         if (Validator.isNullOrEmpty(product.getUnit())) {
             errors.add("Đơn vị không được trống");
         }
 
-        // Validate category
         if (product.getCategoryId() == null || product.getCategoryId() <= 0) {
             errors.add("Vui lòng chọn danh mục");
         }
 
-        // Validate import price
         if (product.getImportPrice() == null || product.getImportPrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
             errors.add("Giá nhập phải lớn hơn 0");
         }
 
-        // Validate sale price
         if (product.getSalePrice() == null || product.getSalePrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
             errors.add("Giá bán phải lớn hơn 0");
         }
 
-        // Validate stock
         if (product.getStockQty() == null || product.getStockQty() < 0) {
             errors.add("Tồn kho không được âm");
         }
@@ -121,7 +115,6 @@ public class ProductService {
             throw new Exception(String.join("\n", errors));
         }
 
-        // Set defaults
         if (product.getStatus() == null) {
             product.setStatus("ACTIVE");
         }
@@ -136,6 +129,15 @@ public class ProductService {
         if (id <= 0) {
             throw new Exception("Không thể tạo sản phẩm");
         }
+
+        auditLogService.log(
+                null,
+                "CREATE",
+                "product",
+                (long) id,
+                "Tạo sản phẩm: " + product.getProductName() + " (" + product.getBarcode() + ")"
+        );
+
         return id;
     }
 
@@ -149,6 +151,14 @@ public class ProductService {
         }
 
         productDAO.update(product);
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "product",
+                product.getProductId() != null ? product.getProductId().longValue() : null,
+                "Cập nhật sản phẩm: " + product.getProductName() + " (" + product.getBarcode() + ")"
+        );
     }
 
     /**
@@ -161,6 +171,14 @@ public class ProductService {
         }
 
         productDAO.delete(productId);
+
+        auditLogService.log(
+                null,
+                "DELETE",
+                "product",
+                (long) productId,
+                "Xóa sản phẩm: " + product.getProductName() + " (" + product.getBarcode() + ")"
+        );
     }
 
     /**
@@ -170,6 +188,15 @@ public class ProductService {
         if (newQty < 0) {
             throw new Exception("Số lượng tồn kho không được âm");
         }
+
         productDAO.updateStock(productId, newQty);
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "product",
+                (long) productId,
+                "Cập nhật tồn kho sản phẩm ID " + productId + " thành " + newQty
+        );
     }
 }

@@ -15,6 +15,7 @@ public class StockAdjustmentService {
 
     private final StockAdjustmentDAO stockAdjustmentDAO = new StockAdjustmentDAO();
     private final StockAdjustmentDetailDAO stockAdjustmentDetailDAO = new StockAdjustmentDetailDAO();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     /**
      * Load danh sách phiếu kiểm kho
@@ -33,11 +34,10 @@ public class StockAdjustmentService {
     }
 
     public int createDraft(int createdBy,
-                            StockAdjustmentReason reason,
-                            String saCode,
-                            String note) {
+                           StockAdjustmentReason reason,
+                           String saCode,
+                           String note) {
 
-        // ===== Validate =====
         if (createdBy <= 0) {
             throw new IllegalArgumentException("Người tạo không hợp lệ");
         }
@@ -45,7 +45,6 @@ public class StockAdjustmentService {
             throw new IllegalArgumentException("Lý do kiểm kho không được để trống");
         }
 
-        // ===== Build StockAdjustment =====
         StockAdjustment sa = new StockAdjustment();
         sa.setSaCode(saCode);
         sa.setCreatedBy(createdBy);
@@ -53,17 +52,24 @@ public class StockAdjustmentService {
         sa.setStatus(StockAdjustmentStatus.DRAFT);
         sa.setNote(note);
 
-        // ===== Insert =====
         int saId = stockAdjustmentDAO.insert(sa);
 
         if (saId <= 0) {
             throw new RuntimeException("Không tạo được phiếu kiểm kho");
         }
 
+        auditLogService.log(
+                createdBy,
+                "CREATE",
+                "stock_adjustment",
+                (long) saId,
+                "Tạo phiếu kiểm kho: " + saCode
+        );
+
         return saId;
     }
 
-     public void updateStatus(int saId, StockAdjustmentStatus newStatus) {
+    public void updateStatus(int saId, StockAdjustmentStatus newStatus) {
 
         if (saId <= 0) {
             throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
@@ -72,7 +78,6 @@ public class StockAdjustmentService {
             throw new IllegalArgumentException("Trạng thái mới không hợp lệ");
         }
 
-        // ===== Lấy trạng thái hiện tại =====
         StockAdjustment sa = stockAdjustmentDAO.findById(saId);
         if (sa == null) {
             throw new RuntimeException("Không tìm thấy phiếu kiểm kho");
@@ -80,7 +85,6 @@ public class StockAdjustmentService {
 
         StockAdjustmentStatus current = sa.getStatus();
 
-        // ===== Rule chuyển trạng thái =====
         if (current == StockAdjustmentStatus.CONFIRMED) {
             throw new IllegalStateException("Phiếu đã xác nhận, không thể thay đổi trạng thái");
         }
@@ -90,17 +94,24 @@ public class StockAdjustmentService {
         }
 
         if (current == newStatus) {
-            return; // không cần update
+            return;
         }
 
-        // ===== Update =====
         stockAdjustmentDAO.updateStatus(saId, newStatus.name());
+
+        auditLogService.log(
+                sa.getCreatedBy(),
+                "UPDATE",
+                "stock_adjustment",
+                (long) saId,
+                "Cập nhật trạng thái phiếu kiểm kho thành: " + newStatus.name()
+        );
     }
 
     public void updateDraftInfo(int saId,
-                            String saCode,
-                            StockAdjustmentReason reason,
-                            String note) {
+                                String saCode,
+                                StockAdjustmentReason reason,
+                                String note) {
 
         if (saId <= 0) {
             throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
@@ -113,7 +124,7 @@ public class StockAdjustmentService {
 
         if (sa.getStatus() != StockAdjustmentStatus.DRAFT) {
             throw new IllegalStateException(
-                "Chỉ được sửa phiếu ở trạng thái DRAFT"
+                    "Chỉ được sửa phiếu ở trạng thái DRAFT"
             );
         }
 
@@ -126,19 +137,25 @@ public class StockAdjustmentService {
         sa.setNote(note);
 
         stockAdjustmentDAO.updateDraftInfo(sa);
+
+        auditLogService.log(
+                sa.getCreatedBy(),
+                "UPDATE",
+                "stock_adjustment",
+                (long) saId,
+                "Cập nhật thông tin phiếu kiểm kho: " + saCode
+        );
     }
 
     public List<StockAdjustmentDetail> getByStockAdjustment(int saId) {
-
-        // ===== Validate =====
         if (saId <= 0) {
             throw new IllegalArgumentException("Phiếu kiểm kho không hợp lệ");
         }
 
         return stockAdjustmentDetailDAO.findByAdjustmentId(saId);
     }
-    
-    public void delete(int saId){
+
+    public void delete(int saId) {
         if (saId <= 0) {
             throw new IllegalArgumentException("Id không hợp lệ");
         }
@@ -148,11 +165,19 @@ public class StockAdjustmentService {
             throw new IllegalArgumentException("Không tìm thấy phiếu kiểm kho theo ID");
         }
 
-        if(currentSA.getStatus() != StockAdjustmentStatus.DRAFT){
+        if (currentSA.getStatus() != StockAdjustmentStatus.DRAFT) {
             throw new IllegalArgumentException("Không thể xóa phiếu ngoài trạng thái DRAFT");
         }
 
         stockAdjustmentDAO.delete(saId);
+
+        auditLogService.log(
+                currentSA.getCreatedBy(),
+                "DELETE",
+                "stock_adjustment",
+                (long) saId,
+                "Xóa phiếu kiểm kho: " + currentSA.getSaCode()
+        );
     }
 
     public void addDetail(StockAdjustmentDetail d) {
@@ -167,10 +192,17 @@ public class StockAdjustmentService {
             throw new IllegalArgumentException("Sản phẩm không hợp lệ");
         }
 
-        // tự tính diff
         d.setDiffQty(d.getCountedQty() - d.getSystemQty());
 
         stockAdjustmentDetailDAO.insert(d);
+
+        auditLogService.log(
+                null,
+                "CREATE",
+                "stock_adjustment_detail",
+                (long) d.getSaId(),
+                "Thêm dòng kiểm kho cho sản phẩm ID " + d.getProductId()
+        );
     }
 
     /**
@@ -182,10 +214,17 @@ public class StockAdjustmentService {
             throw new IllegalArgumentException("Dòng kiểm kho không hợp lệ");
         }
 
-        // tự tính diff
         d.setDiffQty(d.getCountedQty() - d.getSystemQty());
 
         stockAdjustmentDetailDAO.update(d);
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "stock_adjustment_detail",
+                (long) d.getSadId(),
+                "Cập nhật dòng kiểm kho cho sản phẩm ID " + d.getProductId()
+        );
     }
 
     /**
@@ -198,6 +237,14 @@ public class StockAdjustmentService {
         }
 
         stockAdjustmentDetailDAO.delete(sadId);
+
+        auditLogService.log(
+                null,
+                "DELETE",
+                "stock_adjustment_detail",
+                (long) sadId,
+                "Xóa dòng kiểm kho ID " + sadId
+        );
     }
 
     public List<ProductOption> getProductsForCombobox() {
@@ -222,13 +269,11 @@ public class StockAdjustmentService {
 
         return stockAdjustmentDetailDAO.getSystemQtyByLot(productId, lotId);
     }
-    
+
     public StockAdjustmentDetail getDetailById(int sadId) {
         if (sadId <= 0) {
             throw new IllegalArgumentException("Detail ID không hợp lệ");
         }
         return stockAdjustmentDetailDAO.findDetailById(sadId);
     }
-
-
 }

@@ -10,6 +10,7 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerDAO dao = new CustomerDAO();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     public List<Customer> getAll() {
         return dao.findAll();
@@ -33,7 +34,6 @@ public class CustomerService {
     public List<String> validate(Customer customer, boolean isUpdate) {
         List<String> errors = new ArrayList<>();
 
-        // Validate customer name
         if (Validator.isNullOrEmpty(customer.getCustomerName())) {
             errors.add("Tên khách hàng không được trống");
         } else if (!Validator.hasMinLength(customer.getCustomerName(), 2)) {
@@ -42,7 +42,6 @@ public class CustomerService {
             errors.add("Tên khách hàng không được quá 100 ký tự");
         }
 
-        // Validate phone
         if (Validator.isNullOrEmpty(customer.getPhone())) {
             errors.add(Validator.requiredFieldMessage("Số điện thoại"));
         } else if (!Validator.isValidPhone(customer.getPhone())) {
@@ -56,7 +55,6 @@ public class CustomerService {
             }
         }
 
-        // Validate points (optional)
         if (customer.getPoints() != null && customer.getPoints() < 0) {
             errors.add("Điểm tích lũy phải là số không âm");
         }
@@ -78,6 +76,15 @@ public class CustomerService {
         if (id <= 0) {
             throw new Exception("Không thể tạo khách hàng");
         }
+
+        auditLogService.log(
+                null,
+                "CREATE",
+                "customer",
+                (long) id,
+                "Tạo khách hàng: " + customer.getCustomerName() + " - " + customer.getPhone()
+        );
+
         return id;
     }
 
@@ -90,6 +97,14 @@ public class CustomerService {
         if (!dao.update(customer)) {
             throw new Exception("Không thể cập nhật khách hàng");
         }
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "customer",
+                customer.getCustomerId() != null ? customer.getCustomerId().longValue() : null,
+                "Cập nhật khách hàng: " + customer.getCustomerName() + " - " + customer.getPhone()
+        );
     }
 
     public void delete(int customerId) throws Exception {
@@ -101,6 +116,14 @@ public class CustomerService {
         if (!dao.delete(customerId)) {
             throw new Exception("Không thể xóa khách hàng");
         }
+
+        auditLogService.log(
+                null,
+                "DELETE",
+                "customer",
+                (long) customerId,
+                "Xóa khách hàng: " + customer.getCustomerName() + " - " + customer.getPhone()
+        );
     }
 
     public void updateLoyaltyPoints(int customerId, int points) throws Exception {
@@ -111,6 +134,14 @@ public class CustomerService {
         if (!dao.updateLoyaltyPoints(customerId, points)) {
             throw new Exception("Không thể cập nhật điểm tích lũy");
         }
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "customer",
+                (long) customerId,
+                "Cập nhật điểm tích lũy khách hàng ID " + customerId + " = " + points
+        );
     }
 
     public void addLoyaltyPoints(int customerId, int pointsToAdd) throws Exception {
@@ -123,5 +154,13 @@ public class CustomerService {
         int newPoints = currentPoints + pointsToAdd;
 
         updateLoyaltyPoints(customerId, newPoints);
+
+        auditLogService.log(
+                null,
+                "UPDATE",
+                "customer",
+                (long) customerId,
+                "Cộng thêm " + pointsToAdd + " điểm cho khách hàng: " + customer.getCustomerName()
+        );
     }
 }

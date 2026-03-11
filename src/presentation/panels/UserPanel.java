@@ -51,7 +51,7 @@ public class UserPanel extends JPanel {
     private static final Color C_MUTED = new Color(100, 116, 139);
     private static final Color C_BORDER = new Color(226, 232, 240);
     private static final Color C_TABLE_ALT = new Color(248, 250, 252);
-    private static final Color C_ROW_SELECTED = new Color(219, 234, 254);
+    private static final Color C_ROW_SELECTED = new Color(52, 117, 178);
 
     public UserPanel() {
         setLayout(new BorderLayout(12, 12));
@@ -516,7 +516,7 @@ public class UserPanel extends JPanel {
         t.setShowHorizontalLines(true);
         t.setGridColor(C_BORDER);
         t.setSelectionBackground(C_ROW_SELECTED);
-        t.setSelectionForeground(C_TEXT);
+        t.setSelectionForeground(Color.WHITE);
 
         JTableHeader h = t.getTableHeader();
         h.setBackground(new Color(241, 245, 249));
