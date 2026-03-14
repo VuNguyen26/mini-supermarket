@@ -32,6 +32,8 @@ public class ProductDialog extends JDialog {
     private JComboBox<String> cboCategory, cboStatus, cboBrand;
     private JButton btnSave, btnCancel, btnScan, btnUploadImage;
     private JPanel imageListPanel;
+
+    private final java.util.List<Integer> deletedImageIds = new java.util.ArrayList<>();
     
     private Product product;
     private boolean saved = false;
@@ -266,16 +268,20 @@ public class ProductDialog extends JDialog {
                 return;
             }
 
+            String savedPath = copyImageToLocalFolder(imagePath);
+
             ProductImage img = new ProductImage();
             img.setImageId(-(productImages.size() + 1));
-            img.setImageUrl(imagePath);
+            img.setImageUrl(savedPath);
             img.setIsPrimary(productImages.isEmpty());
+
             if (img.getIsPrimary()) {
                 primaryImageId = img.getImageId();
             }
-            
+
             productImages.add(img);
             refreshImageList();
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Lỗi tải ảnh: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
@@ -319,13 +325,22 @@ public class ProductDialog extends JDialog {
         lblThumbnail.setBackground(new Color(240, 240, 240));
         lblThumbnail.setHorizontalAlignment(JLabel.CENTER);
         lblThumbnail.setVerticalAlignment(JLabel.CENTER);
-        
+
         try {
-            BufferedImage bufferedImage = ImageIO.read(new File(img.getImageUrl()));
+            BufferedImage bufferedImage;
+            String imagePath = img.getImageUrl();
+
+            if (imagePath != null && (imagePath.startsWith("http://") || imagePath.startsWith("https://"))) {
+                bufferedImage = ImageIO.read(new java.net.URL(imagePath));
+            } else {
+                bufferedImage = ImageIO.read(new File(imagePath));
+            }
+
             if (bufferedImage != null) {
                 int thumbWidth = 70;
                 int thumbHeight = 70;
-                double scale = Math.min((double) thumbWidth / bufferedImage.getWidth(), (double) thumbHeight / bufferedImage.getHeight());
+                double scale = Math.min((double) thumbWidth / bufferedImage.getWidth(),
+                        (double) thumbHeight / bufferedImage.getHeight());
                 int w = (int) (bufferedImage.getWidth() * scale);
                 int h = (int) (bufferedImage.getHeight() * scale);
                 Image scaledImage = bufferedImage.getScaledInstance(w, h, Image.SCALE_SMOOTH);
@@ -339,6 +354,8 @@ public class ProductDialog extends JDialog {
             lblThumbnail.setText("Lỗi ảnh");
             lblThumbnail.setForeground(new Color(100, 100, 100));
         }
+
+
         itemPanel.add(lblThumbnail, BorderLayout.WEST);
 
         // Center panel (info + checkbox)
@@ -383,11 +400,24 @@ public class ProductDialog extends JDialog {
         btnDelete.setOpaque(true);
         btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDelete.addActionListener(e -> {
-            productImages.remove(img);
-            if ((img.getIsPrimary() != null && img.getIsPrimary()) && !productImages.isEmpty()) {
-                productImages.get(0).setIsPrimary(true);
-                primaryImageId = productImages.get(0).getImageId();
+            if (img.getImageId() != null && img.getImageId() > 0) {
+                deletedImageIds.add(img.getImageId());
             }
+
+            productImages.remove(img);
+
+            if (img.getIsPrimary() != null && img.getIsPrimary()) {
+                if (!productImages.isEmpty()) {
+                    for (ProductImage pi : productImages) {
+                        pi.setIsPrimary(false);
+                    }
+                    productImages.get(0).setIsPrimary(true);
+                    primaryImageId = productImages.get(0).getImageId() != null ? productImages.get(0).getImageId() : -1;
+                } else {
+                    primaryImageId = -1;
+                }
+            }
+
             refreshImageList();
         });
 
@@ -467,6 +497,37 @@ public class ProductDialog extends JDialog {
         } catch (Exception e) {
             System.err.println("Error loading images: " + e.getMessage());
         }
+    }
+
+
+    private String copyImageToLocalFolder(String sourcePath) throws Exception {
+        File sourceFile = new File(sourcePath);
+        if (!sourceFile.exists()) {
+            throw new Exception("File nguồn không tồn tại");
+        }
+
+        File uploadDir = new File("resources/images/products");
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs();
+        }
+
+        String originalName = sourceFile.getName();
+        String ext = "";
+        int dot = originalName.lastIndexOf('.');
+        if (dot >= 0) {
+            ext = originalName.substring(dot);
+        }
+
+        String newFileName = "product_" + System.currentTimeMillis() + ext;
+        File destFile = new File(uploadDir, newFileName);
+
+        java.nio.file.Files.copy(
+                sourceFile.toPath(),
+                destFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        );
+
+        return destFile.getPath().replace("\\", "/");
     }
 
     private void save() {
@@ -574,19 +635,42 @@ public class ProductDialog extends JDialog {
                 // Save new images
                 if (!productImages.isEmpty()) {
                     try {
+                        // 1. Xóa các ảnh cũ đã bị user xóa trên UI
+                        for (Integer imageId : deletedImageIds) {
+                            productImageDAO.delete(imageId);
+                        }
+
+                        // 2. Insert các ảnh mới
+                        java.util.List<Integer> insertedImageIds = new java.util.ArrayList<>();
+
                         for (ProductImage img : productImages) {
-                            if (img.getImageId() < 0) { // New image
+                            if (img.getImageId() != null && img.getImageId() < 0) {
                                 img.setProductId(product.getProductId());
-                                productImageDAO.insert(img);
-                            } else {
-                                // Update primary status if changed
-                                if (img.getImageId() == primaryImageId && (img.getIsPrimary() == null || !img.getIsPrimary())) {
-                                    productImageDAO.setPrimaryImage(product.getProductId(), img.getImageId());
+                                int newImageId = productImageDAO.insert(img);
+                                if (newImageId > 0) {
+                                    img.setImageId(newImageId);
+                                    insertedImageIds.add(newImageId);
                                 }
                             }
                         }
+
+                        // 3. Set lại ảnh chính đúng theo primaryImageId
+                        int selectedPrimaryId = -1;
+                        for (ProductImage img : productImages) {
+                            if (img.getIsPrimary() != null && img.getIsPrimary()) {
+                                if (img.getImageId() != null) {
+                                    selectedPrimaryId = img.getImageId();
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (selectedPrimaryId > 0) {
+                            productImageDAO.setPrimaryImage(product.getProductId(), selectedPrimaryId);
+                        }
+
                     } catch (Exception e) {
-                        System.err.println("Error updating images: " + e.getMessage());
+                        System.err.println("Error saving/updating images: " + e.getMessage());
                     }
                 }
             }

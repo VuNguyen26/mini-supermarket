@@ -2,27 +2,34 @@ package presentation.panels;
 
 import bus.CategoryService;
 import bus.ProductService;
+import dal.dao.ProductImageDAO;
 import dto.Category;
 import dto.Product;
+import dto.ProductImage;
 import presentation.dialogs.ProductDialog;
 import util.DialogUtils;
 import util.MoneyUtils;
 import util.RolePermission;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ProductPanel - Quản lý sản phẩm (UI giống ảnh mẫu)
+ * ProductPanel - Quản lý sản phẩm
  */
 public class ProductPanel extends JPanel {
 
     private final ProductService productService = new ProductService();
     private final CategoryService categoryService = new CategoryService();
+    private final ProductImageDAO productImageDAO = new ProductImageDAO();
 
     private JTextField txtSearch;
     private JComboBox<String> cboCategory;
@@ -53,11 +60,10 @@ public class ProductPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         setBackground(Color.WHITE);
 
-        // Top Panel - Search and Filter
+        // Top Panel
         JPanel topPanel = new JPanel(new BorderLayout(10, 10));
         topPanel.setBackground(Color.WHITE);
 
-        // Search Panel
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         searchPanel.setBackground(Color.WHITE);
 
@@ -78,7 +84,6 @@ public class ProductPanel extends JPanel {
         searchPanel.add(txtSearch);
         searchPanel.add(btnSearch);
 
-        // Filter Panel
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         filterPanel.setBackground(Color.WHITE);
 
@@ -103,7 +108,6 @@ public class ProductPanel extends JPanel {
         filterPanel.add(lblStatus);
         filterPanel.add(cboStatus);
 
-        // Button Panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Color.WHITE);
 
@@ -126,11 +130,11 @@ public class ProductPanel extends JPanel {
 
         add(topPanel, BorderLayout.NORTH);
 
-        // Table Panel
+        // Table
         tableModel = new ProductTableModel();
         table = new JTable(tableModel);
 
-        table.setRowHeight(60);
+        table.setRowHeight(70);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         table.getTableHeader().setBackground(new Color(33, 150, 243));
@@ -142,7 +146,7 @@ public class ProductPanel extends JPanel {
         table.setGridColor(new Color(230, 230, 230));
         table.setIntercellSpacing(new Dimension(1, 1));
 
-        // AUTO WRAP TEXT: tự xuống dòng cho cột dài
+        // Wrap text renderer
         DefaultTableCellRenderer wrapRenderer = new DefaultTableCellRenderer() {
             private final JTextArea textArea = new JTextArea();
 
@@ -155,7 +159,6 @@ public class ProductPanel extends JPanel {
                 textArea.setOpaque(true);
                 textArea.setFont(table.getFont());
                 textArea.setText(value == null ? "" : value.toString());
-
                 textArea.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
 
                 if (isSelected) {
@@ -165,45 +168,42 @@ public class ProductPanel extends JPanel {
                     textArea.setBackground(Color.WHITE);
                     textArea.setForeground(Color.BLACK);
                 }
-
                 return textArea;
             }
         };
 
+        // Renderers
+        table.getColumnModel().getColumn(1).setCellRenderer(new ImageCellRenderer()); // Ảnh
+        table.getColumnModel().getColumn(4).setCellRenderer(wrapRenderer); // Tên SP
+        table.getColumnModel().getColumn(5).setCellRenderer(wrapRenderer); // Danh mục
 
-        // Apply wrap cho cột Tên sản phẩm (3) và Danh mục (4)
-        table.getColumnModel().getColumn(3).setCellRenderer(wrapRenderer);
-        table.getColumnModel().getColumn(4).setCellRenderer(wrapRenderer);
-
-        // Center align number columns
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer); // STT
-        table.getColumnModel().getColumn(7).setCellRenderer(centerRenderer); // Tồn kho
-        table.getColumnModel().getColumn(8).setCellRenderer(centerRenderer); // Trạng thái
-        table.getColumnModel().getColumn(9).setCellRenderer(centerRenderer); // Thao tác
+        table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer); // Đơn vị
+        table.getColumnModel().getColumn(8).setCellRenderer(centerRenderer); // Tồn kho
+        table.getColumnModel().getColumn(9).setCellRenderer(centerRenderer); // Trạng thái
 
-        // Right align money columns
         DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
         rightRenderer.setHorizontalAlignment(JLabel.RIGHT);
-        table.getColumnModel().getColumn(5).setCellRenderer(rightRenderer); // Giá nhập
-        table.getColumnModel().getColumn(6).setCellRenderer(rightRenderer); // Giá bán
+        table.getColumnModel().getColumn(6).setCellRenderer(rightRenderer); // Giá nhập
+        table.getColumnModel().getColumn(7).setCellRenderer(rightRenderer); // Giá bán
 
-        // Set column widths
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);  // STT
-        table.getColumnModel().getColumn(1).setPreferredWidth(120); // Mã SP
-        table.getColumnModel().getColumn(2).setPreferredWidth(80);  // Đơn vị
-        table.getColumnModel().getColumn(3).setPreferredWidth(200); // Tên
-        table.getColumnModel().getColumn(4).setPreferredWidth(140); // Danh mục
-        table.getColumnModel().getColumn(5).setPreferredWidth(100); // Giá nhập
-        table.getColumnModel().getColumn(6).setPreferredWidth(100); // Giá bán
-        table.getColumnModel().getColumn(7).setPreferredWidth(80);  // Tồn kho
-        table.getColumnModel().getColumn(8).setPreferredWidth(100); // Trạng thái
-        table.getColumnModel().getColumn(9).setPreferredWidth(170); // Thao tác (đủ chỗ cho 2 nút)
+        // Widths
+        table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
+        table.getColumnModel().getColumn(1).setPreferredWidth(80);   // Ảnh
+        table.getColumnModel().getColumn(2).setPreferredWidth(130);  // Mã SP
+        table.getColumnModel().getColumn(3).setPreferredWidth(80);   // Đơn vị
+        table.getColumnModel().getColumn(4).setPreferredWidth(220);  // Tên
+        table.getColumnModel().getColumn(5).setPreferredWidth(150);  // Danh mục
+        table.getColumnModel().getColumn(6).setPreferredWidth(100);  // Giá nhập
+        table.getColumnModel().getColumn(7).setPreferredWidth(100);  // Giá bán
+        table.getColumnModel().getColumn(8).setPreferredWidth(80);   // Tồn kho
+        table.getColumnModel().getColumn(9).setPreferredWidth(100);  // Trạng thái
+        table.getColumnModel().getColumn(10).setPreferredWidth(170); // Thao tác
 
         table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
 
-        // Double click to edit
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -215,16 +215,13 @@ public class ProductPanel extends JPanel {
             }
         });
 
-
-        // Action column uses buttons
-        table.getColumnModel().getColumn(9).setCellRenderer(new ActionCellRenderer());
-        table.getColumnModel().getColumn(9).setCellEditor(new ActionCellEditor());
+        table.getColumnModel().getColumn(10).setCellRenderer(new ActionCellRenderer());
+        table.getColumnModel().getColumn(10).setCellEditor(new ActionCellEditor());
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
         add(scrollPane, BorderLayout.CENTER);
 
-        // Bottom Panel - Info
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         bottomPanel.setBackground(Color.WHITE);
 
@@ -247,18 +244,37 @@ public class ProductPanel extends JPanel {
         return button;
     }
 
-    private ImageIcon loadIconAny(int size, String... names) {
-        for (String name : names) {
-            try {
-                ImageIcon raw = new ImageIcon("resources/images/" + name);
-                if (raw.getIconWidth() > 0) {
-                    Image img = raw.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH);
-                    return new ImageIcon(img);
-                }
-            } catch (Exception ignore) {
+    private ImageIcon loadProductThumbnail(Product product, int size) {
+        try {
+            ProductImage primaryImage = productImageDAO.findPrimaryImage(product.getProductId());
+            if (primaryImage == null || primaryImage.getImageUrl() == null || primaryImage.getImageUrl().trim().isEmpty()) {
+                return null;
             }
+
+            String imagePath = primaryImage.getImageUrl().trim();
+            BufferedImage bufferedImage;
+
+            if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+                bufferedImage = ImageIO.read(new URL(imagePath));
+            } else {
+                File file = new File(imagePath);
+                if (!file.exists()) {
+                    return null;
+                }
+                bufferedImage = ImageIO.read(file);
+            }
+
+            if (bufferedImage == null) {
+                return null;
+            }
+
+            Image scaled = bufferedImage.getScaledInstance(size, size, Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+
+        } catch (Exception e) {
+            System.err.println("loadProductThumbnail error: " + e.getMessage());
+            return null;
         }
-        return null;
     }
 
     private void loadCategories() {
@@ -285,7 +301,6 @@ public class ProductPanel extends JPanel {
     }
 
     public void refreshProducts() {
-        // Reload data từ database
         loadData();
     }
 
@@ -378,12 +393,12 @@ public class ProductPanel extends JPanel {
         btnCreate.setEnabled(canCreate);
     }
 
-    // Table Model
     class ProductTableModel extends AbstractTableModel {
         private final String[] columns = {
-                "STT", "Mã Sản Phẩm", "Đơn vị", "Tên Sản Phẩm", "Danh mục",
+                "STT", "Ảnh", "Mã Sản Phẩm", "Đơn vị", "Tên Sản Phẩm", "Danh mục",
                 "Nhập (VND)", "Bán (VND)", "Tồn Kho", "Trang Thái", "Thao Tác"
         };
+
         private List<Product> products = new ArrayList<>();
 
         public void setProducts(List<Product> products) {
@@ -413,26 +428,28 @@ public class ProductPanel extends JPanel {
                 case 0:
                     return row + 1;
                 case 1:
-                    return p.getBarcode();
+                    return p;
                 case 2:
-                    return p.getUnit();
+                    return p.getBarcode();
                 case 3:
-                    return p.getProductName();
+                    return p.getUnit();
                 case 4:
-                    return p.getCategoryName();
+                    return p.getProductName();
                 case 5:
-                    return MoneyUtils.format(p.getImportPrice());
+                    return p.getCategoryName();
                 case 6:
-                    return MoneyUtils.format(p.getSalePrice());
+                    return MoneyUtils.format(p.getImportPrice());
                 case 7:
+                    return MoneyUtils.format(p.getSalePrice());
+                case 8:
                     return p.getStockQty();
-                case 8: {
+                case 9: {
                     int stock = p.getStockQty();
                     if (stock == 0) return "Hết hàng";
                     else if (stock < 20) return "Sắp hết hàng";
                     else return "Còn";
                 }
-                case 9:
+                case 10:
                     return "Sửa | Xóa";
                 default:
                     return "";
@@ -441,11 +458,44 @@ public class ProductPanel extends JPanel {
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 9; // Chỉ cột thao tác
+            return col == 10;
         }
     }
 
-    // Renderer/editor classes for action buttons
+    private class ImageCellRenderer extends JLabel implements javax.swing.table.TableCellRenderer {
+        public ImageCellRenderer() {
+            setHorizontalAlignment(JLabel.CENTER);
+            setVerticalAlignment(JLabel.CENTER);
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            setText("");
+            setIcon(null);
+
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+            } else {
+                setBackground(Color.WHITE);
+            }
+
+            if (value instanceof Product) {
+                Product product = (Product) value;
+                ImageIcon icon = loadProductThumbnail(product, 40);
+                if (icon != null) {
+                    setIcon(icon);
+                } else {
+                    setText("Không ảnh");
+                    setForeground(Color.GRAY);
+                }
+            }
+
+            return this;
+        }
+    }
+
     private class ActionCellRenderer extends JPanel implements javax.swing.table.TableCellRenderer {
         private final JButton btnEdit = createStyledButton("Sửa", new Color(33, 150, 243), Color.WHITE);
         private final JButton btnDelete = createStyledButton("Xóa", new Color(244, 67, 54), Color.WHITE);

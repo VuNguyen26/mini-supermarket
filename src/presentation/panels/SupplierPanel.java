@@ -245,7 +245,7 @@ public class SupplierPanel extends JPanel {
 
     // Table Model
     private static class SupplierTableModel extends AbstractTableModel {
-        private final String[] columnNames = {"STT", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
+        private final String[] columnNames = {"STT", "Ảnh", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
         private List<Supplier> data = new ArrayList<>();
 
         public void setData(List<Supplier> data) {
@@ -294,7 +294,7 @@ public class SupplierPanel extends JPanel {
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 5; // Chỉ cột Thao tác có thể click
+            return col == 65  ; // Chỉ cột Thao tác có thể click
         }
     }
 
