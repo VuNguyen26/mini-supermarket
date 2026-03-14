@@ -134,7 +134,7 @@ public class ProductPanel extends JPanel {
         tableModel = new ProductTableModel();
         table = new JTable(tableModel);
 
-        table.setRowHeight(70);
+        table.setRowHeight(80);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         table.getTableHeader().setBackground(new Color(33, 150, 243));
@@ -191,7 +191,7 @@ public class ProductPanel extends JPanel {
 
         // Widths
         table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
-        table.getColumnModel().getColumn(1).setPreferredWidth(80);   // Ảnh
+        table.getColumnModel().getColumn(1).setPreferredWidth(100);   // Ảnh
         table.getColumnModel().getColumn(2).setPreferredWidth(130);  // Mã SP
         table.getColumnModel().getColumn(3).setPreferredWidth(80);   // Đơn vị
         table.getColumnModel().getColumn(4).setPreferredWidth(220);  // Tên
@@ -483,7 +483,7 @@ public class ProductPanel extends JPanel {
 
             if (value instanceof Product) {
                 Product product = (Product) value;
-                ImageIcon icon = loadProductThumbnail(product, 40);
+                ImageIcon icon = loadProductThumbnail(product, 60);
                 if (icon != null) {
                     setIcon(icon);
                 } else {
