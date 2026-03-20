@@ -102,6 +102,7 @@ public class CustomerPanel extends JPanel {
         table.getTableHeader().setBackground(new Color(33, 150, 243));
         table.getTableHeader().setForeground(Color.WHITE);
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setResizingAllowed(false);
 
         // Column widths
         table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
@@ -111,7 +112,7 @@ public class CustomerPanel extends JPanel {
         table.getColumnModel().getColumn(4).setPreferredWidth(100);  // Điểm
         table.getColumnModel().getColumn(5).setPreferredWidth(170);  // Thao tác (đủ chỗ cho 2 nút)
         
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         // Center align some columns
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();

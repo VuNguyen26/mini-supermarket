@@ -141,6 +141,7 @@ public class ProductPanel extends JPanel {
         table.getTableHeader().setForeground(Color.WHITE);
         table.getTableHeader().setPreferredSize(new Dimension(0, 45));
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setResizingAllowed(false);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setShowGrid(true);
         table.setGridColor(new Color(230, 230, 230));
@@ -202,7 +203,7 @@ public class ProductPanel extends JPanel {
         table.getColumnModel().getColumn(9).setPreferredWidth(100);  // Trạng thái
         table.getColumnModel().getColumn(10).setPreferredWidth(170); // Thao tác
 
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override

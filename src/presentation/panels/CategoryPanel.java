@@ -132,7 +132,7 @@ public class CategoryPanel extends JPanel {
     private static class CardsPanel extends JPanel implements Scrollable {
 
         private static final int GAP = 20;
-        private static final int COLS = 3;
+        private static final int COLS = 4;
 
         public CardsPanel() {
             super(new GridLayout(0, COLS, GAP, GAP));
@@ -187,7 +187,7 @@ public class CategoryPanel extends JPanel {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
 
-        card.setBorder(new EmptyBorder(16, 16, 16, 16));
+        card.setBorder(new EmptyBorder(12, 12, 12, 12));
 
         card.setPreferredSize(new Dimension(280, 180));
         card.setMaximumSize(new Dimension(280, 180));
@@ -241,11 +241,11 @@ public class CategoryPanel extends JPanel {
         actionPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JButton btnView = createStyledButton("Xem", new Color(76, 175, 80), Color.WHITE, false);
-        btnView.setPreferredSize(new Dimension(90, 40));
+        btnView.setPreferredSize(new Dimension(65, 34));
         btnView.addActionListener(e -> viewCategoryProducts(category));
 
         JButton btnEdit = createStyledButton("Sửa", new Color(33, 150, 243), Color.WHITE, true);
-        btnEdit.setPreferredSize(new Dimension(90, 40));
+        btnEdit.setPreferredSize(new Dimension(65, 34));
         btnEdit.addActionListener(e -> {
             CategoryDialog dialog = new CategoryDialog((Frame) SwingUtilities.getWindowAncestor(this), category);
             dialog.setVisible(true);
@@ -255,7 +255,7 @@ public class CategoryPanel extends JPanel {
         });
 
         JButton btnDelete = createStyledButton("Xóa", new Color(244, 67, 54), Color.WHITE, false);
-        btnDelete.setPreferredSize(new Dimension(90, 40));
+        btnDelete.setPreferredSize(new Dimension(65, 34));
         btnDelete.addActionListener(e -> {
             if (DialogUtils.confirm(this, "Xác nhận xóa danh mục: " + category.getCategoryName() + "?")) {
                 try {
@@ -269,9 +269,9 @@ public class CategoryPanel extends JPanel {
         });
 
         actionPanel.add(btnView);
-        actionPanel.add(Box.createRigidArea(new Dimension(12, 0)));
+        actionPanel.add(Box.createRigidArea(new Dimension(6, 0)));
         actionPanel.add(btnEdit);
-        actionPanel.add(Box.createRigidArea(new Dimension(12, 0)));
+        actionPanel.add(Box.createRigidArea(new Dimension(6, 0)));
         actionPanel.add(btnDelete);
         card.add(actionPanel);
 

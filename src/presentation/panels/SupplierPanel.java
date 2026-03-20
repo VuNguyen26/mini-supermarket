@@ -104,6 +104,7 @@ public class SupplierPanel extends JPanel {
         table.getTableHeader().setBackground(new Color(33, 150, 243));
         table.getTableHeader().setForeground(Color.WHITE);
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setResizingAllowed(false);
 
         // Column widths
         table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
@@ -113,7 +114,7 @@ public class SupplierPanel extends JPanel {
         table.getColumnModel().getColumn(4).setPreferredWidth(300);  // Địa chỉ
         table.getColumnModel().getColumn(5).setPreferredWidth(170);  // Thao tác (đủ chỗ cho 2 nút)
         
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         // Center align some columns
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
@@ -245,7 +246,7 @@ public class SupplierPanel extends JPanel {
 
     // Table Model
     private static class SupplierTableModel extends AbstractTableModel {
-        private final String[] columnNames = {"STT", "Ảnh", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
+        private final String[] columnNames = {"STT", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
         private List<Supplier> data = new ArrayList<>();
 
         public void setData(List<Supplier> data) {
@@ -294,7 +295,7 @@ public class SupplierPanel extends JPanel {
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 65  ; // Chỉ cột Thao tác có thể click
+            return col == 5; // Chỉ cột Thao tác có thể click
         }
     }
 
