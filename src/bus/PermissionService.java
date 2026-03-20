@@ -30,6 +30,15 @@ public class PermissionService {
     public void saveRolePermissions(int roleId, Set<Integer> permIds) {
         rolePermissionDAO.replaceRolePermissions(roleId, permIds);
     }
+
+    public void addPermission(Permission permission) {
+        permissionDAO.insert(permission);
+    }
+
+    public void deletePermission(int permId) {
+        permissionDAO.delete(permId);
+    }
+
     /* ==== tạo UI cho login*/
     public Set<String> getPermCodesByUserId(int userId) {
         return permissionDAO.findPermCodesByUserId(userId);
