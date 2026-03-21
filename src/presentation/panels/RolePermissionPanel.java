@@ -601,6 +601,8 @@ public class RolePermissionPanel extends JPanel {
                     case EDIT -> row.editIds.add(p.getPermId());
                     case DELETE -> row.deleteIds.add(p.getPermId());
                     case SEARCH -> row.searchIds.add(p.getPermId());
+                    case IGNORE -> {
+                    }
                 }
             }
 
@@ -629,7 +631,7 @@ public class RolePermissionPanel extends JPanel {
         }
 
         private enum ActionBucket {
-            VIEW, ADD, EDIT, DELETE, SEARCH
+            VIEW, ADD, EDIT, DELETE, SEARCH, IGNORE
         }
 
         private String extractResourceKey(String code) {
@@ -639,9 +641,14 @@ public class RolePermissionPanel extends JPanel {
         }
 
         private ActionBucket mapAction(String code, String resourceKey) {
-            if (code == null) return ActionBucket.EDIT;
+            if (code == null) return ActionBucket.IGNORE;
 
             String upper = code.toUpperCase(Locale.ROOT).trim();
+
+            // POS_SELL không hiển thị ở cột nào trong bảng phân quyền
+            if ("POS".equals(resourceKey) && upper.endsWith("_SELL")) {
+                return ActionBucket.IGNORE;
+            }
 
             // Kiểm kho hiện dùng ADJUSTMENT_APPROVE thay cho quyền thao tác xóa/hủy
             if ("ADJUSTMENT".equals(resourceKey) && upper.endsWith("_APPROVE")) {
@@ -654,7 +661,7 @@ public class RolePermissionPanel extends JPanel {
             if (upper.endsWith("_DELETE") || upper.endsWith("_REMOVE")) return ActionBucket.DELETE;
             if (upper.endsWith("_SEARCH")) return ActionBucket.SEARCH;
 
-            return ActionBucket.EDIT;
+            return ActionBucket.IGNORE;
         }
 
         private String toDisplayName(String key) {
