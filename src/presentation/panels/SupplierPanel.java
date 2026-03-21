@@ -24,23 +24,33 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SupplierPanel extends JPanel {
-    
+
     private final SupplierService supplierService = new SupplierService();
 
     private JTextField txtSearch;
-    private JComboBox<String> cboStatus;
     private JTable table;
     private SupplierTableModel tableModel;
-    private JButton btnCreate, btnRefresh, btnSearch;
-    private boolean canEditSupplier = false;
-    private boolean canDeleteSupplier = false;
-    
+    private JButton btnCreate, btnRefresh, btnSearch, btnImport, btnExport;
+
+    private boolean canView = false;
+    private boolean canCreate = false;
+    private boolean canUpdate = false;
+    private boolean canDelete = false;
+
     private List<Supplier> supplierList = new ArrayList<>();
 
     public SupplierPanel() {
+        initPermissions();
         initComponents();
         loadData();
         applyPermissions();
+    }
+
+    private void initPermissions() {
+        canView = RolePermission.has("SUPPLIER_VIEW");
+        canCreate = RolePermission.has("SUPPLIER_CREATE");
+        canUpdate = RolePermission.has("SUPPLIER_EDIT");
+        canDelete = RolePermission.has("SUPPLIER_DELETE");
     }
 
     private void refreshDashboard() {
@@ -55,11 +65,9 @@ public class SupplierPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         setBackground(Color.WHITE);
 
-        // Top Panel - Search and Filter
         JPanel topPanel = new JPanel(new BorderLayout(10, 10));
         topPanel.setBackground(Color.WHITE);
 
-        // Search Panel
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         searchPanel.setBackground(Color.WHITE);
 
@@ -80,7 +88,6 @@ public class SupplierPanel extends JPanel {
         searchPanel.add(txtSearch);
         searchPanel.add(btnSearch);
 
-        // Button Panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Color.WHITE);
 
@@ -94,12 +101,12 @@ public class SupplierPanel extends JPanel {
         btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnRefresh.addActionListener(e -> loadData());
 
-        JButton btnImport = createStyledButton("Import Excel", new Color(255, 152, 0), Color.WHITE);
+        btnImport = createStyledButton("Import Excel", new Color(255, 152, 0), Color.WHITE);
         btnImport.setPreferredSize(new Dimension(140, 40));
         btnImport.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnImport.addActionListener(e -> importSuppliersFromExcel());
 
-        JButton btnExport = createStyledButton("Export Excel", new Color(0, 150, 136), Color.WHITE);
+        btnExport = createStyledButton("Export Excel", new Color(0, 150, 136), Color.WHITE);
         btnExport.setPreferredSize(new Dimension(140, 40));
         btnExport.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnExport.addActionListener(e -> exportSuppliersToExcel());
@@ -116,11 +123,10 @@ public class SupplierPanel extends JPanel {
         add(buildTable(), BorderLayout.CENTER);
     }
 
-
     private JScrollPane buildTable() {
         tableModel = new SupplierTableModel();
         table = new JTable(tableModel);
-        
+
         table.setRowHeight(35);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -130,45 +136,49 @@ public class SupplierPanel extends JPanel {
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setResizingAllowed(false);
 
-        // Column widths
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
-        table.getColumnModel().getColumn(1).setPreferredWidth(250);  // Tên NCC
-        table.getColumnModel().getColumn(2).setPreferredWidth(120);  // SĐT
-        table.getColumnModel().getColumn(3).setPreferredWidth(180);  // Email
-        table.getColumnModel().getColumn(4).setPreferredWidth(300);  // Địa chỉ
-        table.getColumnModel().getColumn(5).setPreferredWidth(170);  // Thao tác (đủ chỗ cho 2 nút)
-        
+        table.getColumnModel().getColumn(0).setPreferredWidth(50);
+        table.getColumnModel().getColumn(1).setPreferredWidth(250);
+        table.getColumnModel().getColumn(2).setPreferredWidth(120);
+        table.getColumnModel().getColumn(3).setPreferredWidth(180);
+        table.getColumnModel().getColumn(4).setPreferredWidth(300);
+        table.getColumnModel().getColumn(5).setPreferredWidth(170);
+
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
-        // Center align some columns
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
 
-        // Add double-click listener
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     int row = table.getSelectedRow();
                     if (row >= 0) {
+                        if (!canUpdate) {
+                            DialogUtils.showWarning(SupplierPanel.this, "Bạn không có quyền sửa nhà cung cấp");
+                            return;
+                        }
                         editSupplier();
                     }
                 }
             }
         });
 
-        // Action column uses buttons
         table.getColumnModel().getColumn(5).setCellRenderer(new ActionCellRenderer());
         table.getColumnModel().getColumn(5).setCellEditor(new ActionCellEditor());
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
-        
+
         return scrollPane;
     }
 
     private void loadData() {
+        if (!canView) {
+            return;
+        }
+
         try {
             supplierList = supplierService.getAll();
             tableModel.setData(supplierList);
@@ -178,6 +188,11 @@ public class SupplierPanel extends JPanel {
     }
 
     private void searchSuppliers() {
+        if (!canView) {
+            DialogUtils.showWarning(this, "Bạn không có quyền xem nhà cung cấp");
+            return;
+        }
+
         try {
             String keyword = txtSearch.getText().trim();
             if (keyword.isEmpty()) {
@@ -192,7 +207,7 @@ public class SupplierPanel extends JPanel {
     }
 
     private void createSupplier() {
-        if (!RolePermission.has("SUPPLIER_CREATE")) {
+        if (!canCreate) {
             DialogUtils.showWarning(this, "Bạn không có quyền thêm nhà cung cấp");
             return;
         }
@@ -206,6 +221,11 @@ public class SupplierPanel extends JPanel {
     }
 
     private void importSuppliersFromExcel() {
+        if (!canCreate) {
+            DialogUtils.showWarning(this, "Bạn không có quyền import nhà cung cấp");
+            return;
+        }
+
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Chọn file Excel nhà cung cấp");
         chooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx, *.xls)", "xlsx", "xls"));
@@ -258,7 +278,7 @@ public class SupplierPanel extends JPanel {
 
             StringBuilder msg = new StringBuilder();
             msg.append("Import hoàn tất. Thành công: ").append(successCount)
-               .append(", thất bại: ").append(failedCount);
+                    .append(", thất bại: ").append(failedCount);
 
             if (!errors.isEmpty()) {
                 msg.append("\n\nLỗi mẫu:\n");
@@ -275,6 +295,11 @@ public class SupplierPanel extends JPanel {
     }
 
     private void exportSuppliersToExcel() {
+        if (!canView) {
+            DialogUtils.showWarning(this, "Bạn không có quyền xem nhà cung cấp để export");
+            return;
+        }
+
         try {
             List<Supplier> dataToExport = supplierList != null ? supplierList : new ArrayList<>();
             if (dataToExport.isEmpty()) {
@@ -304,7 +329,7 @@ public class SupplierPanel extends JPanel {
     }
 
     private void editSupplier() {
-        if (!RolePermission.has("SUPPLIER_EDIT")) {
+        if (!canUpdate) {
             DialogUtils.showWarning(this, "Bạn không có quyền sửa nhà cung cấp");
             return;
         }
@@ -326,7 +351,7 @@ public class SupplierPanel extends JPanel {
     }
 
     private void deleteSupplier() {
-        if (!RolePermission.has("SUPPLIER_DELETE")) {
+        if (!canDelete) {
             DialogUtils.showWarning(this, "Bạn không có quyền xóa nhà cung cấp");
             return;
         }
@@ -363,25 +388,7 @@ public class SupplierPanel extends JPanel {
         return button;
     }
 
-    private ImageIcon loadIconAny(int size, String... names) {
-        for (String name : names) {
-            try {
-                ImageIcon raw = new ImageIcon("resources/images/" + name);
-                if (raw.getIconWidth() > 0) {
-                    Image img = raw.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH);
-                    return new ImageIcon(img);
-                }
-            } catch (Exception ignore) {}
-        }
-        return null;
-    }
-
     private void applyPermissions() {
-        boolean canView = RolePermission.has("SUPPLIER_VIEW");
-        boolean canCreate = RolePermission.has("SUPPLIER_CREATE");
-        boolean canEdit = RolePermission.has("SUPPLIER_EDIT");
-        boolean canDelete = RolePermission.has("SUPPLIER_DELETE");
-
         if (!canView) {
             JOptionPane.showMessageDialog(
                     this,
@@ -393,24 +400,28 @@ public class SupplierPanel extends JPanel {
             return;
         }
 
-        // Có quyền xem thì được dùng chức năng đọc dữ liệu
         btnSearch.setEnabled(true);
         btnRefresh.setEnabled(true);
 
-        // Chỉ bật khi có đúng quyền thao tác
+        btnCreate.setVisible(canCreate);
         btnCreate.setEnabled(canCreate);
 
-        // Lưu lại để dùng cho nút Sửa/Xóa trong bảng
-        this.canEditSupplier = canEdit;
-        this.canDeleteSupplier = canDelete;
+        if (btnImport != null) {
+            btnImport.setVisible(canCreate);
+            btnImport.setEnabled(canCreate);
+        }
 
-        // Vẽ lại bảng để renderer/editor cập nhật trạng thái nút
+        if (btnExport != null) {
+            btnExport.setVisible(canView);
+            btnExport.setEnabled(canView);
+        }
+
         if (table != null) {
             table.repaint();
+            table.revalidate();
         }
     }
 
-    // Table Model
     private static class SupplierTableModel extends AbstractTableModel {
         private final String[] columnNames = {"STT", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
         private List<Supplier> data = new ArrayList<>();
@@ -448,7 +459,7 @@ public class SupplierPanel extends JPanel {
                 case 2 -> s.getPhone();
                 case 3 -> s.getEmail();
                 case 4 -> s.getAddress();
-                case 5 -> ""; // Để renderer hiển thị các nút
+                case 5 -> "";
                 default -> null;
             };
         }
@@ -461,54 +472,51 @@ public class SupplierPanel extends JPanel {
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 5; // Chỉ cột Thao tác có thể click
+            return col == 5;
         }
     }
 
-    // Renderer for action buttons
     private class ActionCellRenderer extends JPanel implements javax.swing.table.TableCellRenderer {
         private final JButton btnEdit = createStyledButton("Sửa", new Color(33, 150, 243), Color.WHITE);
         private final JButton btnDelete = createStyledButton("Xóa", new Color(244, 67, 54), Color.WHITE);
 
         public ActionCellRenderer() {
             setOpaque(true);
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new FlowLayout(FlowLayout.CENTER, 6, 4));
             btnEdit.setFocusable(false);
             btnDelete.setFocusable(false);
-            Dimension d = new Dimension(45, 24);
-            btnEdit.setPreferredSize(d);
-            btnDelete.setPreferredSize(d);
             add(btnEdit);
-            add(Box.createRigidArea(new Dimension(6, 0)));
             add(btnDelete);
         }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            removeAll();
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
+            if (canUpdate) {
+                add(btnEdit);
+            }
+
+            if (canDelete) {
+                add(btnDelete);
+            }
+
+            revalidate();
+            repaint();
             return this;
         }
     }
 
-    // Editor for action buttons
     private class ActionCellEditor extends AbstractCellEditor implements javax.swing.table.TableCellEditor {
-        private final JPanel panel = new JPanel();
+        private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 4));
         private final JButton btnEdit = createStyledButton("Sửa", new Color(33, 150, 243), Color.WHITE);
         private final JButton btnDelete = createStyledButton("Xóa", new Color(244, 67, 54), Color.WHITE);
         private int editingRow = -1;
 
         public ActionCellEditor() {
-            panel.setOpaque(true);
-            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-            Dimension d = new Dimension(45, 24);
-            btnEdit.setPreferredSize(d);
-            btnDelete.setPreferredSize(d);
-            panel.add(btnEdit);
-            panel.add(Box.createRigidArea(new Dimension(6, 0)));
-            panel.add(btnDelete);
-
             btnEdit.addActionListener(e -> {
-                if (editingRow >= 0) {
+                if (editingRow >= 0 && canUpdate) {
                     table.setRowSelectionInterval(editingRow, editingRow);
                     editSupplier();
                 }
@@ -516,7 +524,7 @@ public class SupplierPanel extends JPanel {
             });
 
             btnDelete.addActionListener(e -> {
-                if (editingRow >= 0) {
+                if (editingRow >= 0 && canDelete) {
                     table.setRowSelectionInterval(editingRow, editingRow);
                     deleteSupplier();
                 }
@@ -527,11 +535,26 @@ public class SupplierPanel extends JPanel {
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             editingRow = row;
+            panel.removeAll();
+            panel.setOpaque(true);
             panel.setBackground(table.getSelectionBackground());
+
+            if (canUpdate) {
+                panel.add(btnEdit);
+            }
+
+            if (canDelete) {
+                panel.add(btnDelete);
+            }
+
+            panel.revalidate();
+            panel.repaint();
             return panel;
         }
 
         @Override
-        public Object getCellEditorValue() { return null; }
+        public Object getCellEditorValue() {
+            return null;
+        }
     }
 }
