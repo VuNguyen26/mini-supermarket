@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import util.RolePermission;
 
 public class PromotionPanel extends JPanel {
 
@@ -44,10 +45,42 @@ public class PromotionPanel extends JPanel {
 
     private Promotion selectedPromotion;
 
+    private boolean canView;
+    private boolean canCreate;
+    private boolean canUpdate;
+    private boolean canDelete;
+
+    private JButton btnAddPromotion;
+    private JButton btnViewPromotion;
+    private JButton btnExportExcel;
+
+    private JButton btnAddPromotionProduct;
+    private JButton btnEditPromotionProduct;
+    private JButton btnDeletePromotionProduct;
+
+
+    private void initPermissions() {
+        canView = RolePermission.has("PROMOTION_VIEW");
+        canCreate = RolePermission.has("PROMOTION_CREATE");
+        canUpdate = RolePermission.has("PROMOTION_UPDATE");
+        canDelete = RolePermission.has("PROMOTION_DELETE");
+    }
+
     public PromotionPanel(AuthUser currentUser) {
         this.currentUser = currentUser;
+        initPermissions();
         initUI();
+        applyPermissions();
         loadPromotions(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
+    }
+    private void applyPermissions() {
+        if (btnAddPromotion != null) btnAddPromotion.setEnabled(canCreate);
+        if (btnViewPromotion != null) btnViewPromotion.setEnabled(canView);
+        if (btnExportExcel != null) btnExportExcel.setEnabled(canView);
+
+        if (btnAddPromotionProduct != null) btnAddPromotionProduct.setEnabled(canCreate);
+        if (btnEditPromotionProduct != null) btnEditPromotionProduct.setEnabled(canUpdate);
+        if (btnDeletePromotionProduct != null) btnDeletePromotionProduct.setEnabled(canDelete);
     }
 
     private void initUI() {
@@ -73,9 +106,13 @@ public class PromotionPanel extends JPanel {
         txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         txtSearch.setMinimumSize(new Dimension(150, 20));
         txtSearch.setPreferredSize(new Dimension(200, 28));
-        txtSearch.setMaximumSize(new Dimension(270, 30));;
-        txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
+        txtSearch.setMaximumSize(new Dimension(270, 30));
+        txtSearch.putClientProperty("JTextField.placeholderText", "Tìm kiếm...");
         txtSearch.addActionListener(e -> {
+            if (!canView) {
+                JOptionPane.showMessageDialog(this, "Bạn không có quyền xem khuyến mãi");
+                return;
+            }
             String keyword = txtSearch.getText().trim();
             loadPromotions(keyword);
         });
@@ -86,61 +123,85 @@ public class PromotionPanel extends JPanel {
 
         panel.add(leftPanel, BorderLayout.WEST);
 
-        JButton btnAdd = new JButton("+ Thêm khuyến mãi");
-        JButton btnView = new JButton("Xem chi tiết");
-        JButton btnExcel = new JButton("Xuất Excel");
-        
-        btnAdd.setPreferredSize(new Dimension(150, 30));
-        btnView.setPreferredSize(new Dimension(110, 30));
-        btnExcel.setPreferredSize(new Dimension(100, 30));
+        // dùng field thay vì biến local
+        btnAddPromotion = new JButton("+ Thêm khuyến mãi");
+        btnViewPromotion = new JButton("Xem chi tiết");
+        btnExportExcel = new JButton("Xuất Excel");
 
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnView.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAddPromotion.setPreferredSize(new Dimension(150, 30));
+        btnViewPromotion.setPreferredSize(new Dimension(110, 30));
+        btnExportExcel.setPreferredSize(new Dimension(100, 30));
 
-        btnAdd.setBackground(new Color(40, 167, 69));
-        btnAdd.setForeground(Color.WHITE);
-        btnView.setBackground(new Color(0, 123, 255));
-        btnView.setForeground(Color.WHITE);
-        btnExcel.setBackground(new Color(29, 111, 66));
-        btnExcel.setForeground(Color.WHITE);
+        btnAddPromotion.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnViewPromotion.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnExportExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        btnAdd.addActionListener(e -> {
+        btnAddPromotion.setBackground(new Color(40, 167, 69));
+        btnAddPromotion.setForeground(Color.WHITE);
+        btnViewPromotion.setBackground(new Color(0, 123, 255));
+        btnViewPromotion.setForeground(Color.WHITE);
+        btnExportExcel.setBackground(new Color(29, 111, 66));
+        btnExportExcel.setForeground(Color.WHITE);
+
+        btnAddPromotion.setEnabled(canCreate);
+        btnViewPromotion.setEnabled(canView);
+        btnExportExcel.setEnabled(canView);
+
+        btnAddPromotion.addActionListener(e -> {
+            if (!canCreate) {
+                JOptionPane.showMessageDialog(this, "Bạn không có quyền thêm khuyến mãi");
+                return;
+            }
+
             PromotionDialog dialog =
                     new PromotionDialog(
                             SwingUtilities.getWindowAncestor(this),
                             currentUser
                     );
             dialog.setVisible(true);
-            if(dialog.isSaved()){
+            if (dialog.isSaved()) {
                 txtSearch.setText("");
                 loadPromotions(txtSearch.getText());
             }
         });
 
-        btnView.addActionListener(e -> {
-            if (selectedPromotion == null){
+        btnViewPromotion.addActionListener(e -> {
+            if (!canView) {
+                JOptionPane.showMessageDialog(this, "Bạn không có quyền xem khuyến mãi");
+                return;
+            }
+
+            if (selectedPromotion == null) {
                 JOptionPane.showMessageDialog(this, "Chưa chọn chương trình khuyến mãi");
                 return;
             }
-            PromotionDialog dialog = new PromotionDialog(SwingUtilities.getWindowAncestor(this), selectedPromotion);
-            dialog.setVisible(true);
 
+            PromotionDialog dialog =
+                    new PromotionDialog(
+                            SwingUtilities.getWindowAncestor(this),
+                            selectedPromotion
+                    );
+            dialog.setVisible(true);
         });
 
-        btnExcel.addActionListener(e -> {
+        btnExportExcel.addActionListener(e -> {
+            if (!canView) {
+                JOptionPane.showMessageDialog(this, "Bạn không có quyền xuất Excel khuyến mãi");
+                return;
+            }
+
             List<Promotion> list = new ArrayList<>();
 
             TableModel model = tblPromotion.getModel();
             int rowCount = model.getRowCount();
 
-            if (rowCount <= 0){
+            if (rowCount <= 0) {
                 JOptionPane.showMessageDialog(this, "Không có dữ liệu để xuất Excel!");
                 return;
             }
 
             for (int i = 0; i < rowCount; i++) {
-                Object value = model.getValueAt(i, 0); // cột đầu tiên
+                Object value = model.getValueAt(i, 0);
                 if (value != null) {
                     list.add(promoService.getById((int) value));
                 }
@@ -151,15 +212,16 @@ public class PromotionPanel extends JPanel {
             chooser.setSelectedFile(new File("Promotion.xlsx"));
             chooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
             int result = chooser.showSaveDialog(this);
+
             if (result == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
 
                 if (file.exists()) {
                     int confirm = JOptionPane.showConfirmDialog(
-                        this,
-                        "File đã tồn tại. Ghi đè?",
-                        "Xác nhận",
-                        JOptionPane.YES_NO_OPTION
+                            this,
+                            "File đã tồn tại. Ghi đè?",
+                            "Xác nhận",
+                            JOptionPane.YES_NO_OPTION
                     );
                     if (confirm != JOptionPane.YES_OPTION) return;
                 }
@@ -171,9 +233,11 @@ public class PromotionPanel extends JPanel {
                 try {
                     Workbook workbook = new XSSFWorkbook();
                     Sheet sheet = workbook.createSheet("Chương trình khuyến mãi");
+
                     Row titleRow = sheet.createRow(0);
                     titleRow.createCell(0).setCellValue("Danh sách chương trình khuyến mãi");
                     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 10));
+
                     Row headerRow = sheet.createRow(1);
                     headerRow.createCell(0).setCellValue("STT");
                     headerRow.createCell(1).setCellValue("ID");
@@ -186,8 +250,9 @@ public class PromotionPanel extends JPanel {
                     headerRow.createCell(8).setCellValue("Kết thúc");
                     headerRow.createCell(9).setCellValue("Trạng thái");
                     headerRow.createCell(10).setCellValue("Ngày tạo");
+
                     int stt = 1;
-                    for (Promotion p : list){
+                    for (Promotion p : list) {
                         Row dataRow = sheet.createRow(stt + 1);
                         dataRow.createCell(0).setCellValue(stt);
                         dataRow.createCell(1).setCellValue(p.getPromoId());
@@ -199,31 +264,30 @@ public class PromotionPanel extends JPanel {
                         dataRow.createCell(7).setCellValue(p.getStartAt().toString().replace('T', ' '));
                         dataRow.createCell(8).setCellValue(p.getEndAt().toString().replace('T', ' '));
                         dataRow.createCell(9).setCellValue(p.getStatus());
-                        dataRow .createCell(10).setCellValue(p.getCreatedAt().toString().replace('T', ' '));
+                        dataRow.createCell(10).setCellValue(p.getCreatedAt().toString().replace('T', ' '));
                         stt++;
                     }
+
                     FileOutputStream out = new FileOutputStream(file);
                     workbook.write(out);
                     out.close();
                     workbook.close();
+
                     JOptionPane.showMessageDialog(this, "Xuất Excel thành công!");
-                } catch(Exception ex){
+                } catch (Exception ex) {
                     JOptionPane.showMessageDialog(this, "Xuất Excel thất bại! " + ex.getMessage());
                 }
-
             }
-
         });
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        rightPanel.add(btnExcel);
-        rightPanel.add(btnView);
-        rightPanel.add(btnAdd);
+        rightPanel.add(btnExportExcel);
+        rightPanel.add(btnViewPromotion);
+        rightPanel.add(btnAddPromotion);
 
         panel.add(rightPanel, BorderLayout.EAST);
         return panel;
     }
-
 
     /* ================= MAIN ================= */
 
@@ -342,25 +406,27 @@ public class PromotionPanel extends JPanel {
     private JComponent buildProductsButtons() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
-        JButton btnAdd = new JButton("Thêm");
-        JButton btnEdit = new JButton("Sửa");
-        JButton btnDelete = new JButton("Xóa");
+        btnAddPromotionProduct = new JButton("Thêm");
+        btnEditPromotionProduct = new JButton("Sửa");
+        btnDeletePromotionProduct = new JButton("Xóa");
 
-        btnAdd.setBackground(new Color(40, 167, 69));
-        btnAdd.setForeground(Color.WHITE);
-        btnEdit.setBackground(new Color(255, 193, 7));
-        //btnEdit.setForeground(new Color(33, 37, 41));
-        btnEdit.setForeground(Color.WHITE);
-        btnDelete.setBackground(new Color(220, 53, 69));
-        btnDelete.setForeground(Color.WHITE);
+        btnAddPromotionProduct.setBackground(new Color(40, 167, 69));
+        btnAddPromotionProduct.setForeground(Color.WHITE);
+        btnEditPromotionProduct.setBackground(new Color(255, 193, 7));
+        btnEditPromotionProduct.setForeground(Color.WHITE);
+        btnDeletePromotionProduct.setBackground(new Color(220, 53, 69));
+        btnDeletePromotionProduct.setForeground(Color.WHITE);
 
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAddPromotionProduct.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnEditPromotionProduct.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnDeletePromotionProduct.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        // ===== THÊM =====
-        btnAdd.addActionListener(e -> {
-            if (!canEditProduct()) return;
+        btnAddPromotionProduct.setEnabled(canCreate);
+        btnEditPromotionProduct.setEnabled(canUpdate);
+        btnDeletePromotionProduct.setEnabled(canDelete);
+
+        btnAddPromotionProduct.addActionListener(e -> {
+            if (!canCreateProduct()) return;
 
             PromotionProductDialog dialog =
                     new PromotionProductDialog(
@@ -375,9 +441,8 @@ public class PromotionPanel extends JPanel {
             }
         });
 
-        // // ===== SỬA =====
-        btnEdit.addActionListener(e -> {
-            if (!canEditProduct()) return;
+        btnEditPromotionProduct.addActionListener(e -> {
+            if (!canUpdateProduct()) return;
 
             int row = tblPromotionProduct.getSelectedRow();
             if (row < 0) {
@@ -388,7 +453,7 @@ public class PromotionPanel extends JPanel {
             int ppId = (int) ppModel.getValueAt(row, 0);
 
             PromotionProduct promotionProduct =
-                    promoService.getPPById(ppId); // 🔥 QUAN TRỌNG
+                    promoService.getPPById(ppId);
 
             PromotionProductDialog dialog =
                     new PromotionProductDialog(
@@ -404,9 +469,8 @@ public class PromotionPanel extends JPanel {
             }
         });
 
-        // // ===== XÓA =====
-        btnDelete.addActionListener(e -> {
-            if (!canEditProduct()) return;
+        btnDeletePromotionProduct.addActionListener(e -> {
+            if (!canDeleteProduct()) return;
 
             int row = tblPromotionProduct.getSelectedRow();
             if (row < 0) {
@@ -429,18 +493,42 @@ public class PromotionPanel extends JPanel {
             }
         });
 
-        panel.add(btnAdd);
-        panel.add(btnEdit);
-        panel.add(btnDelete);
+        panel.add(btnAddPromotionProduct);
+        panel.add(btnEditPromotionProduct);
+        panel.add(btnDeletePromotionProduct);
         return panel;
     }
 
-    private boolean canEditProduct() {
+    private boolean ensurePromotionSelected() {
         if (selectedPromotion == null) {
             JOptionPane.showMessageDialog(this, "Chưa chọn chương trình khuyến mãi");
             return false;
         }
         return true;
+    }
+
+    private boolean canCreateProduct() {
+        if (!canCreate) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền thêm sản phẩm vào khuyến mãi");
+            return false;
+        }
+        return ensurePromotionSelected();
+    }
+
+    private boolean canUpdateProduct() {
+        if (!canUpdate) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền sửa sản phẩm trong khuyến mãi");
+            return false;
+        }
+        return ensurePromotionSelected();
+    }
+
+    private boolean canDeleteProduct() {
+        if (!canDelete) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền xóa sản phẩm khỏi khuyến mãi");
+            return false;
+        }
+        return ensurePromotionSelected();
     }
 
     /* ================= LOAD DATA ================= */
@@ -509,7 +597,9 @@ public class PromotionPanel extends JPanel {
             add(editBtn);
             add(deleteBtn);
 
-            // ===== Đồng bộ màu với JTable =====
+            editBtn.setEnabled(canUpdate);
+            deleteBtn.setEnabled(canDelete);
+
             if (isSelected) {
                 setBackground(table.getSelectionBackground());
             } else {
@@ -517,7 +607,7 @@ public class PromotionPanel extends JPanel {
             }
 
             setBorder(BorderFactory.createMatteBorder(
-                0, 0, 1, 1, table.getGridColor()
+                    0, 0, 1, 1, table.getGridColor()
             ));
 
             return this;
@@ -548,20 +638,31 @@ public class PromotionPanel extends JPanel {
 
             editBtn.addActionListener(e -> {
                 fireEditingStopped();
+
+                if (!canUpdate) {
+                    JOptionPane.showMessageDialog(panel, "Bạn không có quyền sửa khuyến mãi");
+                    return;
+                }
+
                 openEditDialog();
             });
 
             deleteBtn.addActionListener(e -> {
                 fireEditingStopped();
 
+                if (!canDelete) {
+                    JOptionPane.showMessageDialog(panel, "Bạn không có quyền xóa khuyến mãi");
+                    return;
+                }
+
                 int confirm = JOptionPane.showConfirmDialog(
-                    panel,
-                    "Bạn có chắc muốn xóa dòng này?",
-                    "Xác nhận",
-                    JOptionPane.YES_NO_OPTION
+                        panel,
+                        "Bạn có chắc muốn xóa dòng này?",
+                        "Xác nhận",
+                        JOptionPane.YES_NO_OPTION
                 );
 
-                if(confirm == JOptionPane.YES_OPTION){
+                if (confirm == JOptionPane.YES_OPTION) {
                     promoService.delete(currentPromo.getPromoId());
                     loadPromotions(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                     tblPromotion.revalidate();
@@ -615,6 +716,9 @@ public class PromotionPanel extends JPanel {
             panel.setBorder(BorderFactory.createMatteBorder(
                 0, 0, 1, 1, table.getGridColor()
             ));
+
+            editBtn.setEnabled(canUpdate);
+            deleteBtn.setEnabled(canDelete);
 
             return panel;
         }
