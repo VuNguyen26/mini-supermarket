@@ -3,6 +3,8 @@ package presentation.dialogs;
 import dto.*;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -13,6 +15,7 @@ public class InvoicePrintPreviewDialog extends JDialog {
         super(parent, "Xem trước hóa đơn", true);
         setSize(400, 600);
         setLocationRelativeTo(parent);
+    setLayout(new BorderLayout());
 
         JTextArea txt = new JTextArea();
         txt.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -55,6 +58,65 @@ public class InvoicePrintPreviewDialog extends JDialog {
         sb.append("   Cảm ơn quý khách!   ");
 
         txt.setText(sb.toString());
-        add(new JScrollPane(txt));
+        add(new JScrollPane(txt), BorderLayout.CENTER);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        JButton btnPrint = new JButton("In hóa đơn");
+        JButton btnClose = new JButton("Đóng");
+
+        btnPrint.setBackground(new Color(33, 150, 243));
+        btnPrint.setForeground(Color.WHITE);
+        btnPrint.setOpaque(true);
+        btnPrint.setBorderPainted(false);
+        btnPrint.setFocusPainted(false);
+        btnPrint.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnClose.setBackground(new Color(120, 120, 120));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.setOpaque(true);
+        btnClose.setBorderPainted(false);
+        btnClose.setFocusPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnPrint.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnPrint.setBackground(new Color(76, 175, 80));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnPrint.setBackground(new Color(33, 150, 243));
+            }
+        });
+
+        btnClose.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnClose.setBackground(new Color(244, 67, 54));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnClose.setBackground(new Color(120, 120, 120));
+            }
+        });
+
+        btnPrint.addActionListener(e -> {
+            try {
+                boolean done = txt.print();
+                if (done) {
+                    JOptionPane.showMessageDialog(this, "Đã gửi lệnh in.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "In thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        btnClose.addActionListener(e -> dispose());
+
+        actions.add(btnPrint);
+        actions.add(btnClose);
+        add(actions, BorderLayout.SOUTH);
     }
 }

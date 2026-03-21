@@ -615,6 +615,7 @@ public class RolePermissionPanel extends JPanel {
             }
             if (code.endsWith("_VIEW")) return ActionBucket.VIEW;
             if (code.endsWith("_CREATE")) return ActionBucket.ADD;
+            if (code.endsWith("_UPDATE")) return ActionBucket.EDIT;
             if (code.endsWith("_DELETE")) return ActionBucket.DELETE;
             if (code.endsWith("_SEARCH")) return ActionBucket.SEARCH;
             return ActionBucket.EDIT;

@@ -8,6 +8,7 @@ import util.MoneyUtils;
 import com.toedter.calendar.JDateChooser;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -100,6 +101,31 @@ public class SalesInvoicePanel extends JPanel {
         };
         table = new JTable(tableModel);
         table.setRowHeight(30);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setSelectionBackground(new Color(33, 150, 243));
+        table.setSelectionForeground(Color.WHITE);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setResizingAllowed(false);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+
+        DefaultTableCellRenderer selectedRowRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable tbl, Object value, boolean isSelected,
+                                                           boolean hasFocus, int row, int col) {
+                Component c = super.getTableCellRendererComponent(tbl, value, isSelected, hasFocus, row, col);
+                if (tbl.isRowSelected(row)) {
+                    c.setBackground(new Color(33, 150, 243));
+                    c.setForeground(Color.WHITE);
+                } else {
+                    c.setBackground(Color.WHITE);
+                    c.setForeground(Color.BLACK);
+                }
+                return c;
+            }
+        };
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setCellRenderer(selectedRowRenderer);
+        }
 
         // click row for details
         table.addMouseListener(new MouseAdapter() {
@@ -130,7 +156,9 @@ public class SalesInvoicePanel extends JPanel {
     private void fillTable(List<SalesInvoice> invoices) {
         tableModel.setRowCount(0);
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-        for (SalesInvoice inv : invoices) {
+        List<SalesInvoice> sorted = new java.util.ArrayList<>(invoices);
+        sorted.sort((a, b) -> Integer.compare(a.getInvId(), b.getInvId()));
+        for (SalesInvoice inv : sorted) {
             Object[] row = {
                     inv.getInvId(),
                     sdf.format(inv.getCreatedAt()),
