@@ -4,13 +4,23 @@ import bus.SupplierService;
 import dto.Supplier;
 import presentation.dialogs.SupplierDialog;
 import util.DialogUtils;
+import util.ExcelUtils;
 import util.RolePermission;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class SupplierPanel extends JPanel {
@@ -84,6 +94,18 @@ public class SupplierPanel extends JPanel {
         btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnRefresh.addActionListener(e -> loadData());
 
+        JButton btnImport = createStyledButton("Import Excel", new Color(255, 152, 0), Color.WHITE);
+        btnImport.setPreferredSize(new Dimension(140, 40));
+        btnImport.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnImport.addActionListener(e -> importSuppliersFromExcel());
+
+        JButton btnExport = createStyledButton("Export Excel", new Color(0, 150, 136), Color.WHITE);
+        btnExport.setPreferredSize(new Dimension(140, 40));
+        btnExport.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnExport.addActionListener(e -> exportSuppliersToExcel());
+
+        buttonPanel.add(btnExport);
+        buttonPanel.add(btnImport);
         buttonPanel.add(btnRefresh);
         buttonPanel.add(btnCreate);
 
@@ -180,6 +202,104 @@ public class SupplierPanel extends JPanel {
         if (dialog.isSaved()) {
             loadData();
             refreshDashboard();
+        }
+    }
+
+    private void importSuppliersFromExcel() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Chọn file Excel nhà cung cấp");
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx, *.xls)", "xlsx", "xls"));
+
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = chooser.getSelectedFile();
+        int successCount = 0;
+        int failedCount = 0;
+        List<String> errors = new ArrayList<>();
+
+        try (FileInputStream fis = new FileInputStream(file);
+             Workbook workbook = WorkbookFactory.create(fis)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter formatter = new DataFormatter();
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String name = formatter.formatCellValue(row.getCell(0)).trim();
+                String phone = formatter.formatCellValue(row.getCell(1)).trim();
+                String email = formatter.formatCellValue(row.getCell(2)).trim();
+                String address = formatter.formatCellValue(row.getCell(3)).trim();
+
+                if (name.isEmpty() && phone.isEmpty() && email.isEmpty() && address.isEmpty()) {
+                    continue;
+                }
+
+                try {
+                    Supplier s = new Supplier();
+                    s.setSupplierName(name);
+                    s.setPhone(phone);
+                    s.setEmail(email);
+                    s.setAddress(address);
+
+                    supplierService.create(s);
+                    successCount++;
+                } catch (Exception ex) {
+                    failedCount++;
+                    errors.add("Dòng " + (i + 1) + ": " + ex.getMessage());
+                }
+            }
+
+            loadData();
+            refreshDashboard();
+
+            StringBuilder msg = new StringBuilder();
+            msg.append("Import hoàn tất. Thành công: ").append(successCount)
+               .append(", thất bại: ").append(failedCount);
+
+            if (!errors.isEmpty()) {
+                msg.append("\n\nLỗi mẫu:\n");
+                int max = Math.min(5, errors.size());
+                for (int i = 0; i < max; i++) {
+                    msg.append("- ").append(errors.get(i)).append("\n");
+                }
+            }
+
+            JOptionPane.showMessageDialog(this, msg.toString(), "Kết quả import", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            DialogUtils.showError(this, "Lỗi import Excel: " + e.getMessage());
+        }
+    }
+
+    private void exportSuppliersToExcel() {
+        try {
+            List<Supplier> dataToExport = supplierList != null ? supplierList : new ArrayList<>();
+            if (dataToExport.isEmpty()) {
+                DialogUtils.showWarning(this, "Không có dữ liệu nhà cung cấp để export");
+                return;
+            }
+
+            File file = ExcelUtils.chooseSaveXlsxFile(this, "suppliers_export.xlsx");
+            if (file == null) return;
+
+            List<String> headers = Arrays.asList("Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ");
+            List<List<Object>> rows = new ArrayList<>();
+            for (Supplier s : dataToExport) {
+                rows.add(Arrays.asList(
+                        s.getSupplierName(),
+                        s.getPhone(),
+                        s.getEmail(),
+                        s.getAddress()
+                ));
+            }
+
+            ExcelUtils.exportXlsx(file, "Suppliers", headers, rows);
+            DialogUtils.showInfo(this, "Export Excel thành công: " + file.getAbsolutePath());
+        } catch (Exception e) {
+            DialogUtils.showError(this, "Lỗi export Excel: " + e.getMessage());
         }
     }
 
