@@ -7,24 +7,26 @@ import dto.StockAdjustmentDetail;
 import dto.StockAdjustmentStatus;
 import presentation.dialogs.StockAdjustmentDetailDialog;
 import presentation.dialogs.StockAdjustmentDialog;
+import util.RolePermission;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.List;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.List;
 
-import javax.swing.filechooser.FileNameExtensionFilter;
-
-import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -43,10 +45,104 @@ public class StockAdjustmentPanel extends JPanel {
 
     private StockAdjustment selectedAdjustment;
 
+    private boolean canView;
+    private boolean canCreate;
+    private boolean canUpdate;
+    private boolean canDelete;
+
+    private JButton btnAddHeader;
+    private JButton btnViewHeader;
+    private JButton btnExcelHeader;
+
+    private JButton btnAddDetail;
+    private JButton btnEditDetail;
+    private JButton btnDeleteDetail;
+
     public StockAdjustmentPanel(AuthUser currentUser) {
         this.currentUser = currentUser;
+        initPermissions();
         initUI();
-        loadAdjustments((!txtSearch.getText().isEmpty() ? txtSearch.getText() : ""));
+        applyPermissions();
+        loadAdjustments("");
+
+        initUI();
+        applyPermissions();
+        loadAdjustments("");
+    }
+
+    private void initPermissions() {
+        canView = RolePermission.has("ADJUSTMENT_VIEW");
+        canCreate = RolePermission.has("ADJUSTMENT_CREATE");
+        canUpdate = RolePermission.has("ADJUSTMENT_UPDATE");
+        canDelete = RolePermission.has("ADJUSTMENT_DELETE");
+
+        if (!canUpdate) canUpdate = RolePermission.has("ADJUSTMENT_MANAGE");
+        if (!canDelete) canDelete = RolePermission.has("ADJUSTMENT_MANAGE");
+    }
+
+    /**
+     * Hàm này dùng reflection để đỡ phụ thuộc chính xác AuthUser đang có method gì.
+     * Nó sẽ thử lần lượt:
+     * - hasPermission(String)
+     * - hasPermCode(String)
+     * - hasRolePermission(String)
+     * - getPermissions() rồi dò code trong collection
+     */
+    @SuppressWarnings("unchecked")
+    private boolean hasPermission(String permCode) {
+        if (currentUser == null || permCode == null || permCode.isBlank()) {
+            return false;
+        }
+
+        try {
+            Method m = currentUser.getClass().getMethod("hasPermission", String.class);
+            Object rs = m.invoke(currentUser, permCode);
+            if (rs instanceof Boolean) return (Boolean) rs;
+        } catch (Exception ignored) {}
+
+        try {
+            Method m = currentUser.getClass().getMethod("hasPermCode", String.class);
+            Object rs = m.invoke(currentUser, permCode);
+            if (rs instanceof Boolean) return (Boolean) rs;
+        } catch (Exception ignored) {}
+
+        try {
+            Method m = currentUser.getClass().getMethod("hasRolePermission", String.class);
+            Object rs = m.invoke(currentUser, permCode);
+            if (rs instanceof Boolean) return (Boolean) rs;
+        } catch (Exception ignored) {}
+
+        try {
+            Method m = currentUser.getClass().getMethod("getPermissions");
+            Object rs = m.invoke(currentUser);
+            if (rs instanceof Collection<?>) {
+                for (Object item : (Collection<Object>) rs) {
+                    if (item == null) continue;
+
+                    if (permCode.equalsIgnoreCase(String.valueOf(item))) {
+                        return true;
+                    }
+
+                    try {
+                        Method getCode = item.getClass().getMethod("getPermCode");
+                        Object code = getCode.invoke(item);
+                        if (code != null && permCode.equalsIgnoreCase(String.valueOf(code))) {
+                            return true;
+                        }
+                    } catch (Exception ignored) {}
+
+                    try {
+                        Method getCode = item.getClass().getMethod("getCode");
+                        Object code = getCode.invoke(item);
+                        if (code != null && permCode.equalsIgnoreCase(String.valueOf(code))) {
+                            return true;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+
+        return false;
     }
 
     private void refreshDashboard() {
@@ -62,6 +158,18 @@ public class StockAdjustmentPanel extends JPanel {
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildMainContent(), BorderLayout.CENTER);
+    }
+
+    private void applyPermissions() {
+        if (btnAddHeader != null) btnAddHeader.setEnabled(canCreate);
+
+        // Đã vào được panel thì vẫn cho xem chi tiết + xuất Excel
+        if (btnViewHeader != null) btnViewHeader.setEnabled(true);
+        if (btnExcelHeader != null) btnExcelHeader.setEnabled(true);
+
+        if (btnAddDetail != null) btnAddDetail.setEnabled(canCreate);
+        if (btnEditDetail != null) btnEditDetail.setEnabled(canUpdate);
+        if (btnDeleteDetail != null) btnDeleteDetail.setEnabled(canDelete);
     }
 
     /* ================= HEADER ================= */
@@ -80,7 +188,7 @@ public class StockAdjustmentPanel extends JPanel {
         txtSearch.setMinimumSize(new Dimension(150, 20));
         txtSearch.setPreferredSize(new Dimension(250, 28));
         txtSearch.setMaximumSize(new Dimension(270, 30));
-        txtSearch.putClientProperty( "JTextField.placeholderText", "Tìm kiếm...");
+        txtSearch.putClientProperty("JTextField.placeholderText", "Tìm kiếm...");
         txtSearch.addActionListener(e -> {
             String keyword = txtSearch.getText().trim();
             loadAdjustments(keyword);
@@ -92,56 +200,69 @@ public class StockAdjustmentPanel extends JPanel {
 
         panel.add(leftPanel, BorderLayout.WEST);
 
-        JButton btnAdd = new JButton("+ Thêm phiếu");
-        JButton btnView = new JButton("Xem chi tiết");
-        JButton btnExcel = new JButton("Xuất Excel");
+        btnAddHeader = new JButton("+ Thêm phiếu");
+        btnViewHeader = new JButton("Xem chi tiết");
+        btnExcelHeader = new JButton("Xuất Excel");
 
-        btnAdd.setPreferredSize(new Dimension(110, 30));
-        btnView.setPreferredSize(new Dimension(110, 30));
-        btnExcel.setPreferredSize(new Dimension(100, 30));
+        btnAddHeader.setPreferredSize(new Dimension(135, 30));
+        btnViewHeader.setPreferredSize(new Dimension(120, 30));
+        btnExcelHeader.setPreferredSize(new Dimension(110, 30));
 
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnView.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAddHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnViewHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnExcelHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        btnAdd.setBackground(new Color(40, 167, 69));
-        btnAdd.setForeground(Color.WHITE);
-        btnView.setBackground(new Color(0, 123, 255));
-        btnView.setForeground(Color.WHITE);
-        btnExcel.setBackground(new Color(29, 111, 66));
-        btnExcel.setForeground(Color.WHITE);
+        btnAddHeader.setBackground(new Color(40, 167, 69));
+        btnAddHeader.setForeground(Color.WHITE);
+        btnViewHeader.setBackground(new Color(0, 123, 255));
+        btnViewHeader.setForeground(Color.WHITE);
+        btnExcelHeader.setBackground(new Color(29, 111, 66));
+        btnExcelHeader.setForeground(Color.WHITE);
 
-        btnAdd.addActionListener(e -> {
+        btnAddHeader.addActionListener(e -> {
+            if (!canCreate) {
+                JOptionPane.showMessageDialog(this, "Bạn không có quyền thêm phiếu kiểm kho.");
+                return;
+            }
+
             StockAdjustmentDialog dialog =
                     new StockAdjustmentDialog(
                             SwingUtilities.getWindowAncestor(this),
                             currentUser
                     );
             dialog.setVisible(true);
+
             if (dialog.isSaved()) {
                 txtSearch.setText("");
-                loadAdjustments(txtSearch.getText());
+                loadAdjustments("");
                 refreshDashboard();
             }
         });
-        btnView.addActionListener(e -> {
-            if (selectedAdjustment == null){
+
+        btnViewHeader.addActionListener(e -> {
+            if (selectedAdjustment == null) {
                 JOptionPane.showMessageDialog(this, "Chưa chọn phiếu để xem");
                 return;
             }
-            StockAdjustmentDialog dialog = new StockAdjustmentDialog(SwingUtilities.getWindowAncestor(this), selectedAdjustment);
+
+            StockAdjustmentDialog dialog =
+                    new StockAdjustmentDialog(
+                            SwingUtilities.getWindowAncestor(this),
+                            selectedAdjustment
+                    );
             dialog.setVisible(true);
         });
 
-        btnExcel.addActionListener(e -> {
+        btnExcelHeader.addActionListener(e -> {
             int row = tblAdjustment.getSelectedRow();
             if (row < 0) {
                 JOptionPane.showMessageDialog(this, "Chọn 1 phiếu để xuất chi tiết");
                 return;
             }
+
             int saId = (int) tblAdjustment.getValueAt(row, 0);
             List<StockAdjustmentDetail> list = saService.getByStockAdjustment(saId);
-            if (list.isEmpty()){
+            if (list.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Không có dữ liệu để xuất Excel!");
                 return;
             }
@@ -151,15 +272,16 @@ public class StockAdjustmentPanel extends JPanel {
             chooser.setSelectedFile(new File("Stock_Adjustment.xlsx"));
             chooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
             int result = chooser.showSaveDialog(this);
+
             if (result == JFileChooser.APPROVE_OPTION) {
                 File file = chooser.getSelectedFile();
 
                 if (file.exists()) {
                     int confirm = JOptionPane.showConfirmDialog(
-                        this,
-                        "File đã tồn tại. Ghi đè?",
-                        "Xác nhận",
-                        JOptionPane.YES_NO_OPTION
+                            this,
+                            "File đã tồn tại. Ghi đè?",
+                            "Xác nhận",
+                            JOptionPane.YES_NO_OPTION
                     );
                     if (confirm != JOptionPane.YES_OPTION) return;
                 }
@@ -171,9 +293,11 @@ public class StockAdjustmentPanel extends JPanel {
                 try {
                     Workbook workbook = new XSSFWorkbook();
                     Sheet sheet = workbook.createSheet("Chi tiết phiếu kiểm kho");
+
                     Row titleRow = sheet.createRow(0);
                     titleRow.createCell(0).setCellValue("Chi tiết phiếu kiểm mã " + selectedAdjustment.getSaCode());
                     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 7));
+
                     Row headerRow = sheet.createRow(1);
                     headerRow.createCell(0).setCellValue("STT");
                     headerRow.createCell(1).setCellValue("ID");
@@ -183,8 +307,9 @@ public class StockAdjustmentPanel extends JPanel {
                     headerRow.createCell(5).setCellValue("Đếm thực tế");
                     headerRow.createCell(6).setCellValue("Đếm chênh lệch");
                     headerRow.createCell(7).setCellValue("Ghi chú");
+
                     int stt = 1;
-                    for (StockAdjustmentDetail d : list){
+                    for (StockAdjustmentDetail d : list) {
                         Row dataRow = sheet.createRow(stt + 1);
                         dataRow.createCell(0).setCellValue(stt);
                         dataRow.createCell(1).setCellValue(d.getSadId());
@@ -196,22 +321,23 @@ public class StockAdjustmentPanel extends JPanel {
                         dataRow.createCell(7).setCellValue(d.getNote());
                         stt++;
                     }
+
                     FileOutputStream out = new FileOutputStream(file);
                     workbook.write(out);
                     out.close();
                     workbook.close();
+
                     JOptionPane.showMessageDialog(this, "Xuất Excel thành công!");
-                } catch(Exception ex){
+                } catch (Exception ex) {
                     JOptionPane.showMessageDialog(this, "Xuất Excel thất bại! " + ex.getMessage());
                 }
-
             }
         });
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        rightPanel.add(btnExcel);
-        rightPanel.add(btnView);
-        rightPanel.add(btnAdd);
+        rightPanel.add(btnExcelHeader);
+        rightPanel.add(btnViewHeader);
+        rightPanel.add(btnAddHeader);
 
         panel.add(rightPanel, BorderLayout.EAST);
         return panel;
@@ -237,6 +363,7 @@ public class StockAdjustmentPanel extends JPanel {
                 new Object[]{"ID", "Mã phiếu", "Trạng thái", "Tương tác"},
                 0
         ) {
+            @Override
             public boolean isCellEditable(int r, int c) {
                 return c == 3;
             }
@@ -246,24 +373,22 @@ public class StockAdjustmentPanel extends JPanel {
         tblAdjustment.setRowHeight(36);
         tblAdjustment.setShowGrid(true);
         tblAdjustment.setGridColor(new Color(220, 220, 220));
+
         JTableHeader header = tblAdjustment.getTableHeader();
         header.setBackground(new Color(0, 123, 255));
         header.setForeground(Color.WHITE);
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        tblAdjustment.getColumnModel().getColumn(0).setCellRenderer(center); 
+        tblAdjustment.getColumnModel().getColumn(0).setCellRenderer(center);
         tblAdjustment.getColumnModel().getColumn(1).setCellRenderer(center);
-        tblAdjustment.getColumnModel().getColumn(2).setCellRenderer(center); 
+        tblAdjustment.getColumnModel().getColumn(2).setCellRenderer(center);
         tblAdjustment.getColumnModel().getColumn(3).setCellRenderer(center);
         tblAdjustment.getColumnModel().getColumn(3).setCellRenderer(new ActionCellRenderer());
         tblAdjustment.getColumnModel().getColumn(3).setCellEditor(new ActionCellEditor());
 
-
-        // Click → load chi tiết
         tblAdjustment.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -271,9 +396,7 @@ public class StockAdjustmentPanel extends JPanel {
                     int row = tblAdjustment.getSelectedRow();
                     if (row >= 0) {
                         selectedAdjustment =
-                                saService.getById(
-                                        (int) adjustmentModel.getValueAt(row, 0)
-                                );
+                                saService.getById((int) adjustmentModel.getValueAt(row, 0));
                         loadDetails(selectedAdjustment);
                     }
                 }
@@ -296,6 +419,7 @@ public class StockAdjustmentPanel extends JPanel {
                 new Object[]{"ID", "Sản phẩm", "Lô", "SL hệ thống", "SL kiểm", "Chênh lệch", "Ghi chú"},
                 0
         ) {
+            @Override
             public boolean isCellEditable(int r, int c) {
                 return false;
             }
@@ -305,21 +429,22 @@ public class StockAdjustmentPanel extends JPanel {
         tblDetail.setRowHeight(32);
         tblDetail.setShowGrid(true);
         tblDetail.setGridColor(new Color(220, 220, 220));
+
         JTableHeader header = tblDetail.getTableHeader();
         header.setBackground(new Color(0, 123, 255));
         header.setForeground(Color.WHITE);
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
+
         DefaultTableCellRenderer left = new DefaultTableCellRenderer();
         left.setHorizontalAlignment(SwingConstants.LEFT);
 
-        tblDetail.getColumnModel().getColumn(0).setCellRenderer(center); 
+        tblDetail.getColumnModel().getColumn(0).setCellRenderer(center);
         tblDetail.getColumnModel().getColumn(1).setCellRenderer(center);
-        tblDetail.getColumnModel().getColumn(2).setCellRenderer(center); 
-        tblDetail.getColumnModel().getColumn(3).setCellRenderer(center); 
+        tblDetail.getColumnModel().getColumn(2).setCellRenderer(center);
+        tblDetail.getColumnModel().getColumn(3).setCellRenderer(center);
         tblDetail.getColumnModel().getColumn(4).setCellRenderer(center);
         tblDetail.getColumnModel().getColumn(5).setCellRenderer(center);
         tblDetail.getColumnModel().getColumn(6).setCellRenderer(left);
@@ -335,25 +460,23 @@ public class StockAdjustmentPanel extends JPanel {
     private JComponent buildDetailButtons() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
-        JButton btnAdd = new JButton("Thêm");
-        JButton btnEdit = new JButton("Sửa");
-        JButton btnDelete = new JButton("Xóa");
+        btnAddDetail = new JButton("Thêm");
+        btnEditDetail = new JButton("Sửa");
+        btnDeleteDetail = new JButton("Xóa");
 
-        btnAdd.setBackground(new Color(40, 167, 69));
-        btnAdd.setForeground(Color.WHITE);
-        btnEdit.setBackground(new Color(255, 193, 7));
-        //btnEdit.setForeground(new Color(33, 37, 41));
-        btnEdit.setForeground(Color.WHITE);
-        btnDelete.setBackground(new Color(220, 53, 69));
-        btnDelete.setForeground(Color.WHITE);
+        btnAddDetail.setBackground(new Color(40, 167, 69));
+        btnAddDetail.setForeground(Color.WHITE);
+        btnEditDetail.setBackground(new Color(255, 193, 7));
+        btnEditDetail.setForeground(Color.WHITE);
+        btnDeleteDetail.setBackground(new Color(220, 53, 69));
+        btnDeleteDetail.setForeground(Color.WHITE);
 
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAddDetail.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnEditDetail.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnDeleteDetail.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        // ===== THÊM =====
-        btnAdd.addActionListener(e -> {
-            if (!canEditDetail()) return;
+        btnAddDetail.addActionListener(e -> {
+            if (!canAddDetail()) return;
 
             StockAdjustmentDetailDialog dialog =
                     new StockAdjustmentDetailDialog(
@@ -369,9 +492,8 @@ public class StockAdjustmentPanel extends JPanel {
             }
         });
 
-        // ===== SỬA =====
-        btnEdit.addActionListener(e -> {
-            if (!canEditDetail()) return;
+        btnEditDetail.addActionListener(e -> {
+            if (!canUpdateDetailAction()) return;
 
             int row = tblDetail.getSelectedRow();
             if (row < 0) {
@@ -380,9 +502,7 @@ public class StockAdjustmentPanel extends JPanel {
             }
 
             int sadId = (int) detailModel.getValueAt(row, 0);
-
-            StockAdjustmentDetail detail =
-                    saService.getDetailById(sadId); // 🔥 QUAN TRỌNG
+            StockAdjustmentDetail detail = saService.getDetailById(sadId);
 
             StockAdjustmentDetailDialog dialog =
                     new StockAdjustmentDetailDialog(
@@ -398,9 +518,8 @@ public class StockAdjustmentPanel extends JPanel {
             }
         });
 
-        // ===== XÓA =====
-        btnDelete.addActionListener(e -> {
-            if (!canEditDetail()) return;
+        btnDeleteDetail.addActionListener(e -> {
+            if (!canDeleteDetailAction()) return;
 
             int row = tblDetail.getSelectedRow();
             if (row < 0) {
@@ -424,13 +543,50 @@ public class StockAdjustmentPanel extends JPanel {
             }
         });
 
-        panel.add(btnAdd);
-        panel.add(btnEdit);
-        panel.add(btnDelete);
+        panel.add(btnAddDetail);
+        panel.add(btnEditDetail);
+        panel.add(btnDeleteDetail);
+
         return panel;
     }
 
-    private boolean canEditDetail() {
+    private boolean canAddDetail() {
+        if (!canCreate) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền thêm chi tiết kiểm kho.");
+            return false;
+        }
+        if (selectedAdjustment == null) {
+            JOptionPane.showMessageDialog(this, "Chưa chọn phiếu kiểm kho");
+            return false;
+        }
+        if (selectedAdjustment.getStatus() != StockAdjustmentStatus.DRAFT) {
+            JOptionPane.showMessageDialog(this, "Phiếu không ở trạng thái DRAFT");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean canUpdateDetailAction() {
+        if (!canUpdate) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền sửa chi tiết kiểm kho.");
+            return false;
+        }
+        if (selectedAdjustment == null) {
+            JOptionPane.showMessageDialog(this, "Chưa chọn phiếu kiểm kho");
+            return false;
+        }
+        if (selectedAdjustment.getStatus() != StockAdjustmentStatus.DRAFT) {
+            JOptionPane.showMessageDialog(this, "Phiếu không ở trạng thái DRAFT");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean canDeleteDetailAction() {
+        if (!canDelete) {
+            JOptionPane.showMessageDialog(this, "Bạn không có quyền xóa chi tiết kiểm kho.");
+            return false;
+        }
         if (selectedAdjustment == null) {
             JOptionPane.showMessageDialog(this, "Chưa chọn phiếu kiểm kho");
             return false;
@@ -447,6 +603,7 @@ public class StockAdjustmentPanel extends JPanel {
     private void loadAdjustments(String searchTxt) {
         adjustmentModel.setRowCount(0);
         List<StockAdjustment> list = saService.getAll(searchTxt);
+
         for (StockAdjustment sa : list) {
             adjustmentModel.addRow(new Object[]{
                     sa.getSaId(),
@@ -455,14 +612,14 @@ public class StockAdjustmentPanel extends JPanel {
                     sa
             });
         }
+
         detailModel.setRowCount(0);
         selectedAdjustment = null;
     }
 
     private void loadDetails(StockAdjustment sa) {
         detailModel.setRowCount(0);
-        List<StockAdjustmentDetail> list =
-                saService.getByStockAdjustment(sa.getSaId());
+        List<StockAdjustmentDetail> list = saService.getByStockAdjustment(sa.getSaId());
 
         for (StockAdjustmentDetail d : list) {
             detailModel.addRow(new Object[]{
@@ -472,7 +629,7 @@ public class StockAdjustmentPanel extends JPanel {
                     d.getSystemQty(),
                     d.getCountedQty(),
                     d.getDiffQty(),
-                    d.getNote(),
+                    d.getNote()
             });
         }
     }
@@ -485,16 +642,17 @@ public class StockAdjustmentPanel extends JPanel {
         public ActionCellRenderer() {
             setLayout(new FlowLayout(FlowLayout.CENTER, 10, 8));
             setOpaque(true);
+
             editBtn.setBackground(new Color(255, 193, 7));
             editBtn.setForeground(Color.WHITE);
             deleteBtn.setBackground(new Color(220, 53, 69));
             deleteBtn.setForeground(Color.WHITE);
+
             editBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
             deleteBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
-            add(editBtn);
-            add(deleteBtn);
         }
 
         @Override
@@ -506,7 +664,6 @@ public class StockAdjustmentPanel extends JPanel {
 
             StockAdjustment sa = (StockAdjustment) value;
 
-            // ===== Đồng bộ màu với JTable =====
             if (isSelected) {
                 setBackground(table.getSelectionBackground());
             } else {
@@ -514,18 +671,17 @@ public class StockAdjustmentPanel extends JPanel {
             }
 
             setBorder(BorderFactory.createMatteBorder(
-                0, 0, 1, 1, table.getGridColor()
+                    0, 0, 1, 1, table.getGridColor()
             ));
 
-            if (sa.getStatus() == dto.StockAdjustmentStatus.DRAFT) {
-                add(editBtn);
-                add(deleteBtn);
+            if (sa.getStatus() == StockAdjustmentStatus.DRAFT) {
+                if (canUpdate) add(editBtn);
+                if (canDelete) add(deleteBtn);
             }
 
             return this;
         }
     }
-
 
     class ActionCellEditor extends AbstractCellEditor implements TableCellEditor {
 
@@ -536,46 +692,63 @@ public class StockAdjustmentPanel extends JPanel {
 
         public ActionCellEditor() {
             panel.setOpaque(true);
+
             editBtn.setBackground(new Color(224, 168, 0));
             editBtn.setForeground(new Color(33, 37, 41));
             deleteBtn.setBackground(new Color(176, 42, 55));
             deleteBtn.setForeground(Color.WHITE);
+
             editBtn.setFocusable(false);
             deleteBtn.setFocusable(false);
 
             editBtn.addActionListener(e -> {
                 fireEditingStopped();
+
+                if (!canUpdate) {
+                    JOptionPane.showMessageDialog(panel, "Bạn không có quyền sửa phiếu kiểm kho.");
+                    return;
+                }
+
+                if (currentSA == null || currentSA.getStatus() != StockAdjustmentStatus.DRAFT) {
+                    JOptionPane.showMessageDialog(panel, "Chỉ được sửa phiếu ở trạng thái DRAFT.");
+                    return;
+                }
+
                 openEditDialog();
             });
+
             deleteBtn.addActionListener(e -> {
                 fireEditingStopped();
 
+                if (!canDelete) {
+                    JOptionPane.showMessageDialog(panel, "Bạn không có quyền xóa phiếu kiểm kho.");
+                    return;
+                }
+
+                if (currentSA == null || currentSA.getStatus() != StockAdjustmentStatus.DRAFT) {
+                    JOptionPane.showMessageDialog(panel, "Chỉ được xóa phiếu ở trạng thái DRAFT.");
+                    return;
+                }
+
                 int confirm = JOptionPane.showConfirmDialog(
-                    panel,
-                    "Bạn có chắc muốn xóa dòng này?",
-                    "Xác nhận",
-                    JOptionPane.YES_NO_OPTION
+                        panel,
+                        "Bạn có chắc muốn xóa dòng này?",
+                        "Xác nhận",
+                        JOptionPane.YES_NO_OPTION
                 );
 
-                if(confirm == JOptionPane.YES_OPTION){
+                if (confirm == JOptionPane.YES_OPTION) {
                     saService.delete(currentSA.getSaId());
                     loadAdjustments(!txtSearch.getText().isEmpty() ? txtSearch.getText() : "");
                     tblAdjustment.revalidate();
                     tblAdjustment.repaint();
                     refreshDashboard();
                 }
-
             });
-
-            panel.add(editBtn);
-            panel.add(deleteBtn);
         }
 
         private void openEditDialog() {
-
-            // 🔥 LOAD LẠI DATA MỚI NHẤT TỪ DB
-            StockAdjustment freshSA =
-                    saService.getById(currentSA.getSaId());
+            StockAdjustment freshSA = saService.getById(currentSA.getSaId());
 
             StockAdjustmentDialog dialog =
                     new StockAdjustmentDialog(
@@ -596,13 +769,12 @@ public class StockAdjustmentPanel extends JPanel {
 
         @Override
         public Component getTableCellEditorComponent(
-            JTable table, Object value, boolean isSelected,
-            int row, int column) {
+                JTable table, Object value, boolean isSelected,
+                int row, int column) {
 
             currentSA = (StockAdjustment) value;
             panel.removeAll();
 
-            // ===== Đồng bộ màu =====
             if (isSelected) {
                 panel.setBackground(table.getSelectionBackground());
             } else {
@@ -610,12 +782,12 @@ public class StockAdjustmentPanel extends JPanel {
             }
 
             panel.setBorder(BorderFactory.createMatteBorder(
-                0, 0, 1, 1, table.getGridColor()
+                    0, 0, 1, 1, table.getGridColor()
             ));
 
-            if (currentSA.getStatus() == dto.StockAdjustmentStatus.DRAFT) {
-                panel.add(editBtn);
-                panel.add(deleteBtn);
+            if (currentSA.getStatus() == StockAdjustmentStatus.DRAFT) {
+                if (canUpdate) panel.add(editBtn);
+                if (canDelete) panel.add(deleteBtn);
             }
 
             return panel;
@@ -626,5 +798,4 @@ public class StockAdjustmentPanel extends JPanel {
             return currentSA;
         }
     }
-
 }

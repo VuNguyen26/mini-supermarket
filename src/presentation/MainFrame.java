@@ -2,7 +2,6 @@ package presentation;
 
 import bus.AuthService.AuthUser;
 import com.formdev.flatlaf.FlatLightLaf;
-import util.PermissionCodes;
 import util.RolePermission;
 
 import javax.swing.*;
@@ -633,36 +632,26 @@ public class MainFrame extends JFrame {
     private void applyRoleVisibility() {
         boolean debug = false;
 
-        setNavVisible("Tổng quan", debug || RolePermission.has(PermissionCodes.DASHBOARD_VIEW));
-        setNavVisible("Bán hàng",   debug || RolePermission.has(PermissionCodes.POS_SELL));
+        setNavVisible("Tổng quan", debug || RolePermission.has("DASHBOARD_VIEW"));
 
-        setNavVisible("Hóa đơn",
-                debug || RolePermission.has(PermissionCodes.INVOICE_VIEW)
-                        || RolePermission.has(PermissionCodes.REPORT_VIEW));
+        setNavVisible("Bán hàng", debug || RolePermission.has("POS_VIEW"));
+        setNavVisible("Hóa đơn", debug || RolePermission.has("INVOICE_VIEW"));
 
-        setNavVisible("Sản phẩm", debug || RolePermission.has(PermissionCodes.PRODUCT_VIEW));
-        setNavVisible("Nhập kho", debug || RolePermission.has(PermissionCodes.RECEIPT_CREATE));
-        setNavVisible("Kiểm kho",
-                debug || RolePermission.has(PermissionCodes.ADJUSTMENT_CREATE)
-                        || RolePermission.has(PermissionCodes.ADJUSTMENT_APPROVE));
+        setNavVisible("Sản phẩm", debug || RolePermission.has("PRODUCT_VIEW"));
+        setNavVisible("Nhập kho", debug || RolePermission.has("RECEIPT_VIEW"));
+        setNavVisible("Kiểm kho", debug || RolePermission.has("ADJUSTMENT_VIEW"));
 
-        setNavVisible("Khách hàng",
-                debug || RolePermission.has(PermissionCodes.CUSTOMER_VIEW)
-                        || RolePermission.has(PermissionCodes.CUSTOMER_MANAGE));
+        setNavVisible("Khách hàng", debug || RolePermission.has("CUSTOMER_VIEW"));
+        setNavVisible("Nhà cung cấp", debug || RolePermission.has("SUPPLIER_VIEW"));
+        setNavVisible("Danh mục", debug || RolePermission.has("CATEGORY_VIEW"));
 
-        setNavVisible("Nhà cung cấp",
-                debug || RolePermission.has(PermissionCodes.SUPPLIER_VIEW)
-                        || RolePermission.has(PermissionCodes.SUPPLIER_MANAGE));
+        setNavVisible("Khuyến mãi", debug || RolePermission.has("PROMOTION_VIEW"));
 
-        setNavVisible("Danh mục", debug || RolePermission.has(PermissionCodes.CATEGORY_VIEW));
+        setNavVisible("Báo cáo", debug || RolePermission.has("REPORT_VIEW"));
 
-        setNavVisible("Khuyến mãi", debug || RolePermission.has(PermissionCodes.PROMOTION_MANAGE));
-
-        setNavVisible("Báo cáo", debug || RolePermission.has(PermissionCodes.REPORT_VIEW));
-
-        setNavVisible("Người dùng", debug || RolePermission.has(PermissionCodes.USER_MANAGE));
-        setNavVisible("Lịch sử", debug || RolePermission.has(PermissionCodes.AUDIT_VIEW));
-        setNavVisible("Phân quyền", debug || RolePermission.has(PermissionCodes.ROLE_PERMISSION_MANAGE));
+        setNavVisible("Người dùng", debug || RolePermission.has("USER_VIEW"));
+        setNavVisible("Lịch sử", debug || RolePermission.has("AUDIT_VIEW"));
+        setNavVisible("Phân quyền", debug || RolePermission.has("ROLE_PERMISSION_VIEW"));
 
         if (navPanel != null) {
             navPanel.revalidate();
