@@ -38,10 +38,23 @@ public class ProductPanel extends JPanel {
     private ProductTableModel tableModel;
     private JButton btnCreate, btnRefresh;
 
+    private boolean canView;
+    private boolean canCreate;
+    private boolean canUpdate;
+    private boolean canDelete;
+
     private List<Product> productList = new ArrayList<>();
     private List<Category> categoryList = new ArrayList<>();
 
+    private void initPermissions() {
+        canView = RolePermission.has("PRODUCT_VIEW");
+        canCreate = RolePermission.has("PRODUCT_CREATE");
+        canUpdate = RolePermission.has("PRODUCT_UPDATE");
+        canDelete = RolePermission.has("PRODUCT_DELETE");
+    }
+
     public ProductPanel() {
+        initPermissions();
         initComponents();
         loadCategories();
         loadData();
@@ -211,7 +224,11 @@ public class ProductPanel extends JPanel {
                 int row = table.rowAtPoint(evt.getPoint());
                 if (row >= 0 && evt.getClickCount() == 2) {
                     table.setRowSelectionInterval(row, row);
-                    editProduct();
+                    if (canUpdate) {
+                        editProduct();
+                    } else if (canView) {
+                        DialogUtils.showInfo(ProductPanel.this, "Bạn chỉ có quyền xem sản phẩm, không có quyền sửa.");
+                    }
                 }
             }
         });
@@ -346,6 +363,11 @@ public class ProductPanel extends JPanel {
     }
 
     private void createProduct() {
+        if (!canCreate) {
+            DialogUtils.showError(this, "Bạn không có quyền thêm sản phẩm.");
+            return;
+        }
+
         ProductDialog dialog = new ProductDialog((Frame) SwingUtilities.getWindowAncestor(this), null);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
@@ -355,6 +377,11 @@ public class ProductPanel extends JPanel {
     }
 
     private void editProduct() {
+        if (!canUpdate) {
+            DialogUtils.showError(this, "Bạn không có quyền sửa sản phẩm.");
+            return;
+        }
+
         int row = table.getSelectedRow();
         if (row >= 0) {
             Product product = productList.get(row);
@@ -368,6 +395,11 @@ public class ProductPanel extends JPanel {
     }
 
     private void deleteProduct() {
+        if (!canDelete) {
+            DialogUtils.showError(this, "Bạn không có quyền xóa sản phẩm.");
+            return;
+        }
+
         int row = table.getSelectedRow();
         if (row >= 0) {
             Product product = productList.get(row);
@@ -390,7 +422,6 @@ public class ProductPanel extends JPanel {
     }
 
     private void applyPermissions() {
-        boolean canCreate = RolePermission.has("PRODUCT_CREATE");
         btnCreate.setEnabled(canCreate);
     }
 
@@ -518,6 +549,8 @@ public class ProductPanel extends JPanel {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+            btnEdit.setEnabled(canUpdate);
+            btnDelete.setEnabled(canDelete);
             return this;
         }
     }
@@ -539,6 +572,12 @@ public class ProductPanel extends JPanel {
             panel.add(btnDelete);
 
             btnEdit.addActionListener(e -> {
+                if (!canUpdate) {
+                    DialogUtils.showError(ProductPanel.this, "Bạn không có quyền sửa sản phẩm.");
+                    fireEditingStopped();
+                    return;
+                }
+
                 if (editingRow >= 0) {
                     table.setRowSelectionInterval(editingRow, editingRow);
                     editProduct();
@@ -547,6 +586,12 @@ public class ProductPanel extends JPanel {
             });
 
             btnDelete.addActionListener(e -> {
+                if (!canDelete) {
+                    DialogUtils.showError(ProductPanel.this, "Bạn không có quyền xóa sản phẩm.");
+                    fireEditingStopped();
+                    return;
+                }
+
                 if (editingRow >= 0) {
                     table.setRowSelectionInterval(editingRow, editingRow);
                     deleteProduct();
@@ -559,6 +604,8 @@ public class ProductPanel extends JPanel {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             editingRow = row;
             panel.setBackground(table.getSelectionBackground());
+            btnEdit.setEnabled(canUpdate);
+            btnDelete.setEnabled(canDelete);
             return panel;
         }
 
