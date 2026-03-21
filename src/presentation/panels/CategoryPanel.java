@@ -22,6 +22,11 @@ public class CategoryPanel extends JPanel {
     private JTextField txtSearch;
     private JPanel cardsPanel;
     private JButton btnAdd;
+
+    private boolean canView;
+    private boolean canCreate;
+    private boolean canUpdate;
+    private boolean canDelete;
     
     private List<Category> categoryList = new ArrayList<>();
     private List<Category> filteredList = new ArrayList<>();
@@ -30,6 +35,8 @@ public class CategoryPanel extends JPanel {
         setLayout(new BorderLayout(15, 15));
         setBorder(new EmptyBorder(20, 20, 20, 20));
         setBackground(new Color(245, 246, 248));
+
+        initPermissions();
 
         add(buildToolbar(), BorderLayout.NORTH);
         add(buildScrollableCards(), BorderLayout.CENTER);
@@ -207,14 +214,14 @@ public class CategoryPanel extends JPanel {
         JPanel infoPanel = new JPanel(new BorderLayout(0, 0));
         infoPanel.setOpaque(false);
         infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-        
+
         int productCount = 0;
         try {
             productCount = productService.getProductCountByCategory(category.getCategoryId());
         } catch (Exception e) {
             System.err.println("Error counting products for category " + category.getCategoryId() + ": " + e.getMessage());
         }
-        
+
         String status = productCount == 0 ? "Hết" : "Còn";
 
         JLabel lblQty = new JLabel("Số lượng: " + productCount);
@@ -242,11 +249,24 @@ public class CategoryPanel extends JPanel {
 
         JButton btnView = createStyledButton("Xem", new Color(76, 175, 80), Color.WHITE, false);
         btnView.setPreferredSize(new Dimension(65, 34));
-        btnView.addActionListener(e -> viewCategoryProducts(category));
+        btnView.setEnabled(canView);
+        btnView.addActionListener(e -> {
+            if (!canView) {
+                DialogUtils.showError(this, "Bạn không có quyền xem danh mục.");
+                return;
+            }
+            viewCategoryProducts(category);
+        });
 
         JButton btnEdit = createStyledButton("Sửa", new Color(33, 150, 243), Color.WHITE, true);
         btnEdit.setPreferredSize(new Dimension(65, 34));
+        btnEdit.setEnabled(canUpdate);
         btnEdit.addActionListener(e -> {
+            if (!canUpdate) {
+                DialogUtils.showError(this, "Bạn không có quyền sửa danh mục.");
+                return;
+            }
+
             CategoryDialog dialog = new CategoryDialog((Frame) SwingUtilities.getWindowAncestor(this), category);
             dialog.setVisible(true);
             if (dialog.isSaved()) {
@@ -256,7 +276,13 @@ public class CategoryPanel extends JPanel {
 
         JButton btnDelete = createStyledButton("Xóa", new Color(244, 67, 54), Color.WHITE, false);
         btnDelete.setPreferredSize(new Dimension(65, 34));
+        btnDelete.setEnabled(canDelete);
         btnDelete.addActionListener(e -> {
+            if (!canDelete) {
+                DialogUtils.showError(this, "Bạn không có quyền xóa danh mục.");
+                return;
+            }
+
             if (DialogUtils.confirm(this, "Xác nhận xóa danh mục: " + category.getCategoryName() + "?")) {
                 try {
                     service.delete(category.getCategoryId());
@@ -407,7 +433,13 @@ public class CategoryPanel extends JPanel {
     }
 
     private void applyPermissions() {
-        boolean canCreate = RolePermission.has("CATEGORY_CREATE");
         btnAdd.setEnabled(canCreate);
+    }
+
+    private void initPermissions() {
+        canView = RolePermission.has("CATEGORY_VIEW");
+        canCreate = RolePermission.has("CATEGORY_CREATE");
+        canUpdate = RolePermission.has("CATEGORY_UPDATE");
+        canDelete = RolePermission.has("CATEGORY_DELETE");
     }
 }
