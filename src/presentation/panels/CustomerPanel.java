@@ -31,10 +31,23 @@ public class CustomerPanel extends JPanel {
     private JTable table;
     private CustomerTableModel tableModel;
     private JButton btnCreate, btnRefresh;
+
+    private boolean canView;
+    private boolean canCreate;
+    private boolean canUpdate;
+    private boolean canDelete;
     
     private List<Customer> customerList = new ArrayList<>();
 
+    private void initPermissions() {
+        canView = RolePermission.has("CUSTOMER_VIEW");
+        canCreate = RolePermission.has("CUSTOMER_CREATE");
+        canUpdate = RolePermission.has("CUSTOMER_UPDATE");
+        canDelete = RolePermission.has("CUSTOMER_DELETE");
+    }
+
     public CustomerPanel() {
+        initPermissions();
         initComponents();
         loadData();
         applyPermissions();
@@ -149,7 +162,11 @@ public class CustomerPanel extends JPanel {
                 if (e.getClickCount() == 2) {
                     int row = table.getSelectedRow();
                     if (row >= 0) {
-                        editCustomer();
+                        if (canUpdate) {
+                            editCustomer();
+                        } else if (canView) {
+                            DialogUtils.showInfo(CustomerPanel.this, "Bạn chỉ có quyền xem khách hàng, không có quyền sửa.");
+                        }
                     }
                 }
             }
@@ -193,6 +210,11 @@ public class CustomerPanel extends JPanel {
     }
 
     private void createCustomer() {
+        if (!canCreate) {
+            DialogUtils.showError(this, "Bạn không có quyền thêm khách hàng.");
+            return;
+        }
+
         CustomerDialog dialog = new CustomerDialog((Frame) SwingUtilities.getWindowAncestor(this), null);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
@@ -305,12 +327,17 @@ public class CustomerPanel extends JPanel {
     }
 
     private void editCustomer() {
+        if (!canUpdate) {
+            DialogUtils.showError(this, "Bạn không có quyền sửa khách hàng.");
+            return;
+        }
+
         int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
             DialogUtils.showWarning(this, "Vui lòng chọn khách hàng cần sửa");
             return;
         }
-        
+
         Customer customer = tableModel.getCustomer(selectedRow);
         CustomerDialog dialog = new CustomerDialog((Frame) SwingUtilities.getWindowAncestor(this), customer);
         dialog.setVisible(true);
@@ -321,6 +348,11 @@ public class CustomerPanel extends JPanel {
     }
 
     private void deleteCustomer() {
+        if (!canDelete) {
+            DialogUtils.showError(this, "Bạn không có quyền xóa khách hàng.");
+            return;
+        }
+
         int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
             DialogUtils.showWarning(this, "Vui lòng chọn khách hàng cần xóa");
@@ -328,7 +360,7 @@ public class CustomerPanel extends JPanel {
         }
 
         Customer customer = tableModel.getCustomer(selectedRow);
-        
+
         if (DialogUtils.confirm(this, "Bạn có chắc chắn muốn xóa khách hàng \"" + customer.getCustomerName() + "\" không?")) {
             try {
                 customerService.delete(customer.getCustomerId());
@@ -367,9 +399,7 @@ public class CustomerPanel extends JPanel {
     }
 
     private void applyPermissions() {
-        boolean canCreate = RolePermission.has("CUSTOMER_CREATE");
-        btnCreate.setEnabled(true); // Tạm thời luôn enable để test
-        // btnCreate.setEnabled(canCreate);
+        btnCreate.setEnabled(canCreate);
     }
 
     // Table Model
@@ -448,6 +478,8 @@ public class CustomerPanel extends JPanel {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+            btnEdit.setEnabled(canUpdate);
+            btnDelete.setEnabled(canDelete);
             return this;
         }
     }
@@ -470,6 +502,12 @@ public class CustomerPanel extends JPanel {
             panel.add(btnDelete);
 
             btnEdit.addActionListener(e -> {
+                if (!canUpdate) {
+                    DialogUtils.showError(CustomerPanel.this, "Bạn không có quyền sửa khách hàng.");
+                    fireEditingStopped();
+                    return;
+                }
+
                 if (editingRow >= 0) {
                     table.setRowSelectionInterval(editingRow, editingRow);
                     editCustomer();
@@ -478,6 +516,12 @@ public class CustomerPanel extends JPanel {
             });
 
             btnDelete.addActionListener(e -> {
+                if (!canDelete) {
+                    DialogUtils.showError(CustomerPanel.this, "Bạn không có quyền xóa khách hàng.");
+                    fireEditingStopped();
+                    return;
+                }
+
                 if (editingRow >= 0) {
                     table.setRowSelectionInterval(editingRow, editingRow);
                     deleteCustomer();
@@ -490,10 +534,14 @@ public class CustomerPanel extends JPanel {
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             editingRow = row;
             panel.setBackground(table.getSelectionBackground());
+            btnEdit.setEnabled(canUpdate);
+            btnDelete.setEnabled(canDelete);
             return panel;
         }
 
         @Override
-        public Object getCellEditorValue() { return null; }
+        public Object getCellEditorValue() {
+            return null;
+        }
     }
 }
