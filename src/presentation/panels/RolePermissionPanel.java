@@ -88,27 +88,56 @@ public class RolePermissionPanel extends JPanel {
         model = new PermissionTableModel();
         table = new JTable(model);
 
-        table.setRowHeight(28);
+        table.setRowHeight(40); // cao hơn cho thoáng
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         table.setCellSelectionEnabled(false);
         table.setRowSelectionAllowed(false);
         table.setColumnSelectionAllowed(false);
         table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
+// Font chữ to hơn
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        table.setForeground(new Color(33, 37, 41));
+        table.setBackground(Color.WHITE);
+        table.setSelectionBackground(new Color(232, 245, 255));
+        table.setSelectionForeground(new Color(33, 37, 41));
+
+// Kẻ ô rõ ràng
+        table.setShowGrid(true);
+        table.setGridColor(new Color(220, 224, 230));
+        table.setIntercellSpacing(new Dimension(1, 1));
+
+// Bỏ viền focus mặc định nhìn cho sạch
+        table.setFocusable(false);
+
         // Custom checkbox renderer và editor để canh giữa
         JCheckBox checkBox = new JCheckBox();
         checkBox.setHorizontalAlignment(JCheckBox.CENTER);
+
         table.setDefaultRenderer(Boolean.class, new TableCellRenderer() {
+            private final JCheckBox cb = new JCheckBox();
+            private final JPanel emptyPanel = new JPanel(new GridBagLayout());
+
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JCheckBox cb = new JCheckBox();
+                Color bg = isSelected
+                        ? table.getSelectionBackground()
+                        : Color.WHITE;
+
+                if (value == null) {
+                    emptyPanel.setBackground(bg);
+                    return emptyPanel;
+                }
+
                 cb.setSelected(Boolean.TRUE.equals(value));
                 cb.setHorizontalAlignment(JCheckBox.CENTER);
-                cb.setBackground(isSelected ? UIManager.getColor("Table.selectionBackground") : Color.WHITE);
+                cb.setBackground(bg);
                 cb.setOpaque(true);
+                cb.setEnabled(true);
                 return cb;
             }
         });
+
         table.setDefaultEditor(Boolean.class, new DefaultCellEditor(checkBox));
 
         JTableHeader header = table.getTableHeader();
@@ -116,14 +145,14 @@ public class RolePermissionPanel extends JPanel {
         header.setResizingAllowed(false);
         header.setBackground(new Color(33, 150, 243));
         header.setForeground(Color.WHITE);
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        header.setPreferredSize(new Dimension(header.getWidth(), 42));
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(360); // Quyền
-        table.getColumnModel().getColumn(1).setPreferredWidth(90);  // Xem
-        table.getColumnModel().getColumn(2).setPreferredWidth(90);  // Thêm
-        table.getColumnModel().getColumn(3).setPreferredWidth(90);  // Sửa
-        table.getColumnModel().getColumn(4).setPreferredWidth(90);  // Xóa
-        table.getColumnModel().getColumn(5).setPreferredWidth(90);  // Tìm
+        table.getColumnModel().getColumn(0).setPreferredWidth(500);
+        table.getColumnModel().getColumn(1).setPreferredWidth(120);
+        table.getColumnModel().getColumn(2).setPreferredWidth(120);
+        table.getColumnModel().getColumn(3).setPreferredWidth(120);
+        table.getColumnModel().getColumn(4).setPreferredWidth(120);
 
         table.addMouseListener(new MouseAdapter() {
             @Override
@@ -136,6 +165,23 @@ public class RolePermissionPanel extends JPanel {
                 Object value = model.getValueAt(row, col);
                 boolean current = Boolean.TRUE.equals(value);
                 model.setValueAt(!current, row, col);
+            }
+        });
+
+        table.getColumnModel().getColumn(0).setCellRenderer(new TableCellRenderer() {
+            private final JLabel label = new JLabel();
+
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                label.setText(value == null ? "" : value.toString());
+                label.setOpaque(true);
+                label.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+                label.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 8));
+                label.setHorizontalAlignment(SwingConstants.LEFT);
+                label.setVerticalAlignment(SwingConstants.CENTER);
+                label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+                label.setForeground(new Color(33, 37, 41));
+                return label;
             }
         });
 
@@ -483,9 +529,8 @@ public class RolePermissionPanel extends JPanel {
         private static final int COL_ADD = 2;
         private static final int COL_EDIT = 3;
         private static final int COL_DELETE = 4;
-        private static final int COL_SEARCH = 5;
 
-        private final String[] cols = {"Quyền", "Xem", "Thêm", "Sửa", "Xóa", "Tìm"};
+        private final String[] cols = {"Quyền", "Xem", "Thêm", "Sửa", "Xóa"};
 
         private List<Permission> allPerms = new ArrayList<>();
         private Set<Integer> selectedIds = new HashSet<>();
@@ -529,12 +574,18 @@ public class RolePermissionPanel extends JPanel {
 
                 String code = p.getPermCode().toUpperCase(Locale.ROOT);
 
-                if (!isAdminRole && "ROLE_PERMISSION_MANAGE".equalsIgnoreCase(p.getPermCode())) {
+                // Role khác ADMIN: không được giữ quyền phân quyền
+                if (!isAdminRole && "ROLE_PERMISSION_MANAGE".equalsIgnoreCase(code)) {
                     selectedIds.remove(p.getPermId());
-                    continue;
                 }
 
                 String resourceKey = extractResourceKey(code);
+
+                // ADMIN: ẩn dòng "Phân quyền" khỏi giao diện
+                if (isAdminRole && "ROLE_PERMISSION".equalsIgnoreCase(resourceKey)) {
+                    continue;
+                }
+
                 ActionBucket action = mapAction(code, resourceKey);
 
                 PermissionRow row = rowMap.computeIfAbsent(resourceKey, key -> {
@@ -550,27 +601,6 @@ public class RolePermissionPanel extends JPanel {
                     case EDIT -> row.editIds.add(p.getPermId());
                     case DELETE -> row.deleteIds.add(p.getPermId());
                     case SEARCH -> row.searchIds.add(p.getPermId());
-                }
-            }
-
-            // Assign permission vào tất cả 5 columns nếu resource không có permission phân loại
-            for (PermissionRow row : rowMap.values()) {
-                Set<Integer> allPermsInRow = new HashSet<>();
-                allPermsInRow.addAll(row.viewIds);
-                allPermsInRow.addAll(row.addIds);
-                allPermsInRow.addAll(row.editIds);
-                allPermsInRow.addAll(row.deleteIds);
-                allPermsInRow.addAll(row.searchIds);
-
-                if (allPermsInRow.isEmpty()) continue;
-
-                // Nếu tất cả columns đều rỗng, assign vào tất cả
-                if (row.viewIds.isEmpty() && row.addIds.isEmpty() && row.editIds.isEmpty() && row.deleteIds.isEmpty() && row.searchIds.isEmpty()) {
-                    row.viewIds.addAll(allPermsInRow);
-                    row.addIds.addAll(allPermsInRow);
-                    row.editIds.addAll(allPermsInRow);
-                    row.deleteIds.addAll(allPermsInRow);
-                    row.searchIds.addAll(allPermsInRow);
                 }
             }
 
@@ -609,14 +639,21 @@ public class RolePermissionPanel extends JPanel {
         }
 
         private ActionBucket mapAction(String code, String resourceKey) {
-            // Kiểm kho hiện dùng ADJUSTMENT_APPROVE thay cho quyền thao tác xóa/hủy.
-            if ("ADJUSTMENT".equals(resourceKey) && code.endsWith("_APPROVE")) {
+            if (code == null) return ActionBucket.EDIT;
+
+            String upper = code.toUpperCase(Locale.ROOT).trim();
+
+            // Kiểm kho hiện dùng ADJUSTMENT_APPROVE thay cho quyền thao tác xóa/hủy
+            if ("ADJUSTMENT".equals(resourceKey) && upper.endsWith("_APPROVE")) {
                 return ActionBucket.DELETE;
             }
-            if (code.endsWith("_VIEW")) return ActionBucket.VIEW;
-            if (code.endsWith("_CREATE")) return ActionBucket.ADD;
-            if (code.endsWith("_DELETE")) return ActionBucket.DELETE;
-            if (code.endsWith("_SEARCH")) return ActionBucket.SEARCH;
+
+            if (upper.endsWith("_VIEW")) return ActionBucket.VIEW;
+            if (upper.endsWith("_ADD") || upper.endsWith("_CREATE")) return ActionBucket.ADD;
+            if (upper.endsWith("_EDIT") || upper.endsWith("_UPDATE")) return ActionBucket.EDIT;
+            if (upper.endsWith("_DELETE") || upper.endsWith("_REMOVE")) return ActionBucket.DELETE;
+            if (upper.endsWith("_SEARCH")) return ActionBucket.SEARCH;
+
             return ActionBucket.EDIT;
         }
 
@@ -643,15 +680,22 @@ public class RolePermissionPanel extends JPanel {
             };
         }
 
-        private Set<Integer> getCellPermIds(PermissionRow row, int col) {
-            return switch (col) {
-                case COL_VIEW -> row.viewIds;
-                case COL_ADD -> row.addIds;
-                case COL_EDIT -> row.editIds;
-                case COL_DELETE -> row.deleteIds;
-                case COL_SEARCH -> row.searchIds;
-                default -> Collections.emptySet();
-            };
+
+        private Set<Integer> getCellPermIds(PermissionRow r, int col) {
+            if (r == null) return Collections.emptySet();
+
+            switch (col) {
+                case COL_VIEW:
+                    return r.viewIds != null ? r.viewIds : Collections.emptySet();
+                case COL_ADD:
+                    return r.addIds != null ? r.addIds : Collections.emptySet();
+                case COL_EDIT:
+                    return r.editIds != null ? r.editIds : Collections.emptySet();
+                case COL_DELETE:
+                    return r.deleteIds != null ? r.deleteIds : Collections.emptySet();
+                default:
+                    return Collections.emptySet();
+            }
         }
 
         private boolean isChecked(Set<Integer> permIds) {
@@ -688,30 +732,69 @@ public class RolePermissionPanel extends JPanel {
             return col == COL_PERMISSION ? String.class : Boolean.class;
         }
 
-        @Override public boolean isCellEditable(int row, int col) {
+        @Override
+        public boolean isCellEditable(int row, int col) {
             if (col == COL_PERMISSION) return false;
-            return true;
+
+            PermissionRow r = filteredRows.get(row);
+            Set<Integer> ids = getCellPermIds(r, col);
+
+            return ids != null && !ids.isEmpty();
         }
 
-        @Override public Object getValueAt(int row, int col) {
+        @Override
+        public Object getValueAt(int row, int col) {
             PermissionRow r = filteredRows.get(row);
+
             if (col == COL_PERMISSION) return r.displayName;
+
             Set<Integer> ids = getCellPermIds(r, col);
-            if (ids.isEmpty()) return false;
+
+            if (ids == null || ids.isEmpty()) {
+                return null; // không có chức năng này -> ẩn checkbox
+            }
+
             return isChecked(ids);
         }
 
-        @Override public void setValueAt(Object aValue, int row, int col) {
+        @Override
+        public void setValueAt(Object aValue, int row, int col) {
             if (col == COL_PERMISSION) return;
 
             PermissionRow displayedRow = filteredRows.get(row);
             Set<Integer> ids = getCellPermIds(displayedRow, col);
+
+            if (ids == null || ids.isEmpty()) return;
+
             boolean checked = Boolean.TRUE.equals(aValue);
 
-            if (checked) selectedIds.addAll(ids);
-            else selectedIds.removeAll(ids);
+            // 1) Nếu tick cột hiện tại
+            if (checked) {
+                selectedIds.addAll(ids);
 
-            fireTableCellUpdated(row, col);
+                // Nếu tick Thêm / Sửa / Xóa -> tự bật Xem
+                if (col == COL_ADD || col == COL_EDIT || col == COL_DELETE) {
+                    Set<Integer> viewIds = getCellPermIds(displayedRow, COL_VIEW);
+                    if (viewIds != null && !viewIds.isEmpty()) {
+                        selectedIds.addAll(viewIds);
+                    }
+                }
+            } else {
+                selectedIds.removeAll(ids);
+
+                // 2) Nếu bỏ Xem -> bỏ luôn Thêm / Sửa / Xóa
+                if (col == COL_VIEW) {
+                    Set<Integer> addIds = getCellPermIds(displayedRow, COL_ADD);
+                    Set<Integer> editIds = getCellPermIds(displayedRow, COL_EDIT);
+                    Set<Integer> deleteIds = getCellPermIds(displayedRow, COL_DELETE);
+
+                    if (addIds != null) selectedIds.removeAll(addIds);
+                    if (editIds != null) selectedIds.removeAll(editIds);
+                    if (deleteIds != null) selectedIds.removeAll(deleteIds);
+                }
+            }
+
+            fireTableRowsUpdated(row, row);
         }
     }
 }

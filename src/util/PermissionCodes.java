@@ -4,7 +4,7 @@ package util;
  * Permission code constants - tránh gõ sai chuỗi.
  * Chỉ cần dùng PermissionCodes.PRODUCT_VIEW thay vì "PRODUCT_VIEW".
  */
-public final class PermissionCodes {
+public final class  PermissionCodes {
 
     private PermissionCodes() {}
 

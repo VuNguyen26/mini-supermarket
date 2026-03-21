@@ -16,12 +16,14 @@ import java.util.List;
 public class SupplierPanel extends JPanel {
     
     private final SupplierService supplierService = new SupplierService();
-    
+
     private JTextField txtSearch;
     private JComboBox<String> cboStatus;
     private JTable table;
     private SupplierTableModel tableModel;
-    private JButton btnCreate, btnRefresh;
+    private JButton btnCreate, btnRefresh, btnSearch;
+    private boolean canEditSupplier = false;
+    private boolean canDeleteSupplier = false;
     
     private List<Supplier> supplierList = new ArrayList<>();
 
@@ -56,7 +58,7 @@ public class SupplierPanel extends JPanel {
         txtSearch.putClientProperty("JTextField.placeholderText", "Tìm theo tên hoặc SĐT...");
         txtSearch.addActionListener(e -> searchSuppliers());
 
-        JButton btnSearch = createStyledButton("Tìm kiếm", new Color(33, 150, 243), Color.WHITE);
+        btnSearch = createStyledButton("Tìm kiếm", new Color(33, 150, 243), Color.WHITE);
         btnSearch.setPreferredSize(new Dimension(120, 40));
         btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnSearch.addActionListener(e -> searchSuppliers());
@@ -168,6 +170,11 @@ public class SupplierPanel extends JPanel {
     }
 
     private void createSupplier() {
+        if (!RolePermission.has("SUPPLIER_CREATE")) {
+            DialogUtils.showWarning(this, "Bạn không có quyền thêm nhà cung cấp");
+            return;
+        }
+
         SupplierDialog dialog = new SupplierDialog((Frame) SwingUtilities.getWindowAncestor(this), null);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
@@ -177,15 +184,21 @@ public class SupplierPanel extends JPanel {
     }
 
     private void editSupplier() {
+        if (!RolePermission.has("SUPPLIER_EDIT")) {
+            DialogUtils.showWarning(this, "Bạn không có quyền sửa nhà cung cấp");
+            return;
+        }
+
         int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
             DialogUtils.showWarning(this, "Vui lòng chọn nhà cung cấp cần sửa");
             return;
         }
-        
+
         Supplier supplier = tableModel.getSupplier(selectedRow);
         SupplierDialog dialog = new SupplierDialog((Frame) SwingUtilities.getWindowAncestor(this), supplier);
         dialog.setVisible(true);
+
         if (dialog.isSaved()) {
             loadData();
             refreshDashboard();
@@ -193,6 +206,11 @@ public class SupplierPanel extends JPanel {
     }
 
     private void deleteSupplier() {
+        if (!RolePermission.has("SUPPLIER_DELETE")) {
+            DialogUtils.showWarning(this, "Bạn không có quyền xóa nhà cung cấp");
+            return;
+        }
+
         int selectedRow = table.getSelectedRow();
         if (selectedRow < 0) {
             DialogUtils.showWarning(this, "Vui lòng chọn nhà cung cấp cần xóa");
@@ -200,7 +218,7 @@ public class SupplierPanel extends JPanel {
         }
 
         Supplier supplier = tableModel.getSupplier(selectedRow);
-        
+
         if (DialogUtils.confirm(this, "Bạn có chắc chắn muốn xóa nhà cung cấp \"" + supplier.getSupplierName() + "\" không?")) {
             try {
                 supplierService.delete(supplier.getSupplierId());
@@ -239,9 +257,37 @@ public class SupplierPanel extends JPanel {
     }
 
     private void applyPermissions() {
+        boolean canView = RolePermission.has("SUPPLIER_VIEW");
         boolean canCreate = RolePermission.has("SUPPLIER_CREATE");
-        btnCreate.setEnabled(true); // Tạm thời luôn enable để test
-        // btnCreate.setEnabled(canCreate);
+        boolean canEdit = RolePermission.has("SUPPLIER_EDIT");
+        boolean canDelete = RolePermission.has("SUPPLIER_DELETE");
+
+        if (!canView) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Bạn không có quyền xem Nhà cung cấp.",
+                    "Từ chối truy cập",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            setVisible(false);
+            return;
+        }
+
+        // Có quyền xem thì được dùng chức năng đọc dữ liệu
+        btnSearch.setEnabled(true);
+        btnRefresh.setEnabled(true);
+
+        // Chỉ bật khi có đúng quyền thao tác
+        btnCreate.setEnabled(canCreate);
+
+        // Lưu lại để dùng cho nút Sửa/Xóa trong bảng
+        this.canEditSupplier = canEdit;
+        this.canDeleteSupplier = canDelete;
+
+        // Vẽ lại bảng để renderer/editor cập nhật trạng thái nút
+        if (table != null) {
+            table.repaint();
+        }
     }
 
     // Table Model

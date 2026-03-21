@@ -245,7 +245,7 @@ public class MainFrame extends JFrame {
 
         addNavItem(nav, "Báo cáo", "📊");
 
-        addNavItem(nav, "Nhân viên", "🛡️");
+        addNavItem(nav, "Người dùng", "🛡️");
         addNavItem(nav, "Lịch sử", "📋");
         addNavItem(nav, "Phân quyền", "🔑");
 
@@ -552,7 +552,7 @@ public class MainFrame extends JFrame {
 
         contentPanel.add(wrapCard(new presentation.panels.ReportPanel(RolePermission.all())), "Báo cáo");
 
-        contentPanel.add(wrapCard(new presentation.panels.UserPanel()), "Nhân viên");
+        contentPanel.add(wrapCard(new presentation.panels.UserPanel()), "Người dùng");
 
         auditLogPanel = new presentation.panels.AuditLogPanel(auditLogService);
         contentPanel.add(wrapCard(auditLogPanel), "Lịch sử");
@@ -660,7 +660,7 @@ public class MainFrame extends JFrame {
 
         setNavVisible("Báo cáo", debug || RolePermission.has(PermissionCodes.REPORT_VIEW));
 
-        setNavVisible("Nhân viên", debug || RolePermission.has(PermissionCodes.USER_MANAGE));
+        setNavVisible("Người dùng", debug || RolePermission.has(PermissionCodes.USER_MANAGE));
         setNavVisible("Lịch sử", debug || RolePermission.has(PermissionCodes.AUDIT_VIEW));
         setNavVisible("Phân quyền", debug || RolePermission.has(PermissionCodes.ROLE_PERMISSION_MANAGE));
 
