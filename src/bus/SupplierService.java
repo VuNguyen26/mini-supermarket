@@ -27,9 +27,46 @@ public class SupplierService {
         return dao.findById(supplierId);
     }
 
+    public Supplier getByCode(String supplierCode) {
+        if (Validator.isNullOrEmpty(supplierCode)) {
+            return null;
+        }
+        return dao.findByCode(supplierCode.trim());
+    }
+
     public List<String> validate(Supplier supplier, boolean isUpdate) {
         List<String> errors = new ArrayList<>();
 
+        if (supplier == null) {
+            errors.add("Dữ liệu nhà cung cấp không hợp lệ");
+            return errors;
+        }
+
+        // Mã NCC
+        if (Validator.isNullOrEmpty(supplier.getSupplierCode())) {
+            errors.add(Validator.requiredFieldMessage("Mã nhà cung cấp"));
+        } else if (!Validator.hasMinLength(supplier.getSupplierCode(), 2)) {
+            errors.add(Validator.minLengthMessage("Mã nhà cung cấp", 2));
+        } else if (!Validator.hasMaxLength(supplier.getSupplierCode(), 50)) {
+            errors.add(Validator.maxLengthMessage("Mã nhà cung cấp", 50));
+        } else {
+            String code = supplier.getSupplierCode().trim();
+
+            if (!isUpdate) {
+                if (dao.existsByCode(code)) {
+                    errors.add(Validator.duplicateMessage("Mã nhà cung cấp"));
+                }
+            } else {
+                Integer supplierId = supplier.getSupplierId();
+                if (supplierId == null) {
+                    errors.add("Thiếu ID nhà cung cấp khi cập nhật");
+                } else if (dao.existsByCodeExceptId(code, supplierId)) {
+                    errors.add(Validator.duplicateMessage("Mã nhà cung cấp"));
+                }
+            }
+        }
+
+        // Tên NCC
         if (Validator.isNullOrEmpty(supplier.getSupplierName())) {
             errors.add(Validator.requiredFieldMessage("Tên nhà cung cấp"));
         } else if (!Validator.hasMinLength(supplier.getSupplierName(), 2)) {
@@ -37,19 +74,21 @@ public class SupplierService {
         } else if (!Validator.hasMaxLength(supplier.getSupplierName(), 150)) {
             errors.add(Validator.maxLengthMessage("Tên nhà cung cấp", 150));
         } else if (!isUpdate) {
-            Supplier existing = dao.findByName(supplier.getSupplierName());
+            Supplier existing = dao.findByName(supplier.getSupplierName().trim());
             if (existing != null) {
                 errors.add(Validator.duplicateMessage("Tên nhà cung cấp"));
             }
         }
 
+        // Số điện thoại
         if (Validator.isNullOrEmpty(supplier.getPhone())) {
             errors.add(Validator.requiredFieldMessage("Số điện thoại"));
-        } else if (!Validator.isValidPhone(supplier.getPhone())) {
+        } else if (!Validator.isValidPhone(supplier.getPhone().trim())) {
             errors.add(Validator.invalidFormatMessage("Số điện thoại"));
         }
 
-        if (Validator.isNotEmpty(supplier.getEmail()) && !Validator.isValidEmail(supplier.getEmail())) {
+        // Email
+        if (Validator.isNotEmpty(supplier.getEmail()) && !Validator.isValidEmail(supplier.getEmail().trim())) {
             errors.add(Validator.invalidFormatMessage("Email"));
         }
 
@@ -57,6 +96,8 @@ public class SupplierService {
     }
 
     public int create(Supplier supplier) throws Exception {
+        normalizeSupplier(supplier);
+
         List<String> errors = validate(supplier, false);
         if (!errors.isEmpty()) {
             throw new Exception(String.join("\n", errors));
@@ -76,7 +117,7 @@ public class SupplierService {
                 "CREATE",
                 "supplier",
                 (long) id,
-                "Tạo nhà cung cấp: " + supplier.getSupplierName()
+                "Tạo nhà cung cấp: [" + safe(supplier.getSupplierCode()) + "] " + safe(supplier.getSupplierName())
                         + (supplier.getPhone() != null ? " - " + supplier.getPhone() : "")
         );
 
@@ -84,6 +125,8 @@ public class SupplierService {
     }
 
     public void update(Supplier supplier) throws Exception {
+        normalizeSupplier(supplier);
+
         List<String> errors = validate(supplier, true);
         if (!errors.isEmpty()) {
             throw new Exception(String.join("\n", errors));
@@ -98,7 +141,7 @@ public class SupplierService {
                 "UPDATE",
                 "supplier",
                 supplier.getSupplierId() != null ? supplier.getSupplierId().longValue() : null,
-                "Cập nhật nhà cung cấp: " + supplier.getSupplierName()
+                "Cập nhật nhà cung cấp: [" + safe(supplier.getSupplierCode()) + "] " + safe(supplier.getSupplierName())
                         + (supplier.getPhone() != null ? " - " + supplier.getPhone() : "")
         );
     }
@@ -118,8 +161,36 @@ public class SupplierService {
                 "DELETE",
                 "supplier",
                 (long) supplierId,
-                "Xóa nhà cung cấp: " + supplier.getSupplierName()
+                "Xóa nhà cung cấp: [" + safe(supplier.getSupplierCode()) + "] " + safe(supplier.getSupplierName())
                         + (supplier.getPhone() != null ? " - " + supplier.getPhone() : "")
         );
+    }
+
+    private void normalizeSupplier(Supplier supplier) {
+        if (supplier == null) return;
+
+        if (supplier.getSupplierCode() != null) {
+            supplier.setSupplierCode(supplier.getSupplierCode().trim());
+        }
+
+        if (supplier.getSupplierName() != null) {
+            supplier.setSupplierName(supplier.getSupplierName().trim());
+        }
+
+        if (supplier.getPhone() != null) {
+            supplier.setPhone(supplier.getPhone().trim());
+        }
+
+        if (supplier.getEmail() != null) {
+            supplier.setEmail(supplier.getEmail().trim());
+        }
+
+        if (supplier.getAddress() != null) {
+            supplier.setAddress(supplier.getAddress().trim());
+        }
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 }

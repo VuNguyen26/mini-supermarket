@@ -14,6 +14,7 @@ public class SupplierDialog extends JDialog {
     private boolean isEditMode;
     private boolean saved = false;
 
+    private JTextField txtSupplierCode;
     private JTextField txtName;
     private JTextField txtPhone;
     private JTextField txtEmail;
@@ -28,61 +29,98 @@ public class SupplierDialog extends JDialog {
 
         initComponents();
         loadData();
-        
+
         setSize(600, 500);
         setLocationRelativeTo(parent);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setResizable(false);
     }
 
     private void initComponents() {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
+        mainPanel.setBackground(Color.WHITE);
 
-        // Form panel
         JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(Color.WHITE);
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 8, 8, 8);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         int row = 0;
 
-        // Supplier Name
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+        // Mã NCC
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        formPanel.add(new JLabel("Mã NCC: *"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        txtSupplierCode = new JTextField(20);
+        formPanel.add(txtSupplierCode, gbc);
+
+        row++;
+
+        // Tên NCC
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
         formPanel.add(new JLabel("Tên NCC: *"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 1.0;
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
         txtName = new JTextField(20);
         formPanel.add(txtName, gbc);
 
         row++;
 
-        // Phone
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+        // Số điện thoại
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
         formPanel.add(new JLabel("Số điện thoại: *"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 1.0;
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
         txtPhone = new JTextField(20);
         formPanel.add(txtPhone, gbc);
 
         row++;
 
         // Email
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
         formPanel.add(new JLabel("Email:"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 1.0;
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
         txtEmail = new JTextField(20);
         formPanel.add(txtEmail, gbc);
 
         row++;
 
-        // Address
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0;
-        gbc.anchor = GridBagConstraints.NORTH;
+        // Địa chỉ
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
         formPanel.add(new JLabel("Địa chỉ:"), gbc);
-        
-        gbc.gridx = 1; gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.BOTH;
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
         gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
         txtAddress = new JTextArea(3, 20);
         txtAddress.setLineWrap(true);
         txtAddress.setWrapStyleWord(true);
@@ -91,13 +129,13 @@ public class SupplierDialog extends JDialog {
 
         mainPanel.add(formPanel, BorderLayout.CENTER);
 
-        // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        
+        buttonPanel.setBackground(Color.WHITE);
+
         btnSave = new JButton("Lưu");
         btnSave.setPreferredSize(new Dimension(100, 35));
         btnSave.addActionListener(e -> saveSupplier());
-        
+
         btnCancel = new JButton("Hủy");
         btnCancel.setPreferredSize(new Dimension(100, 35));
         btnCancel.addActionListener(e -> dispose());
@@ -112,49 +150,96 @@ public class SupplierDialog extends JDialog {
 
     private void loadData() {
         if (isEditMode && supplier != null) {
+            txtSupplierCode.setText(supplier.getSupplierCode() != null ? supplier.getSupplierCode() : "");
             txtName.setText(supplier.getSupplierName());
             txtPhone.setText(supplier.getPhone());
             txtEmail.setText(supplier.getEmail());
             txtAddress.setText(supplier.getAddress());
+        } else {
+            txtSupplierCode.setText("");
         }
     }
 
     private void saveSupplier() {
         try {
-            // Collect data
+            String code = txtSupplierCode.getText().trim();
+            String name = txtName.getText().trim();
+            String phone = txtPhone.getText().trim();
+            String email = txtEmail.getText().trim();
+            String address = txtAddress.getText().trim();
+
+            if (code.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Mã nhà cung cấp không được để trống!",
+                        "Cảnh báo",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                txtSupplierCode.requestFocus();
+                return;
+            }
+
+            if (name.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Tên nhà cung cấp không được để trống!",
+                        "Cảnh báo",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                txtName.requestFocus();
+                return;
+            }
+
+            if (phone.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Số điện thoại không được để trống!",
+                        "Cảnh báo",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                txtPhone.requestFocus();
+                return;
+            }
+
             if (supplier == null) {
                 supplier = new Supplier();
             }
 
-            supplier.setSupplierName(txtName.getText().trim());
-            supplier.setPhone(txtPhone.getText().trim());
-            supplier.setEmail(txtEmail.getText().trim());
-            supplier.setAddress(txtAddress.getText().trim());
+            supplier.setSupplierCode(code);
+            supplier.setSupplierName(name);
+            supplier.setPhone(phone);
+            supplier.setEmail(email);
+            supplier.setAddress(address);
 
-            // Save
             if (isEditMode) {
                 service.update(supplier);
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(
+                        this,
                         "Cập nhật nhà cung cấp thành công!",
                         "Thành công",
-                        JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.INFORMATION_MESSAGE
+                );
             } else {
                 int id = service.create(supplier);
                 supplier.setSupplierId(id);
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(
+                        this,
                         "Thêm nhà cung cấp thành công!",
                         "Thành công",
-                        JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.INFORMATION_MESSAGE
+                );
             }
 
             saved = true;
             dispose();
 
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
+            JOptionPane.showMessageDialog(
+                    this,
                     "Lỗi: " + e.getMessage(),
                     "Lỗi",
-                    JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.ERROR_MESSAGE
+            );
         }
     }
 

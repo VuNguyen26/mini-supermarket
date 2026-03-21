@@ -10,7 +10,8 @@ import java.util.List;
 public class SupplierDAO {
 
     public List<Supplier> findAll() {
-        String sql = "SELECT supplier_id, supplier_name, phone, address, email, created_at FROM supplier ORDER BY supplier_name ASC";
+        String sql = "SELECT supplier_id, supplier_code, supplier_name, phone, address, email, created_at " +
+                "FROM supplier ORDER BY supplier_name ASC";
         List<Supplier> list = new ArrayList<>();
 
         try (Connection conn = DBConnection.getConnection();
@@ -27,9 +28,10 @@ public class SupplierDAO {
     }
 
     public List<Supplier> search(String keyword) {
-        String sql = "SELECT supplier_id, supplier_name, phone, address, email, created_at " +
-                     "FROM supplier WHERE (supplier_name LIKE ? OR phone LIKE ?) " +
-                     "ORDER BY supplier_name ASC";
+        String sql = "SELECT supplier_id, supplier_code, supplier_name, phone, address, email, created_at " +
+                "FROM supplier " +
+                "WHERE (supplier_code LIKE ? OR supplier_name LIKE ? OR phone LIKE ?) " +
+                "ORDER BY supplier_name ASC";
         List<Supplier> list = new ArrayList<>();
 
         try (Connection conn = DBConnection.getConnection();
@@ -38,6 +40,7 @@ public class SupplierDAO {
             String pattern = "%" + keyword + "%";
             ps.setString(1, pattern);
             ps.setString(2, pattern);
+            ps.setString(3, pattern);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -51,7 +54,8 @@ public class SupplierDAO {
     }
 
     public Supplier findById(int supplierId) {
-        String sql = "SELECT supplier_id, supplier_name, phone, address, email, created_at FROM supplier WHERE supplier_id = ?";
+        String sql = "SELECT supplier_id, supplier_code, supplier_name, phone, address, email, created_at " +
+                "FROM supplier WHERE supplier_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -70,7 +74,8 @@ public class SupplierDAO {
     }
 
     public Supplier findByName(String supplierName) {
-        String sql = "SELECT supplier_id, supplier_name, phone, address, email, created_at FROM supplier WHERE supplier_name = ?";
+        String sql = "SELECT supplier_id, supplier_code, supplier_name, phone, address, email, created_at " +
+                "FROM supplier WHERE supplier_name = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -88,16 +93,70 @@ public class SupplierDAO {
         return null;
     }
 
+    public Supplier findByCode(String supplierCode) {
+        String sql = "SELECT supplier_id, supplier_code, supplier_name, phone, address, email, created_at " +
+                "FROM supplier WHERE supplier_code = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, supplierCode);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSet(rs);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("SupplierDAO.findByCode error: " + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    public boolean existsByCode(String supplierCode) {
+        String sql = "SELECT 1 FROM supplier WHERE supplier_code = ? LIMIT 1";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, supplierCode);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("SupplierDAO.existsByCode error: " + e.getMessage(), e);
+        }
+    }
+
+    public boolean existsByCodeExceptId(String supplierCode, int supplierId) {
+        String sql = "SELECT 1 FROM supplier WHERE supplier_code = ? AND supplier_id <> ? LIMIT 1";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, supplierCode);
+            ps.setInt(2, supplierId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("SupplierDAO.existsByCodeExceptId error: " + e.getMessage(), e);
+        }
+    }
+
     public int insert(Supplier supplier) {
-        String sql = "INSERT INTO supplier(supplier_name, phone, email, address) VALUES(?, ?, ?, ?)";
+        String sql = "INSERT INTO supplier(supplier_code, supplier_name, phone, email, address) VALUES(?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            ps.setString(1, supplier.getSupplierName());
-            ps.setString(2, supplier.getPhone());
-            ps.setString(3, supplier.getEmail());
-            ps.setString(4, supplier.getAddress());
+            ps.setString(1, supplier.getSupplierCode());
+            ps.setString(2, supplier.getSupplierName());
+            ps.setString(3, supplier.getPhone());
+            ps.setString(4, supplier.getEmail());
+            ps.setString(5, supplier.getAddress());
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
@@ -114,16 +173,19 @@ public class SupplierDAO {
     }
 
     public boolean update(Supplier supplier) {
-        String sql = "UPDATE supplier SET supplier_name=?, phone=?, email=?, address=? WHERE supplier_id=?";
+        String sql = "UPDATE supplier " +
+                "SET supplier_code = ?, supplier_name = ?, phone = ?, email = ?, address = ? " +
+                "WHERE supplier_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, supplier.getSupplierName());
-            ps.setString(2, supplier.getPhone());
-            ps.setString(3, supplier.getEmail());
-            ps.setString(4, supplier.getAddress());
-            ps.setInt(5, supplier.getSupplierId());
+            ps.setString(1, supplier.getSupplierCode());
+            ps.setString(2, supplier.getSupplierName());
+            ps.setString(3, supplier.getPhone());
+            ps.setString(4, supplier.getEmail());
+            ps.setString(5, supplier.getAddress());
+            ps.setInt(6, supplier.getSupplierId());
 
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
@@ -147,14 +209,17 @@ public class SupplierDAO {
     private Supplier mapResultSet(ResultSet rs) throws SQLException {
         Supplier s = new Supplier();
         s.setSupplierId(rs.getInt("supplier_id"));
+        s.setSupplierCode(rs.getString("supplier_code"));
         s.setSupplierName(rs.getString("supplier_name"));
         s.setPhone(rs.getString("phone"));
         s.setEmail(rs.getString("email"));
         s.setAddress(rs.getString("address"));
-        
+
         Timestamp created = rs.getTimestamp("created_at");
-        if (created != null) s.setCreatedAt(created.toLocalDateTime());
-        
+        if (created != null) {
+            s.setCreatedAt(created.toLocalDateTime());
+        }
+
         return s;
     }
 }

@@ -73,7 +73,7 @@ public class SupplierPanel extends JPanel {
 
         txtSearch = new JTextField(20);
         txtSearch.setPreferredSize(new Dimension(250, 40));
-        txtSearch.putClientProperty("JTextField.placeholderText", "Tìm theo tên hoặc SĐT...");
+        txtSearch.putClientProperty("JTextField.placeholderText", "Tìm theo mã, tên hoặc SĐT...");
         txtSearch.addActionListener(e -> searchSuppliers());
 
         btnSearch = createStyledButton("Tìm kiếm", new Color(33, 150, 243), Color.WHITE);
@@ -136,18 +136,20 @@ public class SupplierPanel extends JPanel {
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setResizingAllowed(false);
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(50);
-        table.getColumnModel().getColumn(1).setPreferredWidth(250);
-        table.getColumnModel().getColumn(2).setPreferredWidth(120);
-        table.getColumnModel().getColumn(3).setPreferredWidth(180);
-        table.getColumnModel().getColumn(4).setPreferredWidth(300);
-        table.getColumnModel().getColumn(5).setPreferredWidth(170);
+        table.getColumnModel().getColumn(0).setPreferredWidth(50);   // STT
+        table.getColumnModel().getColumn(1).setPreferredWidth(110);  // Mã NCC
+        table.getColumnModel().getColumn(2).setPreferredWidth(220);  // Tên nhà cung cấp
+        table.getColumnModel().getColumn(3).setPreferredWidth(130);  // SĐT
+        table.getColumnModel().getColumn(4).setPreferredWidth(180);  // Email
+        table.getColumnModel().getColumn(5).setPreferredWidth(280);  // Địa chỉ
+        table.getColumnModel().getColumn(6).setPreferredWidth(170);  // Thao tác
 
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         table.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
+        table.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
 
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -165,8 +167,8 @@ public class SupplierPanel extends JPanel {
             }
         });
 
-        table.getColumnModel().getColumn(5).setCellRenderer(new ActionCellRenderer());
-        table.getColumnModel().getColumn(5).setCellEditor(new ActionCellEditor());
+        table.getColumnModel().getColumn(6).setCellRenderer(new ActionCellRenderer());
+        table.getColumnModel().getColumn(6).setCellEditor(new ActionCellEditor());
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
@@ -214,6 +216,7 @@ public class SupplierPanel extends JPanel {
 
         SupplierDialog dialog = new SupplierDialog((Frame) SwingUtilities.getWindowAncestor(this), null);
         dialog.setVisible(true);
+
         if (dialog.isSaved()) {
             loadData();
             refreshDashboard();
@@ -249,17 +252,19 @@ public class SupplierPanel extends JPanel {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
-                String name = formatter.formatCellValue(row.getCell(0)).trim();
-                String phone = formatter.formatCellValue(row.getCell(1)).trim();
-                String email = formatter.formatCellValue(row.getCell(2)).trim();
-                String address = formatter.formatCellValue(row.getCell(3)).trim();
+                String code = formatter.formatCellValue(row.getCell(0)).trim();
+                String name = formatter.formatCellValue(row.getCell(1)).trim();
+                String phone = formatter.formatCellValue(row.getCell(2)).trim();
+                String email = formatter.formatCellValue(row.getCell(3)).trim();
+                String address = formatter.formatCellValue(row.getCell(4)).trim();
 
-                if (name.isEmpty() && phone.isEmpty() && email.isEmpty() && address.isEmpty()) {
+                if (code.isEmpty() && name.isEmpty() && phone.isEmpty() && email.isEmpty() && address.isEmpty()) {
                     continue;
                 }
 
                 try {
                     Supplier s = new Supplier();
+                    s.setSupplierCode(code);
                     s.setSupplierName(name);
                     s.setPhone(phone);
                     s.setEmail(email);
@@ -310,10 +315,12 @@ public class SupplierPanel extends JPanel {
             File file = ExcelUtils.chooseSaveXlsxFile(this, "suppliers_export.xlsx");
             if (file == null) return;
 
-            List<String> headers = Arrays.asList("Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ");
+            List<String> headers = Arrays.asList("Mã NCC", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ");
             List<List<Object>> rows = new ArrayList<>();
+
             for (Supplier s : dataToExport) {
                 rows.add(Arrays.asList(
+                        s.getSupplierCode(),
                         s.getSupplierName(),
                         s.getPhone(),
                         s.getEmail(),
@@ -423,7 +430,7 @@ public class SupplierPanel extends JPanel {
     }
 
     private static class SupplierTableModel extends AbstractTableModel {
-        private final String[] columnNames = {"STT", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
+        private final String[] columnNames = {"STT", "Mã NCC", "Tên nhà cung cấp", "Số điện thoại", "Email", "Địa chỉ", "Thao tác"};
         private List<Supplier> data = new ArrayList<>();
 
         public void setData(List<Supplier> data) {
@@ -455,11 +462,12 @@ public class SupplierPanel extends JPanel {
             Supplier s = data.get(row);
             return switch (col) {
                 case 0 -> row + 1;
-                case 1 -> s.getSupplierName();
-                case 2 -> s.getPhone();
-                case 3 -> s.getEmail();
-                case 4 -> s.getAddress();
-                case 5 -> "";
+                case 1 -> s.getSupplierCode();
+                case 2 -> s.getSupplierName();
+                case 3 -> s.getPhone();
+                case 4 -> s.getEmail();
+                case 5 -> s.getAddress();
+                case 6 -> "";
                 default -> null;
             };
         }
@@ -472,7 +480,7 @@ public class SupplierPanel extends JPanel {
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 5;
+            return col == 6;
         }
     }
 
