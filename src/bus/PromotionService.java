@@ -284,4 +284,12 @@ public class PromotionService {
 
         return promotionProductDAO.findById(ppId);
     }
+
+    public boolean importExcel(List<Promotion> promotions) {
+        if (promotions == null || promotions.isEmpty()) {
+            throw new IllegalArgumentException("Danh sách khuyến mãi trống");
+        }
+
+        return promotionDAO.insertList(promotions);
+    }
 }
