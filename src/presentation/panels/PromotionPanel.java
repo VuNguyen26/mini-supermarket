@@ -4,6 +4,7 @@ import bus.AuthService.AuthUser;
 import bus.PromotionService;
 import dto.Promotion;
 import dto.PromotionProduct;
+import dto.PromotionType;
 import presentation.dialogs.PromotionDialog;
 import presentation.dialogs.PromotionProductDialog;
 
@@ -15,7 +16,12 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableModel;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -26,6 +32,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +60,7 @@ public class PromotionPanel extends JPanel {
     private JButton btnAddPromotion;
     private JButton btnViewPromotion;
     private JButton btnExportExcel;
+    private JButton btnImportExcel;
 
     private JButton btnAddPromotionProduct;
     private JButton btnEditPromotionProduct;
@@ -77,6 +85,7 @@ public class PromotionPanel extends JPanel {
         if (btnAddPromotion != null) btnAddPromotion.setEnabled(canCreate);
         if (btnViewPromotion != null) btnViewPromotion.setEnabled(canView);
         if (btnExportExcel != null) btnExportExcel.setEnabled(canView);
+        if (btnImportExcel != null) btnImportExcel.setEnabled(canCreate);
 
         if (btnAddPromotionProduct != null) btnAddPromotionProduct.setEnabled(canCreate);
         if (btnEditPromotionProduct != null) btnEditPromotionProduct.setEnabled(canUpdate);
@@ -127,14 +136,17 @@ public class PromotionPanel extends JPanel {
         btnAddPromotion = new JButton("+ Thêm khuyến mãi");
         btnViewPromotion = new JButton("Xem chi tiết");
         btnExportExcel = new JButton("Xuất Excel");
+        btnImportExcel = new JButton("Nhập Excel");
 
         btnAddPromotion.setPreferredSize(new Dimension(150, 30));
         btnViewPromotion.setPreferredSize(new Dimension(110, 30));
         btnExportExcel.setPreferredSize(new Dimension(100, 30));
+        btnImportExcel.setPreferredSize(new Dimension(100, 30));
 
         btnAddPromotion.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnViewPromotion.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnExportExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnImportExcel.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
         btnAddPromotion.setBackground(new Color(40, 167, 69));
         btnAddPromotion.setForeground(Color.WHITE);
@@ -142,10 +154,13 @@ public class PromotionPanel extends JPanel {
         btnViewPromotion.setForeground(Color.WHITE);
         btnExportExcel.setBackground(new Color(29, 111, 66));
         btnExportExcel.setForeground(Color.WHITE);
+        btnImportExcel.setBackground(new Color(255, 193, 7));
+        btnImportExcel.setForeground(Color.WHITE);
 
         btnAddPromotion.setEnabled(canCreate);
         btnViewPromotion.setEnabled(canView);
         btnExportExcel.setEnabled(canView);
+        btnImportExcel.setEnabled(canCreate);
 
         btnAddPromotion.addActionListener(e -> {
             if (!canCreate) {
@@ -280,7 +295,83 @@ public class PromotionPanel extends JPanel {
             }
         });
 
+        btnImportExcel.addActionListener(e -> {
+            if (!canCreate) {
+                JOptionPane.showMessageDialog(this, "Bạn không có quyền nhập Excel khuyến mãi");
+                return;
+            }
+
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(this);
+
+            if (result != JFileChooser.APPROVE_OPTION) return;
+
+            File file = fileChooser.getSelectedFile();
+
+            try (FileInputStream fis = new FileInputStream(file);
+                Workbook workbook = new XSSFWorkbook(fis)) {
+
+                Sheet sheet = workbook.getSheetAt(0);
+
+                // Kiểm tra header
+                Row headerRow = sheet.getRow(0);
+
+                String[] expectedHeaders = {
+                        "Mã", "Tên KM", "Bắt đầu", "Kết thúc",
+                        "Loại", "Giá trị", "Đơn tối thiểu", "Trạng thái"
+                };
+
+                for (int i = 0; i < expectedHeaders.length; i++) {
+                    Cell cell = headerRow.getCell(i);
+                    if (cell == null || !expectedHeaders[i].equalsIgnoreCase(cell.getStringCellValue().trim())) {
+                        JOptionPane.showMessageDialog(this, "File Excel không đúng định dạng mẫu!");
+                        return;
+                    }
+                }
+
+                // Đọc dữ liệu
+                List<Promotion> list = new ArrayList<>();
+
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                    Row row = sheet.getRow(i);
+                    if (row == null) continue;
+
+                    try {
+                        Promotion km = new Promotion();
+
+                        km.setPromoCode(getString(row.getCell(0)));
+                        km.setPromoName(getString(row.getCell(1)));
+                        km.setStartAt(getDateTime(row.getCell(2)));
+                        km.setEndAt(getDateTime(row.getCell(3)));
+                        km.setType(parseType(getString(row.getCell(4))));
+                        km.setValue(getBigDecimal(row.getCell(5)));
+                        km.setMinOrderAmount(getBigDecimal(row.getCell(6)));
+                        km.setStatus(getString(row.getCell(7)));
+                        km.setCreatedBy(currentUser.userId);
+
+                        list.add(km);
+
+                    } catch (Exception ex) {
+                        System.out.println("❌ Lỗi tại dòng " + (i + 1) + ": " + ex.getMessage());
+                    }
+                }
+
+                // Gửi sang BUS
+                if (promoService.importExcel(list)) {
+                    JOptionPane.showMessageDialog(this, "Import Excel thành công!");
+                    loadPromotions(txtSearch.getText());
+                } else {
+                    JOptionPane.showMessageDialog(this, "Import Excel thất bại!");
+                }
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Lỗi khi đọc file Excel!");
+            }
+        });
+
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.add(btnImportExcel);
         rightPanel.add(btnExportExcel);
         rightPanel.add(btnViewPromotion);
         rightPanel.add(btnAddPromotion);
@@ -560,6 +651,44 @@ public class PromotionPanel extends JPanel {
                     d.getProductId(),
                     d.getProducName(),
             });
+        }
+    }
+
+    private String getString(Cell cell) {
+        if (cell == null) return "";
+        cell.setCellType(CellType.STRING);
+        return cell.getStringCellValue().trim();
+    }
+
+    private LocalDateTime getDateTime(Cell cell) {
+        if (cell == null) return null;
+
+        if (cell.getCellType() == CellType.NUMERIC) {
+            return cell.getLocalDateTimeCellValue();
+        } else {
+            String value = cell.getStringCellValue().trim();
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm[:ss]");
+
+            return LocalDateTime.parse(value, formatter);
+        }
+    }
+
+    private BigDecimal getBigDecimal(Cell cell) {
+        if (cell == null) return BigDecimal.ZERO;
+
+        if (cell.getCellType() == CellType.NUMERIC) {
+            return BigDecimal.valueOf(cell.getNumericCellValue());
+        } else {
+            return new BigDecimal(cell.getStringCellValue());
+        }
+    }
+
+    private PromotionType parseType(String value) {
+        try {
+            return PromotionType.valueOf(value.toUpperCase());
+        } catch (Exception e) {
+            throw new RuntimeException("Loại khuyến mãi không hợp lệ: " + value);
         }
     }
 

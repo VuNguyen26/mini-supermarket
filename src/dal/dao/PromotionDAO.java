@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -143,6 +144,61 @@ public class PromotionDAO {
             throw new RuntimeException("Delete promotion failed: " + e.getMessage(), e);
         }
 
+    }
+
+    public boolean insertList(List<Promotion> promotions) {
+        String sql =
+                "INSERT INTO promotion " +
+                "(`promo_code`, `promo_name`, `start_at`, `end_at`, `type`, `value`, `min_order_amount`, `status`, `created_by`) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        Connection conn = null;
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+
+                int batchSize = 100;
+                int count = 0;
+
+                for (Promotion km : promotions) {
+                    ps.setString(1, km.getPromoCode());
+                    ps.setString(2, km.getPromoName());
+                    ps.setTimestamp(3, Timestamp.valueOf(km.getStartAt()));
+                    ps.setTimestamp(4, Timestamp.valueOf(km.getEndAt()));
+                    ps.setString(5, km.getType().name());
+                    ps.setBigDecimal(6, km.getValue());
+                    ps.setBigDecimal(7, km.getMinOrderAmount());
+                    ps.setString(8, km.getStatus());
+                    ps.setInt(9, km.getCreatedBy());
+
+                    ps.addBatch();
+
+                    if (++count % batchSize == 0) {
+                        ps.executeBatch();
+                    }
+                }
+
+                ps.executeBatch(); // phần còn lại
+            }
+
+            conn.commit();
+            return true;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            if (conn != null) {
+                try {
+                    conn.rollback(); // 💥 tránh insert dở
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        return false;
     }
 
     private Promotion map(ResultSet rs) throws Exception {
